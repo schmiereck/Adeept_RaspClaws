@@ -418,8 +418,6 @@ class Camera(BaseCamera):
 		while True:
 			# read current frame
 			_, img = camera.read()
-			if img.all is None:
-				continue
 
 			if Camera.modeSelect == 'none':
 				switch.switch(1,0)
