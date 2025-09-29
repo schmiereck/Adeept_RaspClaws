@@ -12,14 +12,12 @@ import sys
 import time
 import threading as thread
 import tkinter as tk
+import subprocess
+import cv2
+import zmq
+import base64
+import numpy as np
 
-try:#1
-	import cv2
-	import zmq
-	import base64
-	import numpy as np
-except:
-	print("Couldn't import OpenCV, you need to install it first.")
 
 ip_stu=1		#Shows connection status
 c_f_stu = 0
@@ -40,65 +38,11 @@ SmoothMode = 0
 
 ########>>>>>VIDEO<<<<<########
 
-def video_thread():
-	global footage_socket, font, frame_num, fps
-	context = zmq.Context()
-	footage_socket = context.socket(zmq.SUB)
-	footage_socket.bind('tcp://*:5555')
-	footage_socket.setsockopt_string(zmq.SUBSCRIBE, np.unicode(''))
-
-	font = cv2.FONT_HERSHEY_SIMPLEX
-
-	frame_num = 0
-	fps = 0
-
-def get_FPS():
-	global frame_num, fps
-	while 1:
-		try:
-			time.sleep(1)
-			fps = frame_num
-			frame_num = 0
-		except:
-			time.sleep(1)
-
-def opencv_r():
-	global frame_num
-	while True:
-		try:
-			frame = footage_socket.recv_string()
-			img = base64.b64decode(frame)
-			npimg = np.frombuffer(img, dtype=np.uint8)
-			source = cv2.imdecode(npimg, 1)
-			cv2.putText(source,('PC FPS: %s'%fps),(40,20), font, 0.5,(255,255,255),1,cv2.LINE_AA)
-			try:
-				cv2.putText(source,('CPU Temperature: %s'%CPU_TEP),(370,350), font, 0.5,(128,255,128),1,cv2.LINE_AA)
-				cv2.putText(source,('CPU Usage: %s'%CPU_USE),(370,380), font, 0.5,(128,255,128),1,cv2.LINE_AA)
-				cv2.putText(source,('RAM Usage: %s'%RAM_USE),(370,410), font, 0.5,(128,255,128),1,cv2.LINE_AA)
-
-				#cv2.line(source,(320,240),(260,300),(255,255,255),1)
-				#cv2.line(source,(210,300),(260,300),(255,255,255),1)
-
-				#cv2.putText(source,('%sm'%ultra_data),(210,290), font, 0.5,(255,255,255),1,cv2.LINE_AA)
-			except:
-				pass
-			#cv2.putText(source,('%sm'%ultra_data),(210,290), font, 0.5,(255,255,255),1,cv2.LINE_AA)
-			cv2.imshow("Stream", source)
-			frame_num += 1
-			cv2.waitKey(1)
-
-		except:
-			time.sleep(0.5)
-			break
-
-fps_threading=thread.Thread(target=get_FPS)		 #Define a thread for FPV and OpenCV
-fps_threading.setDaemon(True)							 #'True' means it is a front thread,it would close when the mainloop() closes
-fps_threading.start()									 #Thread starts
-
-video_threading=thread.Thread(target=video_thread)		 #Define a thread for FPV and OpenCV
-video_threading.setDaemon(True)							 #'True' means it is a front thread,it would close when the mainloop() closes
-video_threading.start()									 #Thread starts
-
+def run_open():
+    script_path = 'Footage-GUI.py'
+    result = subprocess.run(['python', script_path], capture_output=True, text=True)
+    print('stdout:', result.stdout)
+    print('stderr:', result.stderr)
 ########>>>>>VIDEO<<<<<########
 
 
@@ -408,7 +352,7 @@ def socket_connect():	 #Call this function to connect with the server
 			info_threading.setDaemon(True)							 #'True' means it is a front thread,it would close when the mainloop() closes
 			info_threading.start()									 #Thread starts
 
-			video_threading=thread.Thread(target=opencv_r)		 #Define a thread for FPV and OpenCV
+			video_threading=thread.Thread(target=run_open)		 #Define a thread for FPV and OpenCV
 			video_threading.setDaemon(True)							 #'True' means it is a front thread,it would close when the mainloop() closes
 			video_threading.start()									 #Thread starts
 
@@ -754,6 +698,5 @@ if __name__ == '__main__':
 		loop()				   # Load GUI
 	except:
 		tcpClicSock.close()		  # Close socket or it may not connect with the server again
-		footage_socket.close()
 		cv2.destroyAllWindows()
 		pass
