@@ -11,18 +11,17 @@ import threading
 import cv2
 import zmq
 import base64
-import picamera
-from picamera.array import PiRGBArray
+from picamera2 import Picamera2, Preview
 import argparse
 import imutils
 from collections import deque
-import psutil
 import os
 import LED
 import datetime
 from rpi_ws281x import *
 import move
 import numpy as np #2
+import libcamera
 
 import PID
 
@@ -71,53 +70,44 @@ class runThreading (threading.Thread):#2
 
         print ("退出线程：" + self.name)
 
-#2
 run_thread = runThreading(1, 0, "no")
-# run_thread.setDaemon(True)
 run_thread.start()
-# run_thread.turn(0, "no")
 
-#2
-camera = picamera.PiCamera() 
-camera.resolution = (640, 480)
-camera.framerate = 20
-rawCapture = PiRGBArray(camera, size=(640, 480))
+camera = Picamera2()  
+preview_config = camera.preview_configuration
+preview_config.size = (640, 480)
+preview_config.format = 'RGB888'  # 'XRGB8888', 'XBGR8888', 'RGB888', 'BGR888', 'YUV420'
+hflip = 0  # Video flip horizontally: 0 or 1
+vflip = 0  # Video vertical flip: 0/1
+preview_config.transform = libcamera.Transform(hflip=hflip, vflip=vflip)
+preview_config.colour_space = libcamera.ColorSpace.Sycc()
+preview_config.buffer_count = 4
+preview_config.queue = True
+
+if not camera.is_open:
+    raise RuntimeError('Could not start camera.')
+try:
+    camera.start()
+except Exception as e:
+    print(f"\033[38;5;1mError:\033[0m\n{e}")
+    print("\nPlease check whether the camera is connected well, and disable the \"legacy camera driver\" on raspi-config")
+
 
 def findLineCtrl(posInput, setCenter):#2
     if posInput:
         if posInput > (setCenter + findLineError):
-            # move.motorStop()
-            #turnRight
-            # error = (posInput-320)/5
-            # outv = int(round((pid.GenOut(error)),0))
-            # move.move(80, 'no', 'right', 0.5)
             run_thread.turn(35, "right")#2
             time.sleep(0.2)
-            # move.motorStop()
             pass
         elif posInput < (setCenter - findLineError):
-            # move.motorStop()
-            #turnLeft
-            # error = (320-posInput)/5
-            # outv = int(round((pid.GenOut(error)),0))
-            # move.move(80, 'no', 'left', 0.5)
             run_thread.turn(35, "left")#2
             time.sleep(0.2)
-            # move.motorStop()
             pass
         else:
             if CVrun:
-                # move.move(80, 'forward', 'no', 0.5)
                 run_thread.turn(35, "no")#2
-            #forward
             pass
     else:
-        # if CVrun:
-        #   try:
-        #       move.motorStop()
-        #   except Exception as e:
-        #       print(e)
-        #   move.move(80, 'backward', 'no', 0.5)
         pass
 
 def cvFindLine():#2
@@ -240,16 +230,15 @@ class FPV:
         font = cv2.FONT_HERSHEY_SIMPLEX
 
         context = zmq.Context()
-        footage_socket = context.socket(zmq.PUB)
+        footage_socket = context.socket(zmq.PAIR)
         print(IPinver)
         footage_socket.connect('tcp://%s:5555'%IPinver)
 
         avg = None
-        motionCounter = 0
         lastMovtionCaptured = datetime.datetime.now()
 
-        for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
-            frame_image = frame.array
+        while True:
+            frame_image = camera.capture_array()
             cv2.line(frame_image,(300,240),(340,240),(128,255,128),1)
             cv2.line(frame_image,(320,220),(320,260),(128,255,128),1)
             timestamp = datetime.datetime.now()
@@ -327,7 +316,6 @@ class FPV:
                 if avg is None:
                     print("[INFO] starting background model...")
                     avg = gray.copy().astype("float")
-                    rawCapture.truncate(0)
                     continue
 
                 cv2.accumulateWeighted(gray, avg, 0.5)
@@ -371,8 +359,6 @@ class FPV:
             jpg_as_text = base64.b64encode(buffer)
             footage_socket.send(jpg_as_text)
 
-            rawCapture.truncate(0)
-
 
 
 if __name__ == '__main__':
@@ -380,14 +366,6 @@ if __name__ == '__main__':
     while 1:
         fpv.capture_thread('192.168.0.110')
         pass
-
-    # run_thread = runThreading(1, 0, "no")
-    # # run_thread.setDaemon(True)
-    # run_thread.start()
-    # time.sleep(2)
-    # run_thread.turn(0, "no")
-
-    # run_thread.join()
 
 
 

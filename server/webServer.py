@@ -79,16 +79,6 @@ def replace_num(initial,new_num):   #Call this function to replace data in '.txt
 		f.writelines(newline)
 
 
-def FPV_thread():
-	global fpv
-	fpv=FPV.FPV()
-	fpv.capture_thread(addr[0])
-
-
-def ap_thread():
-	os.system("sudo create_ap wlan0 eth0 Adeept 12345678")
-
-
 def functionSelect(command_input, response):
 	global direction_command, turn_command, SmoothMode, steadyMode, functionMode
 
@@ -222,62 +212,6 @@ def configPWM(command_input, response):
 			replace_num("init_pwm%d = "%numServo, init_pwm[numServo])
 
 
-
-def update_code():
-	# Update local to be consistent with remote
-	projectPath = thisPath[:-7]
-	with open(f'{projectPath}/config.json', 'r') as f1:
-		config = json.load(f1)
-		if not config['production']:
-			print('Update code')
-			# Force overwriting local code
-			os.system(f'cd {projectPath} && sudo git fetch --all && git reset --hard origin/master && git pull')
-			config['production'] = True
-			with open(f'{projectPath}/config.json', 'w') as f2:
-				json.dump(config, f2)
-		
-def wifi_check():
-	try:
-		s =socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
-		s.connect(("1.1.1.1",80))
-		ipaddr_check=s.getsockname()[0]
-		s.close()
-		print(ipaddr_check)
-		# update_code()
-		if OLED_connection:
-			screen.screen_show(2, 'IP:'+ipaddr_check)
-			screen.screen_show(3, 'AP MODE OFF')
-	except:
-		ap_threading=threading.Thread(target=ap_thread)   #Define a thread for data receiving
-		ap_threading.setDaemon(True)						  #'True' means it is a front thread,it would close when the mainloop() closes
-		ap_threading.start()								  #Thread starts
-		if OLED_connection:
-			screen.screen_show(2, 'AP Starting 10%')
-		RL.setColor(0,16,50)
-		time.sleep(1)
-		if OLED_connection:
-			screen.screen_show(2, 'AP Starting 30%')
-		RL.setColor(0,16,100)
-		time.sleep(1)
-		if OLED_connection:
-			screen.screen_show(2, 'AP Starting 50%')
-		RL.setColor(0,16,150)
-		time.sleep(1)
-		if OLED_connection:
-			screen.screen_show(2, 'AP Starting 70%')
-		RL.setColor(0,16,200)
-		time.sleep(1)
-		if OLED_connection:
-			screen.screen_show(2, 'AP Starting 90%')
-		RL.setColor(0,16,255)
-		time.sleep(1)
-		if OLED_connection:
-			screen.screen_show(2, 'AP Starting 100%')
-		RL.setColor(35,255,35)
-		if OLED_connection:
-			screen.screen_show(2, 'IP:192.168.12.1')
-			screen.screen_show(3, 'AP MODE ON')
-
 async def check_permit(websocket):
 	while True:
 		recv_str = await websocket.recv()
@@ -340,19 +274,9 @@ async def recv_msg(websocket):
 
 			elif 'AR' == data:
 				modeSelect = 'AR'
-				screen.screen_show(4, 'ARM MODE ON')
-				try:
-					fpv.changeMode('ARM MODE ON')
-				except:
-					pass
 
 			elif 'PT' == data:
 				modeSelect = 'PT'
-				screen.screen_show(4, 'PT MODE ON')
-				try:
-					fpv.changeMode('PT MODE ON')
-				except:
-					pass
 
 			#CVFL
 			elif 'CVFL' == data:
@@ -374,19 +298,10 @@ async def recv_msg(websocket):
 				err = int(data.split()[1])
 				flask_app.camera.errorSet(err)
 
-			elif 'defEC' in data:#Z
-				fpv.defaultExpCom()
-
 		elif(isinstance(data,dict)):
 			if data['title'] == "findColorSet":
 				color = data['data']
 				flask_app.colorFindSet(color[0],color[1],color[2])
-
-		if not functionMode:
-			if OLED_connection:
-				screen.screen_show(5,'Functions OFF')
-		else:
-			pass
 
 		print(data)
 		response = json.dumps(response)
@@ -418,7 +333,6 @@ if __name__ == '__main__':
 		pass
 
 	while  1:
-		wifi_check()
 		try:				  #Start server,waiting for client
 			start_server = websockets.serve(main_logic, '0.0.0.0', 8888)
 			asyncio.get_event_loop().run_until_complete(start_server)

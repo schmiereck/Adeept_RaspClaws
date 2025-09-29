@@ -26,7 +26,7 @@ DPI = 17
 new_frame = 0
 direction_command = 'no'
 turn_command = 'no'
-pwm = Adafruit_PCA9685.PCA9685()
+pwm = Adafruit_PCA9685.PCA9685(address=0x40, busnum=1)
 pwm.set_pwm_freq(50)
 LED = LED.LED()
 
@@ -35,11 +35,6 @@ steadyMode = 0
 
 def breath_led():
     LED.breath(255)
-
-
-def  ap_thread():
-    os.system("sudo create_ap wlan0 eth0 AdeeptCar 12345678")
-
 
 def get_cpu_tempfunc():
     """ Return CPU temperature """
@@ -182,17 +177,9 @@ def run():
     info_threading.setDaemon(True)                             #'True' means it is a front thread,it would close when the mainloop() closes
     info_threading.start()                                     #Thread starts
 
-    #info_threading=threading.Thread(target=FPV_thread)    #Define a thread for FPV and OpenCV
-    #info_threading.setDaemon(True)                        #'True' means it is a front thread,it would close when the mainloop() closes
-    #info_threading.start()                                #Thread starts
-
     ws_R = 0
     ws_G = 0
     ws_B = 0
-
-    Y_pitch = 300
-    Y_pitch_MAX = 600
-    Y_pitch_MIN = 100
 
     while True: 
         data = ''
@@ -392,29 +379,6 @@ if __name__ == '__main__':
         pass
 
     while  1:
-        try:
-            s =socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
-            s.connect(("1.1.1.1",80))
-            ipaddr_check=s.getsockname()[0]
-            s.close()
-            print(ipaddr_check)
-        except:
-            ap_threading=threading.Thread(target=ap_thread)   #Define a thread for data receiving
-            ap_threading.setDaemon(True)                          #'True' means it is a front thread,it would close when the mainloop() closes
-            ap_threading.start()                                  #Thread starts
-
-            LED.colorWipe(Color(0,16,50))
-            time.sleep(1)
-            LED.colorWipe(Color(0,16,100))
-            time.sleep(1)
-            LED.colorWipe(Color(0,16,150))
-            time.sleep(1)
-            LED.colorWipe(Color(0,16,200))
-            time.sleep(1)
-            LED.colorWipe(Color(0,16,255))
-            time.sleep(1)
-            LED.colorWipe(Color(35,255,35))
-
         try:
             tcpSerSock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             tcpSerSock.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
