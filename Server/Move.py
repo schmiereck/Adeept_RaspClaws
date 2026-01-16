@@ -1198,22 +1198,22 @@ def move_thread():
 	global step_set
 	stand_stu = 1
 	if not steadyMode:
-	if direction_command == 'forward' and turn_command == 'no':
-		if SmoothMode:
-			dove(step_set,35,0.001,DPI,'no')
-			step_set += 1
-			if step_set == 5:
-				step_set = 1
-			time.sleep(0.05)  # 50ms sleep to reduce CPU load in smooth mode
+		if direction_command == 'forward' and turn_command == 'no':
+			if SmoothMode:
+				dove(step_set,35,0.001,DPI,'no')
+				step_set += 1
+				if step_set == 5:
+					step_set = 1
+				time.sleep(0.05)  # 50ms sleep to reduce CPU load in smooth mode
 
-		else:
+			else:
 			move(step_set, 35, 'no')
 			time.sleep(0.1)
 			step_set += 1
 			if step_set == 5:
 				step_set = 1
 
-elif direction_command == 'backward' and turn_command == 'no':
+	elif direction_command == 'backward' and turn_command == 'no':
 		if SmoothMode:
 			dove(step_set,-35,0.001,DPI,'no')
 			step_set += 1
@@ -1249,13 +1249,12 @@ elif direction_command == 'backward' and turn_command == 'no':
 	else:
 		pass
 
-		if turn_command == 'no' and direction_command == 'stand':
-			stand()
-			step_set = 1
-		pass
-	else:
-		steady_X()
-		steady()
+	if turn_command == 'no' and direction_command == 'stand':
+		stand()
+		step_set = 1
+else:
+	steady_X()
+	steady()
 
 class RobotM(threading.Thread):
 	def __init__(self, *args, **kwargs):
