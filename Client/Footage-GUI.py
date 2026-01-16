@@ -2,6 +2,7 @@ import cv2
 import zmq
 import base64
 import numpy as np
+import time
 from ip_utils import get_ip_address
 
 # Import IP address from IP.txt
@@ -11,15 +12,21 @@ print(f"Connecting to video stream @ {ip_adr}:5555")
 context = zmq.Context()
 footage_socket = context.socket(zmq.SUB)  # Changed from PAIR to SUB
 
+# Set high-water mark to prevent buffering old frames
+footage_socket.setsockopt(zmq.RCVHWM, 1)
+
 footage_socket.connect(f'tcp://{ip_adr}:5555')
 footage_socket.setsockopt_string(zmq.SUBSCRIBE, '')  # Subscribe to all messages
 
+# Give ZMQ time to establish subscription (avoid "slow joiner" problem)
+time.sleep(0.2)
 print("Connected to video stream, waiting for frames...")
 
 cv2.namedWindow('Stream',flags=cv2.WINDOW_NORMAL | cv2.WINDOW_KEEPRATIO)
 cv2.resizeWindow('Stream',width=640,height=480)
 font = cv2.FONT_HERSHEY_SIMPLEX
 
+print("Starting video receive loop...")
 while True:
 	frame = footage_socket.recv_string()
 	img = base64.b64decode(frame)

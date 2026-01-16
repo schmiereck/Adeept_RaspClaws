@@ -286,6 +286,11 @@ class FPV:
 
 		context = zmq.Context()
 		footage_socket = context.socket(zmq.PUB)  # Changed from PAIR to PUB
+
+		# Set high-water mark to 1 to prevent buffering old frames
+		# This ensures clients always get the latest frame, not buffered old ones
+		footage_socket.setsockopt(zmq.SNDHWM, 1)
+
 		print(f"Video server binding to port 5555 (PUB socket, allows multiple clients)")
 		footage_socket.bind('tcp://*:5555')  # Server binds, clients subscribe
 

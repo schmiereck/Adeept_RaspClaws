@@ -69,8 +69,16 @@ def video_thread():
 	global footage_socket, font, frame_num, fps
 	context = zmq.Context()
 	footage_socket = context.socket(zmq.SUB)
+
+	# Set high-water mark to prevent buffering old frames
+	footage_socket.setsockopt(zmq.RCVHWM, 1)
+
 	footage_socket.connect('tcp://%s:5555'%ip_adr)
 	footage_socket.setsockopt_string(zmq.SUBSCRIBE, np.unicode(''))
+
+	# Give ZMQ time to establish subscription (avoid "slow joiner" problem)
+	time.sleep(0.2)
+	print("Video socket connected and subscribed")
 
 	font = cv2.FONT_HERSHEY_SIMPLEX
 
