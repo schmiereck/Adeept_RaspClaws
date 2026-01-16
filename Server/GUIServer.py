@@ -196,6 +196,15 @@ def run():
         elif 'slow' in data:
             move.commandInput(data)
             tcpCliSock.send(('slow').encode())
+
+        elif 'smoothCam' == data:
+            move.commandInput(data)
+            tcpCliSock.send(('smoothCam').encode())
+
+        elif 'smoothCamOff' == data:
+            move.commandInput(data)
+            tcpCliSock.send(('smoothCamOff').encode())
+
         elif 'police' == data:
             if ws2812:
                 ws2812.police()

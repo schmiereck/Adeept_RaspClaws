@@ -54,6 +54,7 @@ Switch_3 = 0
 Switch_2 = 0
 Switch_1 = 0
 SmoothMode = 0
+SmoothCamMode = 0
 FV_Line = 0
 FV_Start = 0
 ########>>>>>VIDEO<<<<<########
@@ -227,6 +228,16 @@ def call_Smooth(event):
 	else:
 		tcpClicSock.send(('fast').encode())
 		SmoothMode = 0
+
+def call_SmoothCam(event):
+	global SmoothCamMode
+	if SmoothCamMode == 0:
+		tcpClicSock.send(('smoothCam').encode())
+		SmoothCamMode = 1
+	else:
+		tcpClicSock.send(('smoothCamOff').encode())
+		SmoothCamMode = 0
+
 def call_Police(event):
 	global funcMode
 	if funcMode == 0:
@@ -274,7 +285,7 @@ def all_btn_normal():
 
 
 def connection_thread():
-	global funcMode, Switch_3, Switch_2, Switch_1, SmoothMode,steadyMode
+	global funcMode, Switch_3, Switch_2, Switch_1, SmoothMode, SmoothCamMode, steadyMode
 	global CPU_TEP, CPU_USE, RAM_USE
 	while 1:
 		car_info = (tcpClicSock.recv(BUFSIZ)).decode()
@@ -311,15 +322,25 @@ def connection_thread():
 			funcMode = 1
 			SmoothMode = 1
 			Btn_WatchDog.config(bg='#FF6D00', fg='#000000')
-   
+
 		elif 'slow' in car_info:
 			funcMode = 1
 			SmoothMode = 1
 			Btn_Smooth.config(bg='#FF6D00', fg='#000000')
+
 		elif 'fast' in car_info:
 			funcMode = 0
 			SmoothMode = 0
 			Btn_Smooth.config(bg=color_btn, fg=color_text)
+
+		elif 'smoothCam' in car_info:
+			SmoothCamMode = 1
+			Btn_SmoothCam.config(bg='#FF6D00', fg='#000000')
+
+		elif 'smoothCamOff' in car_info:
+			SmoothCamMode = 0
+			Btn_SmoothCam.config(bg=color_btn, fg=color_text)
+
 		elif 'police' == car_info:
 			funcMode = 1
 			SmoothMode = 1
@@ -515,7 +536,7 @@ def scale_FL(x,y,w):#1
 
 
 def loop():					  #GUI
-	global tcpClicSock,root,E1,connect,l_ip_4,l_ip_5,color_btn,color_text,Btn14,CPU_TEP_lab,CPU_USE_lab,RAM_lab,canvas_ultra,color_text,var_lip1,var_lip2,var_err,var_R,var_B,var_G,var_ec,Btn_Police,Btn_Steady,Btn_FindColor,Btn_WatchDog,Btn_Fun5,Btn_Fun6,Btn_Switch_1,Btn_Switch_2,Btn_Switch_3,Btn_Smooth,color_bg   #1 The value of tcpClicSock changes in the function loop(),would also changes in global so the other functions could use it.
+	global tcpClicSock,root,E1,connect,l_ip_4,l_ip_5,color_btn,color_text,Btn14,CPU_TEP_lab,CPU_USE_lab,RAM_lab,canvas_ultra,color_text,var_lip1,var_lip2,var_err,var_R,var_B,var_G,var_ec,Btn_Police,Btn_Steady,Btn_FindColor,Btn_WatchDog,Btn_Fun5,Btn_Fun6,Btn_Switch_1,Btn_Switch_2,Btn_Switch_3,Btn_Smooth,Btn_SmoothCam,color_bg   #1 The value of tcpClicSock changes in the function loop(),would also changes in global so the other functions could use it.
 	while True:
 		color_bg='#000000'		#Set background color
 		color_text='#E1F5FE'	  #Set text color
@@ -745,6 +766,11 @@ def loop():					  #GUI
 		root.bind('<KeyPress-b>', call_Police)
 		Btn_Police.bind('<ButtonPress-1>', call_Police)
 
+		# Second row - SmoothCam button
+		Btn_SmoothCam = tk.Button(root, width=10, text='Smooth-Cam [N]',fg=color_text,bg=color_btn,relief='ridge')
+		Btn_SmoothCam.place(x=455,y=445)
+		root.bind('<KeyPress-n>', call_SmoothCam)
+		Btn_SmoothCam.bind('<ButtonPress-1>', call_SmoothCam)
 
 		scale_FL(30,490,315)#1
 
@@ -757,17 +783,12 @@ def loop():					  #GUI
 if __name__ == '__main__':
 	try:
 		loop()				   # Load GUI
-	#except:
-		#tcpClicSock.close()		  # Close socket or it may not connect with the server again
-		#footage_socket.close()
-		#cv2.destroyAllWindows()
-		#pass
 	except Exception as e:
 		print("Error: ", e)
 		import traceback
 		traceback.print_exc()
 		try:
-			tcpClicSock.close()
+			tcpClicSock.close() # Close socket or it may not connect with the server again
 		except:
 			pass
 		try:

@@ -1055,46 +1055,102 @@ def steadyTest():
 
 def look_up(wiggle=look_wiggle):
 	global Up_Down_input
-	if Up_Down_direction:
-		Up_Down_input += wiggle
+	if SmoothCamMode:
+		# Smooth camera movement with interpolation
+		old_position = Up_Down_input
+		if Up_Down_direction:
+			Up_Down_input += wiggle
+		else:
+			Up_Down_input -= wiggle
 		Up_Down_input = ctrl_range(Up_Down_input, Up_Down_Max, Up_Down_Min)
+
+		# Interpolate between old and new position
+		for pos in interpolate(old_position, Up_Down_input, steps=8):
+			pwm.set_pwm(13, 0, pos)
+			time.sleep(0.005)  # 5ms delay between steps = ~40ms total
 	else:
-		Up_Down_input -= wiggle
+		# Direct, fast camera movement
+		if Up_Down_direction:
+			Up_Down_input += wiggle
+		else:
+			Up_Down_input -= wiggle
 		Up_Down_input = ctrl_range(Up_Down_input, Up_Down_Max, Up_Down_Min)
-	pwm.set_pwm(13, 0, Up_Down_input)
+		pwm.set_pwm(13, 0, Up_Down_input)
 
 
 def look_down(wiggle=look_wiggle):
 	global Up_Down_input
-	if Up_Down_direction:
-		Up_Down_input -= wiggle
+	if SmoothCamMode:
+		# Smooth camera movement with interpolation
+		old_position = Up_Down_input
+		if Up_Down_direction:
+			Up_Down_input -= wiggle
+		else:
+			Up_Down_input += wiggle
 		Up_Down_input = ctrl_range(Up_Down_input, Up_Down_Max, Up_Down_Min)
+
+		# Interpolate between old and new position
+		for pos in interpolate(old_position, Up_Down_input, steps=8):
+			pwm.set_pwm(13, 0, pos)
+			time.sleep(0.005)  # 5ms delay between steps
 	else:
-		Up_Down_input += wiggle
+		# Direct, fast camera movement
+		if Up_Down_direction:
+			Up_Down_input -= wiggle
+		else:
+			Up_Down_input += wiggle
 		Up_Down_input = ctrl_range(Up_Down_input, Up_Down_Max, Up_Down_Min)
-	pwm.set_pwm(13, 0, Up_Down_input)
+		pwm.set_pwm(13, 0, Up_Down_input)
 
 
 def look_left(wiggle=look_wiggle):
 	global Left_Right_input
-	if Left_Right_direction:
-		Left_Right_input += wiggle
+	if SmoothCamMode:
+		# Smooth camera movement with interpolation
+		old_position = Left_Right_input
+		if Left_Right_direction:
+			Left_Right_input += wiggle
+		else:
+			Left_Right_input -= wiggle
 		Left_Right_input = ctrl_range(Left_Right_input, Left_Right_Max, Left_Right_Min)
+
+		# Interpolate between old and new position
+		for pos in interpolate(old_position, Left_Right_input, steps=8):
+			pwm.set_pwm(12, 0, pos)
+			time.sleep(0.005)  # 5ms delay between steps
 	else:
-		Left_Right_input -= wiggle
+		# Direct, fast camera movement
+		if Left_Right_direction:
+			Left_Right_input += wiggle
+		else:
+			Left_Right_input -= wiggle
 		Left_Right_input = ctrl_range(Left_Right_input, Left_Right_Max, Left_Right_Min)
-	pwm.set_pwm(12, 0, Left_Right_input)
+		pwm.set_pwm(12, 0, Left_Right_input)
 
 
 def look_right(wiggle=look_wiggle):
 	global Left_Right_input
-	if Left_Right_direction:
-		Left_Right_input -= wiggle
+	if SmoothCamMode:
+		# Smooth camera movement with interpolation
+		old_position = Left_Right_input
+		if Left_Right_direction:
+			Left_Right_input -= wiggle
+		else:
+			Left_Right_input += wiggle
 		Left_Right_input = ctrl_range(Left_Right_input, Left_Right_Max, Left_Right_Min)
+
+		# Interpolate between old and new position
+		for pos in interpolate(old_position, Left_Right_input, steps=8):
+			pwm.set_pwm(12, 0, pos)
+			time.sleep(0.005)  # 5ms delay between steps
 	else:
-		Left_Right_input += wiggle
+		# Direct, fast camera movement
+		if Left_Right_direction:
+			Left_Right_input -= wiggle
+		else:
+			Left_Right_input += wiggle
 		Left_Right_input = ctrl_range(Left_Right_input, Left_Right_Max, Left_Right_Min)
-	pwm.set_pwm(12, 0, Left_Right_input)
+		pwm.set_pwm(12, 0, Left_Right_input)
 
 
 def home():
@@ -1116,7 +1172,18 @@ def destroy():
 	clean_all()
 
 
+def interpolate(start, end, steps=10):
+	"""Interpoliert zwischen start und end in 'steps' Schritten für sanfte Servo-Bewegungen"""
+	if steps <= 0:
+		yield end
+		return
+	step_size = (end - start) / steps
+	for i in range(steps + 1):
+		yield int(start + step_size * i)
+
+
 SmoothMode = 0
+SmoothCamMode = 0  # Separate flag for camera smooth mode
 steadyMode = 0
 
 step_set = 1
@@ -1210,7 +1277,7 @@ rm.start()
 rm.pause()
 
 def commandInput(command_input):
-	global direction_command, turn_command, SmoothMode, steadyMode
+	global direction_command, turn_command, SmoothMode, SmoothCamMode, steadyMode
 	if 'forward' == command_input and steadyMode == 0:
 		direction_command = 'forward'
 		turn_command = 'no'
@@ -1244,6 +1311,11 @@ def commandInput(command_input):
 	elif 'fast' == command_input and steadyMode == 0:
 		SmoothMode = 0
 
+	elif 'smoothCam' == command_input:
+		SmoothCamMode = 1
+
+	elif 'smoothCamOff' == command_input:
+		SmoothCamMode = 0
 
 	elif 'steadyCamera' == command_input:
 		steadyMode = 1
