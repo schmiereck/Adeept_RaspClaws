@@ -113,8 +113,16 @@ def info_send_client():
 
 def FPV_thread():
     global fpv
+    print("Starting FPV thread...")
     fpv=FPV.FPV()
-    fpv.capture_thread(addr[0])
+    # Note: IP is only used for logging in capture_thread, not for connection
+    # The actual binding is to tcp://*:5555 (all interfaces)
+    fpv.capture_thread("0.0.0.0")  # Dummy IP, actual binding is to all interfaces
+    print("FPV thread ended")
+
+
+# Global variable to track FPV thread
+fps_threading = None
 
 
 def run():
@@ -327,6 +335,13 @@ if __name__ == '__main__':
         print(f"\033[38;5;3mWarning:\033[0m Could not initialize WS2812 LEDs: {e}")
         ws2812 = None
 
+    # Start FPV thread ONCE at server startup (not per client connection!)
+    print("Starting FPV video stream thread (runs continuously)...")
+    fps_threading = threading.Thread(target=FPV_thread)
+    fps_threading.setDaemon(True)
+    fps_threading.start()
+    print("FPV thread started. Clients can connect to video stream.")
+
     while  1:
         try:
             s =socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
@@ -367,10 +382,7 @@ if __name__ == '__main__':
             print('waiting for connection...')
             tcpCliSock, addr = tcpSerSock.accept()
             print('...connected from :', addr)
-
-            fps_threading=threading.Thread(target=FPV_thread)         #Define a thread for FPV and OpenCV
-            fps_threading.setDaemon(True)                             #'True' means it is a front thread,it would close when the mainloop() closes
-            fps_threading.start()                                     #Thread starts
+            # Note: FPV thread runs continuously, started at server startup
         except Exception as e:
             print(f"Error setting up connection: {e}")
             time.sleep(1)
@@ -391,12 +403,39 @@ if __name__ == '__main__':
         run()
 
         # After run() exits (client disconnected), clean up and loop back
-        print("\nClient disconnected. Cleaning up...")
+        print("\n" + "="*50)
+        print("Client disconnected. Cleaning up...")
+        print("="*50)
+
+        # Close sockets
         try:
             tcpCliSock.close()
+            print("✓ Client socket closed")
+        except Exception as e:
+            print(f"! Error closing client socket: {e}")
+
+        try:
             tcpSerSock.close()
-        except:
-            pass
+            print("✓ Server socket closed")
+        except Exception as e:
+            print(f"! Error closing server socket: {e}")
+
+        # Reset LED color to indicate waiting state
+        try:
+            if ws2812:
+                ws2812.set_all_led_color_data(70, 70, 255)
+                ws2812.breath_status_set(1)
+                ws2812.show()
+                print("✓ LED reset to waiting state (breathing)")
+        except Exception as e:
+            print(f"! Error resetting LED: {e}")
+
+        # Give some time for cleanup and port release
+        print("\nWaiting 2 seconds before accepting new connection...")
+        time.sleep(2)
+
+        print("\n" + "="*50)
         print("Ready for new connection...")
+        print("="*50 + "\n")
         # Loop back to accept new connection
 
