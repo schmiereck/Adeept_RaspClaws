@@ -12,8 +12,24 @@ import random
 '''
 change this form 1 to -1 to reverse servos
 '''
-pwm = Adafruit_PCA9685.PCA9685(address=0x5F, busnum=1)
-pwm.set_pwm_freq(50)
+
+# Try to initialize PCA9685, use mock mode if hardware not available
+try:
+	pwm = Adafruit_PCA9685.PCA9685(address=0x5F, busnum=1)
+	pwm.set_pwm_freq(50)
+	MOCK_MODE = False
+	print("PCA9685 initialized successfully")
+except (OSError, IOError) as e:
+	print(f"\033[38;5;3mWarning:\033[0m Could not initialize PCA9685 servo controller: {e}")
+	print("Running in MOCK MODE - servo commands will be ignored")
+	MOCK_MODE = True
+	# Create a mock pwm object
+	class MockPWM:
+		def set_pwm(self, channel, on, off):
+			pass  # Do nothing in mock mode
+		def set_pwm_freq(self, freq):
+			pass
+	pwm = MockPWM()
 
 init_pwm0 = 300
 init_pwm1 = 300

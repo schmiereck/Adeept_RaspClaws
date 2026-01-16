@@ -24,8 +24,22 @@ speed_set = 100
 new_frame = 0
 direction_command = 'no'
 turn_command = 'no'
-pwm = Adafruit_PCA9685.PCA9685(address=0x5F, busnum=1)
-pwm.set_pwm_freq(50)
+
+# Try to initialize PCA9685, use mock mode if hardware not available
+try:
+	pwm = Adafruit_PCA9685.PCA9685(address=0x5F, busnum=1)
+	pwm.set_pwm_freq(50)
+	print("PCA9685 initialized in GUIServer")
+except (OSError, IOError) as e:
+	print(f"\033[38;5;3mWarning:\033[0m Could not initialize PCA9685 in GUIServer: {e}")
+	print("Running in MOCK MODE - servo commands will be ignored")
+	class MockPWM:
+		def set_pwm(self, channel, on, off):
+			pass
+		def set_pwm_freq(self, freq):
+			pass
+	pwm = MockPWM()
+
 rm = move.RobotM()
 rm.start()
 rm.pause()
