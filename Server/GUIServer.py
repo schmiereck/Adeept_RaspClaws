@@ -358,6 +358,7 @@ if __name__ == '__main__':
                 ws2812.set_all_led_color_data(35,255,35)
                 ws2812.show()
 
+        # MOVED INSIDE while loop - Repeat after each disconnect
         try:
             tcpSerSock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             tcpSerSock.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
@@ -370,19 +371,32 @@ if __name__ == '__main__':
             fps_threading=threading.Thread(target=FPV_thread)         #Define a thread for FPV and OpenCV
             fps_threading.setDaemon(True)                             #'True' means it is a front thread,it would close when the mainloop() closes
             fps_threading.start()                                     #Thread starts
-            break
+        except Exception as e:
+            print(f"Error setting up connection: {e}")
+            time.sleep(1)
+            continue  # Try again
+
+        try:
+            if ws2812:
+                ws2812.breath_status_set(0)
+                ws2812.set_all_led_color_data(64,128,255)
+                ws2812.show()
+                print("WS2812 LEDs set to blue (connected state)")
+            else:
+                print("WS2812 LEDs not available - skipping LED setup")
+        except Exception as e:
+            print(f"\033[38;5;3mWarning:\033[0m Could not set WS2812 LED color: {e}")
+
+        # Run the command processing loop
+        run()
+
+        # After run() exits (client disconnected), clean up and loop back
+        print("\nClient disconnected. Cleaning up...")
+        try:
+            tcpCliSock.close()
+            tcpSerSock.close()
         except:
             pass
-
-    try:
-        if ws2812:
-            ws2812.breath_status_set(0)
-            ws2812.set_all_led_color_data(64,128,255)
-            ws2812.show()
-            print("WS2812 LEDs set to blue (connected state)")
-        else:
-            print("WS2812 LEDs not available - skipping LED setup")
-    except Exception as e:
-        print(f"\033[38;5;3mWarning:\033[0m Could not set WS2812 LED color: {e}")
-    run()
+        print("Ready for new connection...")
+        # Loop back to accept new connection
 
