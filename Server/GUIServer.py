@@ -391,33 +391,33 @@ if __name__ == '__main__':
             tcpCliSock, addr = tcpSerSock.accept()
             print('...connected from :', addr)
 
-            # Wait for video server to be ready before signaling client
-            print("Checking if video server is ready...")
-            video_ready = False
-            max_wait = 20  # Maximum 20 seconds
-            for i in range(max_wait):
-                # Check if video server file marker exists
-                if os.path.exists('/tmp/video_ready'):
-                    video_ready = True
-                    print(f"✅ Video server is ready (after {i} seconds)")
-                    break
-                time.sleep(1)
-                if i % 5 == 0:  # Print every 5 seconds
-                    print(f"Still waiting for video server... ({i}/{max_wait})")
+            # Start a thread to send VIDEO_READY signal when video server is ready
+            # This way we don't block the main connection
+            def send_video_ready_signal():
+                print("Background: Checking if video server is ready...")
+                max_wait = 20  # Maximum 20 seconds
+                for i in range(max_wait):
+                    if os.path.exists('/tmp/video_ready'):
+                        print(f"✅ Video server is ready (after {i} seconds)")
+                        try:
+                            tcpCliSock.send('VIDEO_READY\n'.encode())
+                            print("✅ Sent VIDEO_READY signal to client")
+                        except Exception as e:
+                            print(f"⚠ Failed to send VIDEO_READY: {e}")
+                        return
+                    time.sleep(1)
 
-            # Send signal to client
-            if video_ready:
-                try:
-                    tcpCliSock.send('VIDEO_READY\n'.encode())
-                    print("✅ Sent VIDEO_READY signal to client")
-                except Exception as e:
-                    print(f"⚠ Failed to send VIDEO_READY: {e}")
-            else:
+                # Timeout
                 print("⚠ Video server did not start in time")
                 try:
                     tcpCliSock.send('VIDEO_TIMEOUT\n'.encode())
                 except:
                     pass
+
+            # Start signal thread (non-blocking)
+            video_ready_thread = threading.Thread(target=send_video_ready_signal, daemon=True)
+            video_ready_thread.start()
+            print("✓ Video ready check running in background")
 
             # Note: FPV thread runs continuously, started at server startup
         except Exception as e:
