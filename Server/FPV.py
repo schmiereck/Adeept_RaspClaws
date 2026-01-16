@@ -286,8 +286,8 @@ class FPV:
 
 		context = zmq.Context()
 		footage_socket = context.socket(zmq.PAIR)
-		print(IPinver)
-		footage_socket.connect('tcp://%s:5555'%IPinver)
+		print(f"Video server binding to port 5555 (client IP was: {IPinver})")
+		footage_socket.bind('tcp://*:5555')  # Server binds, client connects
 
 		avg = None
 		motionCounter = 0

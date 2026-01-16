@@ -15,6 +15,7 @@ import tkinter as tk
 import math
 import json
 import subprocess
+from ip_utils import get_ip_address, num_import, replace_num
 try:
 	import cv2
 except Exception as e:
@@ -52,8 +53,6 @@ stat = 0
 ip_adr = ''
 footage_socket = None
 
-ipTxtPath = './IP.txt'
-
 Switch_3 = 0
 Switch_2 = 0
 Switch_1 = 0
@@ -76,7 +75,7 @@ def video_thread():
 	footage_socket.setsockopt_string(zmq.SUBSCRIBE, np.unicode(''))
 
 	font = cv2.FONT_HERSHEY_SIMPLEX
-	
+
 
 	frame_num = 0
 	fps = 0
@@ -100,27 +99,7 @@ fps_threading.start()									 #Thread starts
 
 ########>>>>>VIDEO<<<<<########
 
-def replace_num(initial,new_num):   #Call this function to replace data in '.txt' file
-	newline=""
-	str_num=str(new_num)
-	with open(ipTxtPath,"r") as f:
-		for line in f.readlines():
-			if(line.find(initial) == 0):
-				line = initial+"%s" %(str_num)
-			newline += line
-	with open(ipTxtPath,"w") as f:
-		f.writelines(newline)	#Call this function to replace data in '.txt' file
 
-
-def num_import(initial):			#Call this function to import data from '.txt' file
-	with open(ipTxtPath) as f:
-		for line in f.readlines():
-			if(line.find(initial) == 0):
-				r=line
-	begin=len(list(initial))
-	snum=r[begin:]
-	n=snum
-	return n	
 
 
 def call_forward(event):		 #When this function is called,client commands the car to move forward
