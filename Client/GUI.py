@@ -300,10 +300,23 @@ def all_btn_normal():
 
 def connection_thread():
 	global funcMode, Switch_3, Switch_2, Switch_1, SmoothMode,steadyMode
+	global CPU_TEP, CPU_USE, RAM_USE
 	while 1:
 		car_info = (tcpClicSock.recv(BUFSIZ)).decode()
 		if not car_info:
 			continue
+		elif car_info.startswith('INFO:'):
+			# Process CPU/RAM info from server
+			try:
+				info_data = car_info[5:].strip()  # Remove 'INFO:' prefix
+				info_get = info_data.split()
+				if len(info_get) >= 3:
+					CPU_TEP, CPU_USE, RAM_USE = info_get[0], info_get[1], info_get[2]
+					CPU_TEP_lab.config(text='CPU Temp: %s℃'%CPU_TEP)
+					CPU_USE_lab.config(text='CPU Usage: %s'%CPU_USE)
+					RAM_lab.config(text='RAM Usage: %s'%RAM_USE)
+			except:
+				pass
 		elif 'findColor' in car_info:
 			funcMode = 1
 			SmoothMode = 1
@@ -379,30 +392,6 @@ def connection_thread():
 		print(car_info)
 
 
-def Info_receive():
-	global CPU_TEP,CPU_USE,RAM_USE
-	HOST = ''
-	INFO_PORT = 2256							#Define port serial 
-	ADDR = (HOST, INFO_PORT)
-	InfoSock = socket(AF_INET, SOCK_STREAM)
-	InfoSock.setsockopt(SOL_SOCKET,SO_REUSEADDR,1)
-	InfoSock.bind(ADDR)
-	InfoSock.listen(5)					  #Start server,waiting for client
-	InfoSock, addr = InfoSock.accept()
-	print('Info connected')
-	while 1:
-		try:
-			info_data = ''
-			info_data = str(InfoSock.recv(BUFSIZ).decode())
-			info_get = info_data.split()
-			CPU_TEP,CPU_USE,RAM_USE= info_get
-			#print('cpu_tem:%s\ncpu_use:%s\nram_use:%s'%(CPU_TEP,CPU_USE,RAM_USE))
-			CPU_TEP_lab.config(text='CPU Temp: %s℃'%CPU_TEP)
-			CPU_USE_lab.config(text='CPU Usage: %s'%CPU_USE)
-			RAM_lab.config(text='RAM Usage: %s'%RAM_USE)
-		except:
-			pass
-
 
 def socket_connect():	 #Call this function to connect with the server
 	global ADDR,tcpClicSock,BUFSIZ,ip_stu,ipaddr,ip_adr
@@ -448,10 +437,6 @@ def socket_connect():	 #Call this function to connect with the server
 			video_threading.setDaemon(True)							 
 			video_threading.start()									 
 
-
-			info_threading=thread.Thread(target=Info_receive)		 #Define a thread for FPV and OpenCV
-			info_threading.setDaemon(True)							 #'True' means it is a front thread,it would close when the mainloop() closes
-			info_threading.start()									 #Thread starts
 
 
 			break

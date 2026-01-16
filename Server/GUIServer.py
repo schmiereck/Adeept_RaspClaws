@@ -87,15 +87,11 @@ def info_get():
 
 
 def info_send_client():
-    SERVER_IP = addr[0]
-    SERVER_PORT = 2256   #Define port serial 
-    SERVER_ADDR = (SERVER_IP, SERVER_PORT)
-    Info_Socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #Set connection value for socket
-    Info_Socket.connect(SERVER_ADDR)
-    print(SERVER_ADDR)
+    # Use the existing tcpCliSock connection instead of creating a new one
     while 1:
         try:
-            Info_Socket.send((get_cpu_tempfunc()+' '+get_cpu_use()+' '+get_ram_info()).encode())
+            info_data = 'INFO:' + get_cpu_tempfunc() + ' ' + get_cpu_use() + ' ' + get_ram_info() + '\n'
+            tcpCliSock.send(info_data.encode())
             time.sleep(1)
         except:
             pass
