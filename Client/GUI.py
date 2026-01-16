@@ -8,14 +8,11 @@
 # Date		: 2023/06/14
 
 from socket import *
-import sys
 import time
 import threading as thread
 import tkinter as tk
-import math
-import json
 import subprocess
-from ip_utils import get_ip_address, num_import, replace_num
+from ip_utils import num_import, replace_num
 try:
 	import cv2
 except Exception as e:
@@ -63,10 +60,10 @@ FV_Start = 0
 def RGB_to_Hex(r, g, b):
 	return ('#'+str(hex(r))[-2:]+str(hex(g))[-2:]+str(hex(b))[-2:]).replace('x','0').upper()
 def run_open():
-    script_path = 'Footage-GUI.py'
-    result = subprocess.run(['python', script_path], capture_output=True, text=True)
-    print('stdout:', result.stdout)
-    print('stderr:', result.stderr)
+	script_path = 'Footage-GUI.py'
+	result = subprocess.run(['python', script_path], capture_output=True, text=True)
+	print('stdout:', result.stdout)
+	print('stderr:', result.stderr)
 def video_thread():
 	global footage_socket, font, frame_num, fps
 	context = zmq.Context()
@@ -92,8 +89,7 @@ def get_FPS():
 
 
 
-fps_threading=thread.Thread(target=get_FPS)		 #Define a thread for FPV and OpenCV
-fps_threading.setDaemon(True)							 #'True' means it is a front thread,it would close when the mainloop() closes
+fps_threading=thread.Thread(target=get_FPS, daemon=True)		 #Define a thread for FPV and OpenCV
 fps_threading.start()									 #Thread starts
 
 
@@ -408,13 +404,11 @@ def socket_connect():	 #Call this function to connect with the server
 			
 			ip_stu=0						 #'0' means connected
 
-			connection_threading=thread.Thread(target=connection_thread)		 #Define a thread for FPV and OpenCV
-			connection_threading.setDaemon(True)							 #'True' means it is a front thread,it would close when the mainloop() closes
+			connection_threading=thread.Thread(target=connection_thread, daemon=True)		 #Define a thread for FPV and OpenCV
 			connection_threading.start()									 #Thread starts
 			
-			video_threading=thread.Thread(target=run_open)		 
-			video_threading.setDaemon(True)							 
-			video_threading.start()									 
+			video_threading=thread.Thread(target=run_open, daemon=True)
+			video_threading.start()
 
 
 
@@ -435,15 +429,13 @@ def socket_connect():	 #Call this function to connect with the server
 
 def connect(event):	   #Call this function to connect with the server
 	if ip_stu == 1:
-		sc=thread.Thread(target=socket_connect) #Define a thread for connection
-		sc.setDaemon(True)					  #'True' means it is a front thread,it would close when the mainloop() closes
+		sc=thread.Thread(target=socket_connect, daemon=True) #Define a thread for connection
 		sc.start()							  #Thread starts
 
 
 def connect_click():	   #Call this function to connect with the server
 	if ip_stu == 1:
-		sc=thread.Thread(target=socket_connect) #Define a thread for connection
-		sc.setDaemon(True)					  #'True' means it is a front thread,it would close when the mainloop() closes
+		sc=thread.Thread(target=socket_connect, daemon=True) #Define a thread for connection
 		sc.start()							  #Thread starts
 
 
@@ -728,29 +720,29 @@ def loop():					  #GUI
 		var_ec.set(0)			
 
 
-		Btn_Steady = tk.Button(root, width=10, text='Steady',fg=color_text,bg=color_btn,relief='ridge')
+		Btn_Steady = tk.Button(root, width=10, text='Steady [Z]',fg=color_text,bg=color_btn,relief='ridge')
 		Btn_Steady.place(x=30,y=445)
 		root.bind('<KeyPress-z>', call_steady)
 		Btn_Steady.bind('<ButtonPress-1>', call_steady)
 
-		Btn_FindColor = tk.Button(root, width=10, text='FindColor',fg=color_text,bg=color_btn,relief='ridge')
+		Btn_FindColor = tk.Button(root, width=10, text='FindColor [X]',fg=color_text,bg=color_btn,relief='ridge')
 		Btn_FindColor.place(x=115,y=445)
-		root.bind('<KeyPress-z>', call_FindColor)
+		root.bind('<KeyPress-x>', call_FindColor)
 		Btn_FindColor.bind('<ButtonPress-1>', call_FindColor)
 
-		Btn_WatchDog = tk.Button(root, width=10, text='WatchDog',fg=color_text,bg=color_btn,relief='ridge')
+		Btn_WatchDog = tk.Button(root, width=10, text='WatchDog [C]',fg=color_text,bg=color_btn,relief='ridge')
 		Btn_WatchDog.place(x=200,y=445)
-		root.bind('<KeyPress-z>', call_WatchDog)
+		root.bind('<KeyPress-c>', call_WatchDog)
 		Btn_WatchDog.bind('<ButtonPress-1>', call_WatchDog)
 
-		Btn_Smooth = tk.Button(root, width=10, text='FAST/SLOW',fg=color_text,bg=color_btn,relief='ridge')
+		Btn_Smooth = tk.Button(root, width=10, text='Slow [V]',fg=color_text,bg=color_btn,relief='ridge')
 		Btn_Smooth.place(x=285,y=445)
-		root.bind('<KeyPress-z>', call_Smooth)
+		root.bind('<KeyPress-v>', call_Smooth)
 		Btn_Smooth.bind('<ButtonPress-1>', call_Smooth)
 
-		Btn_Police = tk.Button(root, width=10, text='Police',fg=color_text,bg=color_btn,relief='ridge')
+		Btn_Police = tk.Button(root, width=10, text='Police [B]',fg=color_text,bg=color_btn,relief='ridge')
 		Btn_Police.place(x=370,y=445)
-		root.bind('<KeyPress-z>', call_Police)
+		root.bind('<KeyPress-b>', call_Police)
 		Btn_Police.bind('<ButtonPress-1>', call_Police)
 
 
