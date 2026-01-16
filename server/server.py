@@ -182,6 +182,7 @@ def run():
     ws_B = 0
 
     while True: 
+	#time.sleep(0.01)  # 10 Millisekunden Pause
         data = ''
         data = str(tcpCliSock.recv(BUFSIZ).decode())
         if not data:
@@ -366,7 +367,8 @@ if __name__ == '__main__':
     move.init_all()
 
     HOST = ''
-    PORT = 10223                              #Define port serial 
+    PORT = 10223                             #Define port serial 
+    #PORT = 8080                               #Define port serial 
     BUFSIZ = 1024                             #Define buffer size
     ADDR = (HOST, PORT)
 
