@@ -13,7 +13,7 @@ When starting the server on the Raspberry Pi, an I2C error occurs because the **
 
 1. **I2C not enabled** on Raspberry Pi
 2. **PCA9685 not connected** or loose connection
-3. **Wrong I2C address** (currently: `0x5F`)
+3. **Wrong I2C address** (default is `0x40`, some boards use `0x5F`)
 4. **Hardware defect** on PCA9685
 
 ---
@@ -43,10 +43,11 @@ sudo i2cdetect -y 1
 **Expected output:**
 ```
      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
-50: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 5f
+40: 40 -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 ```
 
-If `5f` appears → Hardware is OK  
+If `40` appears → Hardware is OK (standard address)  
+If `5f` appears → Hardware uses alternate address  
 If nothing appears → Hardware problem
 
 ---
@@ -65,7 +66,7 @@ pwm = Adafruit_PCA9685.PCA9685(address=0x5F, busnum=1)  # ❌ Crashes on error
 **Now:**
 ```python
 try:
-    pwm = Adafruit_PCA9685.PCA9685(address=0x5F, busnum=1)
+    pwm = Adafruit_PCA9685.PCA9685(address=0x40, busnum=1)  # Changed to 0x40 (standard address)
     print("PCA9685 initialized successfully")
 except (OSError, IOError) as e:
     print(f"Warning: Could not initialize PCA9685: {e}")
@@ -122,8 +123,8 @@ sudo python3 /home/pi/adeept_raspclaws/Server/server.py
 
 ### **With hardware:**
 ```
-PCA9685 initialized successfully
-PCA9685 initialized in GUIServer
+PCA9685 initialized successfully on address 0x40
+PCA9685 initialized in GUIServer on address 0x40
 ```
 
 ### **Without hardware (Mock mode):**
