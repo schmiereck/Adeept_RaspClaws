@@ -9,6 +9,10 @@ Adeept RaspClaws is an open source intelligent robotics product for artificial i
 [Official Raspberry Pi website]: https://www.raspberrypi.org/downloads/    \
 [Official website]:  https://www.adeept.com/     \  
 
+## Python Environment Setup
+
+* pip install opencv-python
+* pip install pyzmq
 
 ## Getting Support or Providing Advice
 

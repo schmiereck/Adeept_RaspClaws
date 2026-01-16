@@ -17,11 +17,23 @@ import json
 import subprocess
 try:
 	import cv2
+except Exception as e:
+	print("Couldn't import OpenCV:", e)
+
+try:
 	import zmq
+except Exception as e:
+	print("Couldn't import zmq:", e)
+
+try:
 	import base64
+except Exception as e:
+	print("Couldn't import base64:", e)
+
+try:
 	import numpy as np
-except:
-	print("Couldn't import OpenCV, you need to install it first.")
+except Exception as e:
+	print("Couldn't import numpy:", e)
 
 ip_stu=1		#Shows connection status
 c_f_stu = 0
@@ -39,6 +51,8 @@ root = ''
 stat = 0
 ip_adr = ''
 footage_socket = None
+
+ipTxtPath = './IP.txt'
 
 Switch_3 = 0
 Switch_2 = 0
@@ -86,21 +100,20 @@ fps_threading.start()									 #Thread starts
 
 ########>>>>>VIDEO<<<<<########
 
-
 def replace_num(initial,new_num):   #Call this function to replace data in '.txt' file
 	newline=""
 	str_num=str(new_num)
-	with open("./ip.txt","r") as f:
+	with open(ipTxtPath,"r") as f:
 		for line in f.readlines():
 			if(line.find(initial) == 0):
 				line = initial+"%s" %(str_num)
 			newline += line
-	with open("./ip.txt","w") as f:
+	with open(ipTxtPath,"w") as f:
 		f.writelines(newline)	#Call this function to replace data in '.txt' file
 
 
 def num_import(initial):			#Call this function to import data from '.txt' file
-	with open("./ip.txt") as f:
+	with open(ipTxtPath) as f:
 		for line in f.readlines():
 			if(line.find(initial) == 0):
 				r=line
@@ -788,8 +801,24 @@ def loop():					  #GUI
 if __name__ == '__main__':
 	try:
 		loop()				   # Load GUI
-	except:
-		tcpClicSock.close()		  # Close socket or it may not connect with the server again
-		footage_socket.close()
-		cv2.destroyAllWindows()
-		pass
+	#except:
+		#tcpClicSock.close()		  # Close socket or it may not connect with the server again
+		#footage_socket.close()
+		#cv2.destroyAllWindows()
+		#pass
+	except Exception as e:
+		print("Error: ", e)
+		import traceback
+		traceback.print_exc()
+		try:
+			tcpClicSock.close()
+		except:
+			pass
+		try:
+			footage_socket.close()
+		except:
+			pass
+		try:
+			cv2.destroyAllWindows()
+		except:
+			pass
