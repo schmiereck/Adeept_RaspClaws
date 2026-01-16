@@ -445,21 +445,21 @@ def socket_connect():	 #Call this function to connect with the server
 			l_ip_4.config(text='Connected')
 			l_ip_4.config(bg='#558B2F')
 
-		replace_num('IP:',ip_adr)
-		E1.config(state='disabled')	  #Disable the Entry
-		Btn14.config(state='disabled')   #Disable the Entry
+			replace_num('IP:',ip_adr)
+			E1.config(state='disabled')	  #Disable the Entry
+			Btn14.config(state='disabled')   #Disable the Entry
 
-		ip_stu=0						 #'0' means connected
+			ip_stu=0						 #'0' means connected
 
-		connection_threading=thread.Thread(target=connection_thread, daemon=True)		 #Define a thread for FPV and OpenCV
-		connection_threading.start()									 #Thread starts
+			connection_threading=thread.Thread(target=connection_thread, daemon=True)		 #Define a thread for FPV and OpenCV
+			connection_threading.start()									 #Thread starts
 
-		# NOTE: Video thread will be started when VIDEO_READY signal is received
-		print("Waiting for video server to initialize...")
+			# NOTE: Video thread will be started when VIDEO_READY signal is received
+			print("Waiting for video server to initialize...")
 
 
 
-		break
+			break
 		else:
 			print("Cannot connecting to server,try it latter!")
 			l_ip_4.config(text='Try %d/5 time(s)'%i)
