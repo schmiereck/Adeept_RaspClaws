@@ -296,7 +296,15 @@ class FPV:
 
 		# Give ZMQ time to establish the socket
 		time.sleep(0.5)
-		print("Video server ready for client connections")
+		print("✅ Video server ready for client connections")
+
+		# Write ready marker file for GUIServer
+		try:
+			with open('/tmp/video_ready', 'w') as f:
+				f.write('1')
+			print("✓ Video ready marker written")
+		except Exception as e:
+			print(f"⚠ Could not write video ready marker: {e}")
 
 		avg = None
 		motionCounter = 0

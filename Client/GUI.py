@@ -295,10 +295,28 @@ def all_btn_normal():
 def connection_thread():
 	global funcMode, Switch_3, Switch_2, Switch_1, SmoothMode, SmoothCamMode, steadyMode
 	global CPU_TEP, CPU_USE, RAM_USE
+
+	video_thread_started = False  # Track if video thread was started
+
 	while 1:
 		car_info = (tcpClicSock.recv(BUFSIZ)).decode()
 		if not car_info:
 			continue
+
+		# Handle VIDEO_READY signal from server
+		elif 'VIDEO_READY' in car_info:
+			if not video_thread_started:
+				print("✅ Server signals: Video stream is ready")
+				video_threading = thread.Thread(target=run_open, daemon=True)
+				video_threading.start()
+				video_thread_started = True
+				print("✓ Video thread started")
+			continue
+
+		elif 'VIDEO_TIMEOUT' in car_info:
+			print("⚠ Video server failed to start - no video stream available")
+			continue
+
 		elif car_info.startswith('INFO:'):
 			# Process CPU/RAM info from server
 			try:
@@ -427,21 +445,21 @@ def socket_connect():	 #Call this function to connect with the server
 			l_ip_4.config(text='Connected')
 			l_ip_4.config(bg='#558B2F')
 
-			replace_num('IP:',ip_adr)
-			E1.config(state='disabled')	  #Disable the Entry
-			Btn14.config(state='disabled')   #Disable the Entry
-			
-			ip_stu=0						 #'0' means connected
+		replace_num('IP:',ip_adr)
+		E1.config(state='disabled')	  #Disable the Entry
+		Btn14.config(state='disabled')   #Disable the Entry
 
-			connection_threading=thread.Thread(target=connection_thread, daemon=True)		 #Define a thread for FPV and OpenCV
-			connection_threading.start()									 #Thread starts
-			
-			video_threading=thread.Thread(target=run_open, daemon=True)
-			video_threading.start()
+		ip_stu=0						 #'0' means connected
+
+		connection_threading=thread.Thread(target=connection_thread, daemon=True)		 #Define a thread for FPV and OpenCV
+		connection_threading.start()									 #Thread starts
+
+		# NOTE: Video thread will be started when VIDEO_READY signal is received
+		print("Waiting for video server to initialize...")
 
 
 
-			break
+		break
 		else:
 			print("Cannot connecting to server,try it latter!")
 			l_ip_4.config(text='Try %d/5 time(s)'%i)

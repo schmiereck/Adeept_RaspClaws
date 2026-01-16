@@ -335,6 +335,14 @@ if __name__ == '__main__':
         print(f"\033[38;5;3mWarning:\033[0m Could not initialize WS2812 LEDs: {e}")
         ws2812 = None
 
+    # Clean up old video ready marker
+    try:
+        if os.path.exists('/tmp/video_ready'):
+            os.remove('/tmp/video_ready')
+            print("✓ Cleaned up old video ready marker")
+    except:
+        pass
+
     # Start FPV thread ONCE at server startup (not per client connection!)
     print("Starting FPV video stream thread (runs continuously)...")
     fps_threading = threading.Thread(target=FPV_thread)
@@ -378,12 +386,41 @@ if __name__ == '__main__':
             tcpSerSock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             tcpSerSock.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
             tcpSerSock.bind(ADDR)
-            tcpSerSock.listen(5)                      #Start server,waiting for client
-            print('waiting for connection...')
-            tcpCliSock, addr = tcpSerSock.accept()
-            print('...connected from :', addr)
-            # Note: FPV thread runs continuously, started at server startup
-        except Exception as e:
+        tcpSerSock.listen(5)                      #Start server,waiting for client
+        print('waiting for connection...')
+        tcpCliSock, addr = tcpSerSock.accept()
+        print('...connected from :', addr)
+
+        # Wait for video server to be ready before signaling client
+        print("Checking if video server is ready...")
+        video_ready = False
+        max_wait = 20  # Maximum 20 seconds
+        for i in range(max_wait):
+            # Check if video server file marker exists
+            if os.path.exists('/tmp/video_ready'):
+                video_ready = True
+                print(f"✅ Video server is ready (after {i} seconds)")
+                break
+            time.sleep(1)
+            if i % 5 == 0:  # Print every 5 seconds
+                print(f"Still waiting for video server... ({i}/{max_wait})")
+
+        # Send signal to client
+        if video_ready:
+            try:
+                tcpCliSock.send('VIDEO_READY\n'.encode())
+                print("✅ Sent VIDEO_READY signal to client")
+            except Exception as e:
+                print(f"⚠ Failed to send VIDEO_READY: {e}")
+        else:
+            print("⚠ Video server did not start in time")
+            try:
+                tcpCliSock.send('VIDEO_TIMEOUT\n'.encode())
+            except:
+                pass
+
+        # Note: FPV thread runs continuously, started at server startup
+    except Exception as e:
             print(f"Error setting up connection: {e}")
             time.sleep(1)
             continue  # Try again
