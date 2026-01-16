@@ -118,7 +118,7 @@ def FPV_thread():
 
 
 def run():
-    global direction_command, turn_command, SmoothMode, steadyMode
+    global direction_command, turn_command, SmoothMode, steadyMode, ws2812
     info_threading=threading.Thread(target=info_send_client)   #Define a thread for communication
     info_threading.setDaemon(True)                             #'True' means it is a front thread,it would close when the mainloop() closes
     info_threading.start()                                     #Thread starts
@@ -197,11 +197,13 @@ def run():
             move.commandInput(data)
             tcpCliSock.send(('slow').encode())
         elif 'police' == data:
-            ws2812.police()
+            if ws2812:
+                ws2812.police()
             tcpCliSock.send(('police').encode())
 
         elif 'policeOff' == data:
-            ws2812.breath(70,70,255)
+            if ws2812:
+                ws2812.breath(70,70,255)
             tcpCliSock.send(('policeOff').encode())
 
         elif 'Switch_1_on' in data:
@@ -282,16 +284,28 @@ if __name__ == '__main__':
     PORT = 10223                              #Define port serial 
     BUFSIZ = 1024                             #Define buffer size
     ADDR = (HOST, PORT)
+
+    # Initialize WS2812 LEDs
+    ws2812 = None
     try:
-        ws2812=robotLight.Adeept_SPI_LedPixel(16, 255)
+        print("Initializing WS2812 LEDs...")
+        ws2812 = robotLight.Adeept_SPI_LedPixel(16, 255)
         if ws2812.check_spi_state() != 0:
+            print("WS2812 initialized successfully")
             ws2812.start()
-            ws2812.breath(70,70,255)
+            ws2812.breath(70, 70, 255)
         else:
+            print("\033[38;5;3mWarning:\033[0m SPI not available for WS2812 LEDs")
             ws2812.led_close()
-    except  KeyboardInterrupt:
-        ws2812.led_close()
-        pass
+            ws2812 = None
+    except KeyboardInterrupt:
+        if ws2812:
+            ws2812.led_close()
+        raise
+    except Exception as e:
+        print(f"\033[38;5;3mWarning:\033[0m Could not initialize WS2812 LEDs: {e}")
+        ws2812 = None
+
     while  1:
         try:
             s =socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
@@ -304,23 +318,24 @@ if __name__ == '__main__':
             ap_threading.setDaemon(True)                          #'True' means it is a front thread,it would close when the mainloop() closes
             ap_threading.start()                                  #Thread starts
 
-            ws2812.set_all_led_color_data(0,16,50)
-            ws2812.show()
-            time.sleep(1)
-            ws2812.set_all_led_color_data(0,16,100)
-            ws2812.show()
-            time.sleep(1)
-            ws2812.set_all_led_color_data(0,16,150)
-            ws2812.show()
-            time.sleep(1)
-            ws2812.set_all_led_color_data(0,16,200)
-            ws2812.show()
-            time.sleep(1)
-            ws2812.set_all_led_color_data(0,16,255)
-            ws2812.show()
-            time.sleep(1)
-            ws2812.set_all_led_color_data(35,255,35)
-            ws2812.show()
+            if ws2812:
+                ws2812.set_all_led_color_data(0,16,50)
+                ws2812.show()
+                time.sleep(1)
+                ws2812.set_all_led_color_data(0,16,100)
+                ws2812.show()
+                time.sleep(1)
+                ws2812.set_all_led_color_data(0,16,150)
+                ws2812.show()
+                time.sleep(1)
+                ws2812.set_all_led_color_data(0,16,200)
+                ws2812.show()
+                time.sleep(1)
+                ws2812.set_all_led_color_data(0,16,255)
+                ws2812.show()
+                time.sleep(1)
+                ws2812.set_all_led_color_data(35,255,35)
+                ws2812.show()
 
         try:
             tcpSerSock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -339,10 +354,14 @@ if __name__ == '__main__':
             pass
 
     try:
-        ws2812.breath_status_set(0)
-        ws2812.set_all_led_color_data(64,128,255)
-        ws2812.show()
-    except:
-        pass
-    run()   
+        if ws2812:
+            ws2812.breath_status_set(0)
+            ws2812.set_all_led_color_data(64,128,255)
+            ws2812.show()
+            print("WS2812 LEDs set to blue (connected state)")
+        else:
+            print("WS2812 LEDs not available - skipping LED setup")
+    except Exception as e:
+        print(f"\033[38;5;3mWarning:\033[0m Could not set WS2812 LED color: {e}")
+    run()
 
