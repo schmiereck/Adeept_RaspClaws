@@ -78,6 +78,7 @@ elif car_info.startswith('INFO:'):
 
 2. **Auf dem Raspberry Pi:**
    ```bash
+   git clone https://github.com/schmiereck/Adeept_RaspClaws.git
    cd Adeept_RaspClaws
    git pull
    ```
