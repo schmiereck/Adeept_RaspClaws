@@ -285,9 +285,13 @@ class FPV:
 		font = cv2.FONT_HERSHEY_SIMPLEX
 
 		context = zmq.Context()
-		footage_socket = context.socket(zmq.PAIR)
-		print(f"Video server binding to port 5555 (client IP was: {IPinver})")
-		footage_socket.bind('tcp://*:5555')  # Server binds, client connects
+		footage_socket = context.socket(zmq.PUB)  # Changed from PAIR to PUB
+		print(f"Video server binding to port 5555 (PUB socket, allows multiple clients)")
+		footage_socket.bind('tcp://*:5555')  # Server binds, clients subscribe
+
+		# Give ZMQ time to establish the socket
+		time.sleep(0.5)
+		print("Video server ready for client connections")
 
 		avg = None
 		motionCounter = 0

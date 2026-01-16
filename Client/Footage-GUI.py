@@ -9,13 +9,13 @@ ip_adr = get_ip_address()
 print(f"Connecting to video stream @ {ip_adr}:5555")
 
 context = zmq.Context()
-footage_socket = context.socket(zmq.PAIR)
+footage_socket = context.socket(zmq.SUB)  # Changed from PAIR to SUB
 
-# Die Client-Seite versucht zu binden (Server-Rolle), obwohl sie sich verbinden sollte (Client-Rolle).
-#footage_socket.bind('tcp://*:5555')
 footage_socket.connect(f'tcp://{ip_adr}:5555')
+footage_socket.setsockopt_string(zmq.SUBSCRIBE, '')  # Subscribe to all messages
 
-#footage_socket.setsockopt_string(zmq.SUBSCRIBE, '')
+print("Connected to video stream, waiting for frames...")
+
 cv2.namedWindow('Stream',flags=cv2.WINDOW_NORMAL | cv2.WINDOW_KEEPRATIO)
 cv2.resizeWindow('Stream',width=640,height=480)
 font = cv2.FONT_HERSHEY_SIMPLEX
