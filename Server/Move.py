@@ -1198,53 +1198,56 @@ def move_thread():
 	global step_set
 	stand_stu = 1
 	if not steadyMode:
-		if direction_command == 'forward' and turn_command == 'no':
-			if SmoothMode:
-				dove(step_set,35,0.001,DPI,'no')
-				step_set += 1
-				if step_set == 5:
-					step_set = 1
-
-			else:
-				move(step_set, 35, 'no')
-				time.sleep(0.1)
-				step_set += 1
-				if step_set == 5:
-					step_set = 1
-
-		elif direction_command == 'backward' and turn_command == 'no':
-			if SmoothMode:
-				dove(step_set,-35,0.001,DPI,'no')
-				step_set += 1
-				if step_set == 5:
-					step_set = 1
-
-			else:
-				move(step_set, -35, 'no')
-				time.sleep(0.1)
-				step_set += 1
-				if step_set == 5:
-					step_set = 1
+	if direction_command == 'forward' and turn_command == 'no':
+		if SmoothMode:
+			dove(step_set,35,0.001,DPI,'no')
+			step_set += 1
+			if step_set == 5:
+				step_set = 1
+			time.sleep(0.05)  # 50ms sleep to reduce CPU load in smooth mode
 
 		else:
-			pass
+			move(step_set, 35, 'no')
+			time.sleep(0.1)
+			step_set += 1
+			if step_set == 5:
+				step_set = 1
 
-		if turn_command != 'no':
-			if SmoothMode:
-				dove(step_set,20,0.001,DPI,turn_command)
-				step_set += 1
-				if step_set == 5:
-					step_set = 1
-
-			else:
-				move(step_set, 20, turn_command)
-				time.sleep(0.1)
-				step_set += 1
-				if step_set == 5:
-					step_set = 1
+elif direction_command == 'backward' and turn_command == 'no':
+		if SmoothMode:
+			dove(step_set,-35,0.001,DPI,'no')
+			step_set += 1
+			if step_set == 5:
+				step_set = 1
+			time.sleep(0.05)  # 50ms sleep to reduce CPU load in smooth mode
 
 		else:
-			pass
+			move(step_set, -35, 'no')
+			time.sleep(0.1)
+			step_set += 1
+			if step_set == 5:
+				step_set = 1
+
+	else:
+		pass
+
+	if turn_command != 'no':
+		if SmoothMode:
+			dove(step_set,20,0.001,DPI,turn_command)
+			step_set += 1
+			if step_set == 5:
+				step_set = 1
+			time.sleep(0.05)  # 50ms sleep to reduce CPU load in smooth mode
+
+		else:
+			move(step_set, 20, turn_command)
+			time.sleep(0.1)
+			step_set += 1
+			if step_set == 5:
+				step_set = 1
+
+	else:
+		pass
 
 		if turn_command == 'no' and direction_command == 'stand':
 			stand()
@@ -1270,7 +1273,7 @@ class RobotM(threading.Thread):
 		while 1:
 			self.__flag.wait()
 			move_thread()
-			pass
+			time.sleep(0.01)  # 10ms sleep to reduce CPU load
 
 rm = RobotM()
 rm.start()

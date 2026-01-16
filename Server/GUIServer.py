@@ -278,6 +278,7 @@ def run():
         else:
             pass
         print(data)
+        time.sleep(0.01)  # 10ms sleep to reduce CPU load (100 updates/sec is sufficient)
 
 
 def destory():
