@@ -369,13 +369,16 @@ class FPV:
 					switch.switch(2,0)
 					switch.switch(3,0)
 
-			if FindLineMode:
-				frame_findline = cvFindLine(frame_image)
-				encoded, buffer = cv2.imencode('.jpg', frame_findline)
-			else:
-				encoded, buffer = cv2.imencode('.jpg', frame_image)
-			jpg_as_text = base64.b64encode(buffer)
-			footage_socket.send(jpg_as_text)
+		if FindLineMode:
+			frame_findline = cvFindLine(frame_image)
+			encoded, buffer = cv2.imencode('.jpg', frame_findline)
+		else:
+			encoded, buffer = cv2.imencode('.jpg', frame_image)
+		jpg_as_text = base64.b64encode(buffer)
+		footage_socket.send(jpg_as_text)
+
+		# Limit frame rate to reduce CPU load (~30 FPS = 33ms per frame)
+		time.sleep(0.033)  # 33ms = ~30 FPS, reduces CPU load significantly
 
 
 if __name__ == '__main__':
