@@ -127,158 +127,169 @@ def run():
     Y_pitch_MAX = 600
     Y_pitch_MIN = 100
 
-    while True: 
-        data = ''
-        data = str(tcpCliSock.recv(BUFSIZ).decode())
-        if not data:
-            continue
-        elif 'forward' == data:
-            direction_command = 'forward'
-            move.commandInput(direction_command)
-        elif 'backward' == data:
-            direction_command = 'backward'
-            move.commandInput(direction_command)
-        elif 'DS' in data:
-            direction_command = 'stand'
-            move.commandInput(direction_command)
+    while True:
+        try:
+            data = ''
+            data = str(tcpCliSock.recv(BUFSIZ).decode())
+            if not data:
+                continue
+            elif 'forward' == data:
+                direction_command = 'forward'
+                move.commandInput(direction_command)
+            elif 'backward' == data:
+                direction_command = 'backward'
+                move.commandInput(direction_command)
+            elif 'DS' in data:
+                direction_command = 'stand'
+                move.commandInput(direction_command)
 
-        elif 'left' == data:
-            direction_command = 'left'
-            move.commandInput(direction_command)
-        elif 'right' == data:
-            direction_command = 'right'
-            move.commandInput(direction_command)
-        elif 'TS' in data:
-            direction_command = 'no'
-            move.commandInput(direction_command)
+            elif 'left' == data:
+                direction_command = 'left'
+                move.commandInput(direction_command)
+            elif 'right' == data:
+                direction_command = 'right'
+                move.commandInput(direction_command)
+            elif 'TS' in data:
+                direction_command = 'no'
+                move.commandInput(direction_command)
 
-        elif 'up' == data:
-            move.look_up()
-        elif 'down' == data:
-            move.look_down()
-        elif 'home' == data:
-            move.home()
+            elif 'up' == data:
+                move.look_up()
+            elif 'down' == data:
+                move.look_down()
+            elif 'home' == data:
+                move.home()
 
-        elif 'lookleft' == data:
-            move.look_left()
-        elif 'lookright' == data:
-            move.look_right()
+            elif 'lookleft' == data:
+                move.look_left()
+            elif 'lookright' == data:
+                move.look_right()
 
-        elif 'findColor' ==  data:
-            fpv.FindColor(1)
-            tcpCliSock.send(('findColor').encode())
+            elif 'findColor' ==  data:
+                fpv.FindColor(1)
+                tcpCliSock.send(('findColor').encode())
 
-        elif 'motionGet' in data:
-            fpv.WatchDog(1)
-            tcpCliSock.send(('motionGet').encode())
+            elif 'motionGet' in data:
+                fpv.WatchDog(1)
+                tcpCliSock.send(('motionGet').encode())
 
-        elif 'steadyCamera' == data:
-            move.commandInput(data)
-            tcpCliSock.send(('steadyCamera').encode())
-        elif 'steadyCameraOff' == data:
-            move.commandInput(data)
-            tcpCliSock.send(('steadyCameraOff').encode())
+            elif 'steadyCamera' == data:
+                move.commandInput(data)
+                tcpCliSock.send(('steadyCamera').encode())
+            elif 'steadyCameraOff' == data:
+                move.commandInput(data)
+                tcpCliSock.send(('steadyCameraOff').encode())
 
-        elif 'stopCV' in data:
-            fpv.FindColor(0)
-            fpv.WatchDog(0)
-            fpv.FindLineMode(0)
-            tcpCliSock.send(('stopCV').encode())
-            direction_command = 'stand'
-            turn_command = 'no'
-            move.commandInput('stand')
-            move.commandInput('no')
+            elif 'stopCV' in data:
+                fpv.FindColor(0)
+                fpv.WatchDog(0)
+                fpv.FindLineMode(0)
+                tcpCliSock.send(('stopCV').encode())
+                direction_command = 'stand'
+                turn_command = 'no'
+                move.commandInput('stand')
+                move.commandInput('no')
 
-        elif 'fast' in data:
-            move.commandInput(data)
-            tcpCliSock.send(('fast').encode())
+            elif 'fast' in data:
+                move.commandInput(data)
+                tcpCliSock.send(('fast').encode())
 
-        elif 'slow' in data:
-            move.commandInput(data)
-            tcpCliSock.send(('slow').encode())
+            elif 'slow' in data:
+                move.commandInput(data)
+                tcpCliSock.send(('slow').encode())
 
-        elif 'smoothCam' == data:
-            move.commandInput(data)
-            tcpCliSock.send(('smoothCam').encode())
+            elif 'smoothCam' == data:
+                move.commandInput(data)
+                tcpCliSock.send(('smoothCam').encode())
 
-        elif 'smoothCamOff' == data:
-            move.commandInput(data)
-            tcpCliSock.send(('smoothCamOff').encode())
+            elif 'smoothCamOff' == data:
+                move.commandInput(data)
+                tcpCliSock.send(('smoothCamOff').encode())
 
-        elif 'police' == data:
-            if ws2812:
-                ws2812.police()
-            tcpCliSock.send(('police').encode())
+            elif 'police' == data:
+                if ws2812:
+                    ws2812.police()
+                tcpCliSock.send(('police').encode())
 
-        elif 'policeOff' == data:
-            if ws2812:
-                ws2812.breath(70,70,255)
-            tcpCliSock.send(('policeOff').encode())
+            elif 'policeOff' == data:
+                if ws2812:
+                    ws2812.breath(70,70,255)
+                tcpCliSock.send(('policeOff').encode())
 
-        elif 'Switch_1_on' in data:
-            switch.switch(1,1)
-            tcpCliSock.send(('Switch_1_on').encode())
+            elif 'Switch_1_on' in data:
+                switch.switch(1,1)
+                tcpCliSock.send(('Switch_1_on').encode())
 
-        elif 'Switch_1_off' in data:
-            switch.switch(1,0)
-            tcpCliSock.send(('Switch_1_off').encode())
+            elif 'Switch_1_off' in data:
+                switch.switch(1,0)
+                tcpCliSock.send(('Switch_1_off').encode())
 
-        elif 'Switch_2_on' in data:
-            switch.switch(2,1)
-            tcpCliSock.send(('Switch_2_on').encode())
+            elif 'Switch_2_on' in data:
+                switch.switch(2,1)
+                tcpCliSock.send(('Switch_2_on').encode())
 
-        elif 'Switch_2_off' in data:
-            switch.switch(2,0)
-            tcpCliSock.send(('Switch_2_off').encode())
+            elif 'Switch_2_off' in data:
+                switch.switch(2,0)
+                tcpCliSock.send(('Switch_2_off').encode())
 
-        elif 'Switch_3_on' in data:
-            switch.switch(3,1)
-            tcpCliSock.send(('Switch_3_on').encode())
+            elif 'Switch_3_on' in data:
+                switch.switch(3,1)
+                tcpCliSock.send(('Switch_3_on').encode())
 
-        elif 'Switch_3_off' in data:
-            switch.switch(3,0)
-            tcpCliSock.send(('Switch_3_off').encode())
+            elif 'Switch_3_off' in data:
+                switch.switch(3,0)
+                tcpCliSock.send(('Switch_3_off').encode())
 
-        elif 'CVFL' == data and steadyMode == 0:
-            if not FPV.FindLineMode:
-                FPV.FindLineMode = 1
-                tcpCliSock.send(('CVFL_on').encode())
+            elif 'CVFL' == data and steadyMode == 0:
+                if not FPV.FindLineMode:
+                    FPV.FindLineMode = 1
+                    tcpCliSock.send(('CVFL_on').encode())
 
-        elif 'CVFLColorSet 0' ==  data:
-            FPV.lineColorSet = 0
-            
-        elif 'CVFLColorSet 255' ==  data:
-            FPV.lineColorSet = 255
+            elif 'CVFLColorSet 0' ==  data:
+                FPV.lineColorSet = 0
 
-        elif 'CVFLL1' in data:
-            try:
-                set_lip1=data.split()
-                lip1_set = int(set_lip1[1])
-                FPV.linePos_1 = lip1_set
-            except:
+            elif 'CVFLColorSet 255' ==  data:
+                FPV.lineColorSet = 255
+
+            elif 'CVFLL1' in data:
+                try:
+                    set_lip1=data.split()
+                    lip1_set = int(set_lip1[1])
+                    FPV.linePos_1 = lip1_set
+                except:
+                    pass
+
+            elif 'CVFLL2' in data:
+                try:
+                    set_lip2=data.split()
+                    lip2_set = int(set_lip2[1])
+                    FPV.linePos_2 = lip2_set
+                except:
+                    pass
+
+            elif 'findColorSet' in data:
+                try:
+                    command_dict = ast.literal_eval(data)
+                    if 'data' in command_dict and len(command_dict['data']) == 3:
+                        r, g, b = command_dict['data']
+                        fpv.colorFindSet(r, g, b)
+                        print(f"color: r={r}, g={g}, b={b}")
+                except (SyntaxError, ValueError):
+                    print("The received string format is incorrect and cannot be parsed.")
+            else:
                 pass
+            print(data)
+            time.sleep(0.01)  # 10ms sleep to reduce CPU load (100 updates/sec is sufficient)
 
-        elif 'CVFLL2' in data:
-            try:
-                set_lip2=data.split()
-                lip2_set = int(set_lip2[1])
-                FPV.linePos_2 = lip2_set
-            except:
-                pass
-
-        elif 'findColorSet' in data:
-            try:
-                command_dict = ast.literal_eval(data)
-                if 'data' in command_dict and len(command_dict['data']) == 3:
-                    r, g, b = command_dict['data']
-                    fpv.colorFindSet(r, g, b)
-                    print(f"color: r={r}, g={g}, b={b}")
-            except (SyntaxError, ValueError):
-                print("The received string format is incorrect and cannot be parsed.")
-        else:
-            pass
-        print(data)
-        time.sleep(0.01)  # 10ms sleep to reduce CPU load (100 updates/sec is sufficient)
+        except (ConnectionResetError, BrokenPipeError, ConnectionAbortedError, OSError) as e:
+            print(f"\n\033[38;5;3mWarning:\033[0m Client connection lost: {e}")
+            print("Waiting for new client connection...")
+            break  # Exit the loop to wait for a new connection
+        except Exception as e:
+            print(f"\n\033[38;5;1mError:\033[0m Unexpected error in main loop: {e}")
+            import traceback
+            traceback.print_exc()
+            break  # Exit the loop on unexpected errors
 
 
 def destory():
