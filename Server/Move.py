@@ -1207,11 +1207,11 @@ def move_thread():
 				time.sleep(0.05)  # 50ms sleep to reduce CPU load in smooth mode
 
 			else:
-			move(step_set, 35, 'no')
-			time.sleep(0.1)
-			step_set += 1
-			if step_set == 5:
-				step_set = 1
+				move(step_set, 35, 'no')
+				time.sleep(0.1)
+				step_set += 1
+				if step_set == 5:
+					step_set = 1
 
 	elif direction_command == 'backward' and turn_command == 'no':
 		if SmoothMode:
@@ -1252,9 +1252,9 @@ def move_thread():
 	if turn_command == 'no' and direction_command == 'stand':
 		stand()
 		step_set = 1
-else:
-	steady_X()
-	steady()
+	else:
+		steady_X()
+		steady()
 
 class RobotM(threading.Thread):
 	def __init__(self, *args, **kwargs):
