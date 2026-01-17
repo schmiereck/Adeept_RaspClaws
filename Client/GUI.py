@@ -57,7 +57,10 @@ SmoothMode = 0
 SmoothCamMode = 0
 FV_Line = 0
 FV_Start = 0
+video_thread_started = False  # Track if video thread was started (global)
+
 ########>>>>>VIDEO<<<<<########
+
 def RGB_to_Hex(r, g, b):
 	return ('#'+str(hex(r))[-2:]+str(hex(g))[-2:]+str(hex(b))[-2:]).replace('x','0').upper()
 def run_open():
@@ -295,8 +298,7 @@ def all_btn_normal():
 def connection_thread():
 	global funcMode, Switch_3, Switch_2, Switch_1, SmoothMode, SmoothCamMode, steadyMode
 	global CPU_TEP, CPU_USE, RAM_USE
-
-	video_thread_started = False  # Track if video thread was started
+	global video_thread_started  # Use the global flag
 
 	while 1:
 		car_info = (tcpClicSock.recv(BUFSIZ)).decode()
@@ -416,7 +418,11 @@ def connection_thread():
 
 
 def socket_connect():	 #Call this function to connect with the server
-	global ADDR,tcpClicSock,BUFSIZ,ip_stu,ipaddr,ip_adr
+	global ADDR,tcpClicSock,BUFSIZ,ip_stu,ipaddr,ip_adr,video_thread_started
+
+	# Reset video thread flag for new connection
+	video_thread_started = False
+
 	ip_adr=E1.get()	   #Get the IP address from Entry
 
 	if ip_adr == '':	  #If no input IP address in Entry,import a default IP

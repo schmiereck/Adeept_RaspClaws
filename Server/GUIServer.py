@@ -383,6 +383,15 @@ if __name__ == '__main__':
 
         # MOVED INSIDE while loop - Repeat after each disconnect
         try:
+            # Clean up video ready marker before accepting new connection
+            # This ensures the signal will be sent again for the new client
+            try:
+                if os.path.exists('/tmp/video_ready'):
+                    os.remove('/tmp/video_ready')
+                    print("✓ Cleaned up video ready marker for new connection")
+            except:
+                pass
+
             tcpSerSock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             tcpSerSock.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
             tcpSerSock.bind(ADDR)
@@ -391,28 +400,20 @@ if __name__ == '__main__':
             tcpCliSock, addr = tcpSerSock.accept()
             print('...connected from :', addr)
 
-            # Start a thread to send VIDEO_READY signal when video server is ready
-            # This way we don't block the main connection
+            # Re-signal that video is ready (FPV thread is already running)
+            # This is for the new client that just connected
             def send_video_ready_signal():
-                print("Background: Checking if video server is ready...")
-                max_wait = 20  # Maximum 20 seconds
-                for i in range(max_wait):
-                    if os.path.exists('/tmp/video_ready'):
-                        print(f"✅ Video server is ready (after {i} seconds)")
-                        try:
-                            tcpCliSock.send('VIDEO_READY\n'.encode())
-                            print("✅ Sent VIDEO_READY signal to client")
-                        except Exception as e:
-                            print(f"⚠ Failed to send VIDEO_READY: {e}")
-                        return
-                    time.sleep(1)
+                print("Background: Signaling video ready for new client...")
+                # Wait a moment to ensure client's connection_thread is running
+                time.sleep(0.5)
 
-                # Timeout
-                print("⚠ Video server did not start in time")
+                # Since FPV thread is already running continuously, we just signal the client
+                print(f"✅ Video server is ready for new client (FPV thread running: {fps_threading.is_alive()})")
                 try:
-                    tcpCliSock.send('VIDEO_TIMEOUT\n'.encode())
-                except:
-                    pass
+                    tcpCliSock.send('VIDEO_READY\n'.encode())
+                    print("✅ Sent VIDEO_READY signal to client")
+                except Exception as e:
+                    print(f"⚠ Failed to send VIDEO_READY: {e}")
 
             # Start signal thread (non-blocking)
             video_ready_thread = threading.Thread(target=send_video_ready_signal, daemon=True)
