@@ -166,7 +166,10 @@ def run():
             data = ''
             data = str(tcpCliSock.recv(BUFSIZ).decode())
             if not data:
-                continue
+                # Empty string means socket was closed by client
+                print("Client disconnected (empty recv)")
+                sys.stdout.flush()
+                break  # Exit loop to wait for new connection
             elif 'forward' == data:
                 direction_command = 'forward'
                 move.commandInput(direction_command)
