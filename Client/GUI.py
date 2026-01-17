@@ -63,11 +63,38 @@ video_thread_started = False  # Track if video thread was started (global)
 
 def RGB_to_Hex(r, g, b):
 	return ('#'+str(hex(r))[-2:]+str(hex(g))[-2:]+str(hex(b))[-2:]).replace('x','0').upper()
+
+# Global variable to track the Footage-GUI process
+footage_process = None
+
 def run_open():
+	global footage_process
 	script_path = 'Footage-GUI.py'
-	result = subprocess.run(['python', script_path], capture_output=True, text=True)
-	print('stdout:', result.stdout)
-	print('stderr:', result.stderr)
+	print(f"Starting {script_path} as background process...")
+	try:
+		# Start as non-blocking background process
+		footage_process = subprocess.Popen(
+			['python', script_path],
+			stdout=subprocess.PIPE,
+			stderr=subprocess.PIPE,
+			text=True,
+			bufsize=1
+		)
+		print(f"✓ {script_path} started (PID: {footage_process.pid})")
+
+		# Start a thread to monitor the process output
+		def monitor_footage():
+			if footage_process:
+				for line in footage_process.stdout:
+					print(f"[Footage] {line.strip()}")
+				# Also print stderr if any
+				for line in footage_process.stderr:
+					print(f"[Footage ERROR] {line.strip()}")
+
+		monitor_thread = thread.Thread(target=monitor_footage, daemon=True)
+		monitor_thread.start()
+	except Exception as e:
+		print(f"✗ Failed to start {script_path}: {e}")
 def video_thread():
 	global footage_socket, font, frame_num, fps
 	context = zmq.Context()
@@ -827,6 +854,19 @@ if __name__ == '__main__':
 			footage_socket.close()
 		except:
 			pass
+		try:
+			# Terminate the Footage-GUI process if running
+			if footage_process and footage_process.poll() is None:
+				print("Terminating Footage-GUI process...")
+				footage_process.terminate()
+				footage_process.wait(timeout=2)
+				print("✓ Footage-GUI process terminated")
+		except Exception as e:
+			print(f"Error terminating footage process: {e}")
+			try:
+				footage_process.kill()  # Force kill if terminate didn't work
+			except:
+				pass
 		try:
 			cv2.destroyAllWindows()
 		except:

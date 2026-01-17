@@ -377,11 +377,12 @@ class FPV:
 					switch.switch(2,1)
 					switch.switch(3,1)
 
-				if (timestamp - lastMovtionCaptured).seconds >= 0.5:
-					switch.switch(1,0)
-					switch.switch(2,0)
-					switch.switch(3,0)
+		if (timestamp - lastMovtionCaptured).seconds >= 0.5:
+			switch.switch(1,0)
+			switch.switch(2,0)
+			switch.switch(3,0)
 
+		# Frame encoding and sending (MUST be inside the while True loop!)
 		if FindLineMode:
 			frame_findline = cvFindLine(frame_image)
 			encoded, buffer = cv2.imencode('.jpg', frame_findline)

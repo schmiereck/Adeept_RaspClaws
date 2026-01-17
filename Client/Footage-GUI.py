@@ -27,13 +27,36 @@ cv2.resizeWindow('Stream',width=640,height=480)
 font = cv2.FONT_HERSHEY_SIMPLEX
 
 print("Starting video receive loop...")
-while True:
-	frame = footage_socket.recv_string()
-	img = base64.b64decode(frame)
-	npimg = np.frombuffer(img, dtype=np.uint8)
-	source = cv2.imdecode(npimg, 1)
-	cv2.imshow("Stream", source)
-	cv2.waitKey(1)
+frame_count = 0
+try:
+	while True:
+		try:
+			# Check if message is available (non-blocking check)
+			if footage_socket.poll(timeout=1000):  # Wait up to 1 second
+				frame = footage_socket.recv_string()
+				frame_count += 1
+				if frame_count % 30 == 0:  # Log every 30 frames
+					print(f"Received frame {frame_count}")
 
-
-	
+				img = base64.b64decode(frame)
+				npimg = np.frombuffer(img, dtype=np.uint8)
+				source = cv2.imdecode(npimg, 1)
+				cv2.imshow("Stream", source)
+				cv2.waitKey(1)
+			else:
+				print("⚠ Timeout waiting for video frame")
+		except zmq.error.Again:
+			print("⚠ No message available (ZMQ Again)")
+			time.sleep(0.1)
+		except Exception as e:
+			print(f"✗ Error in video receive loop: {e}")
+			import traceback
+			traceback.print_exc()
+			time.sleep(0.1)
+except KeyboardInterrupt:
+	print("\n✓ Video stream stopped by user")
+finally:
+	cv2.destroyAllWindows()
+	footage_socket.close()
+	context.term()
+	print("✓ Cleanup complete")
