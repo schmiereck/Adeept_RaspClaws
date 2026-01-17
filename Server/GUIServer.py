@@ -9,6 +9,7 @@
 import socket
 import time
 import threading
+import sys
 import Move as move
 import Adafruit_PCA9685
 import argparse
@@ -105,13 +106,24 @@ def info_send_client():
 
     # Send VIDEO_READY signal multiple times at the start
     # This ensures the client receives it even if it's not ready immediately
-    for i in range(5):  # Send 5 times over 5 seconds
+    print("INFO_SEND_CLIENT: Starting to send VIDEO_READY signals...")
+    sys.stdout.flush()
+    success_count = 0
+    for i in range(10):  # Try 10 times over 10 seconds (increased from 5)
         try:
             tcpCliSock.send('VIDEO_READY\n'.encode())
-            print(f"✅ Sent VIDEO_READY signal (attempt {i+1}/5)")
+            success_count += 1
+            print(f"✅ Sent VIDEO_READY signal (attempt {i+1}/10, success #{success_count})")
+            sys.stdout.flush()
             time.sleep(1)
-        except:
-            break
+        except Exception as e:
+            print(f"⚠ Failed to send VIDEO_READY (attempt {i+1}/10): {e}")
+            sys.stdout.flush()
+            # Don't break - continue trying!
+            time.sleep(1)
+
+    print(f"INFO_SEND_CLIENT: Finished VIDEO_READY phase ({success_count}/10 successful)")
+    sys.stdout.flush()
 
     # Then continue with regular info sending
     while 1:
@@ -119,8 +131,10 @@ def info_send_client():
             info_data = 'INFO:' + get_cpu_tempfunc() + ' ' + get_cpu_use() + ' ' + get_ram_info() + '\n'
             tcpCliSock.send(info_data.encode())
             time.sleep(1)
-        except:
-            pass
+        except Exception as e:
+            print(f"⚠ Failed to send INFO: {e}")
+            sys.stdout.flush()
+            break  # Exit thread on persistent error
 
 
 def FPV_thread():
