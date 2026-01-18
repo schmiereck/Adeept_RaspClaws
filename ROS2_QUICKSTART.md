@@ -1,5 +1,11 @@
 # ROS 2 Integration - Quick Start Guide
 
+**⚠️ WICHTIG**: Arbeiten Sie im **`ros2` Branch**!
+
+```bash
+git checkout ros2
+```
+
 ## Was wurde erstellt?
 
 ### 1. ROSServer.py
@@ -25,6 +31,7 @@ ROS 2 Humble Node mit:
 
 ### 3. Test Scripts
 - `test_ros2_client.sh` - Client Tests (PC/Jetson)
+- **`ros2_test_client.py`** - Python Test Client (einfacher!)
 
 ### 4. Dokumentation
 - `Docu/ROS2_INTEGRATION_DE.md` - Vollständige Anleitung
@@ -94,11 +101,40 @@ export ROS_DOMAIN_ID=0
 ros2 node list
 # Sollte /raspclaws_node zeigen
 
-# Teleop testen
+# Test-Client verwenden (empfohlen!)
+python3 ros2_test_client.py list
+python3 ros2_test_client.py forward
+python3 ros2_test_client.py status
+
+# Oder Teleop testen
 sudo apt install ros-humble-teleop-twist-keyboard
 ros2 run teleop_twist_keyboard teleop_twist_keyboard \
   --ros-args --remap cmd_vel:=/raspclaws/cmd_vel
 ```
+
+---
+
+## Einfacher Test-Client (ohne Cosmos/Planner)
+
+**Schnellster Weg zum Testen**:
+
+```bash
+# Interaktiver Modus
+python3 ros2_test_client.py
+
+# Oder einzelne Befehle
+python3 ros2_test_client.py forward
+python3 ros2_test_client.py status
+python3 ros2_test_client.py reset
+```
+
+**Verfügbare Befehle**:
+- Movement: `forward`, `backward`, `left`, `right`, `stop`
+- Head: `head_left`, `head_right`, `head_up`, `head_down`, `head_center`
+- Services: `reset`, `smooth_on`, `smooth_off`
+- Monitoring: `status`, `battery`, `monitor`
+
+**Siehe**: `Docu/ROS2_INTEGRATION_DE.md` für Details
 
 ---
 

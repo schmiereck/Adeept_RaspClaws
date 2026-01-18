@@ -1,5 +1,12 @@
 # ROS 2 Integration für Adeept RaspClaws
 
+**⚠️ WICHTIG**: Die ROS 2 Integration befindet sich im **`ros2` Branch**!
+
+```bash
+# Auf dem richtigen Branch arbeiten:
+git checkout ros2
+```
+
 ## Übersicht
 
 ROS 2 Integration für den RaspClaws Roboter mit folgender Architektur:
@@ -234,6 +241,91 @@ sudo apt install ros-humble-teleop-twist-keyboard
 # Starten
 ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args --remap cmd_vel:=/raspclaws/cmd_vel
 ```
+
+---
+
+## Test-Client ohne Cosmos/Planner (Einfacher)
+
+Für schnelle Tests ohne Installation von Cosmos Reason 2 oder ROS Planner gibt es einen einfachen Python Test-Client.
+
+### Installation
+
+```bash
+# ROS 2 Humble muss installiert sein
+source /opt/ros/humble/setup.bash
+
+# Python Dependencies (meist schon vorhanden)
+pip3 install rclpy
+```
+
+### Verwendung
+
+**Einzelne Befehle**:
+```bash
+# Liste aller Befehle
+python3 ros2_test_client.py list
+
+# Bewegung
+python3 ros2_test_client.py forward
+python3 ros2_test_client.py forward --speed 0.3
+python3 ros2_test_client.py left
+python3 ros2_test_client.py stop
+
+# Kopf
+python3 ros2_test_client.py head_left
+python3 ros2_test_client.py head_up
+python3 ros2_test_client.py head_center
+
+# Services
+python3 ros2_test_client.py reset
+python3 ros2_test_client.py smooth_on
+python3 ros2_test_client.py smooth_off
+
+# Monitoring
+python3 ros2_test_client.py status
+python3 ros2_test_client.py battery
+python3 ros2_test_client.py monitor --duration 30
+```
+
+**Interaktiver Modus**:
+```bash
+python3 ros2_test_client.py interactive
+# oder einfach:
+python3 ros2_test_client.py
+
+# Im interaktiven Modus:
+raspclaws> forward
+raspclaws> status
+raspclaws> head_left
+raspclaws> stop
+raspclaws> quit
+```
+
+### Verfügbare Befehle
+
+**Bewegung**:
+- `forward [--speed 0.5]` - Vorwärts
+- `backward [--speed 0.5]` - Rückwärts
+- `left [--speed 0.5]` - Links drehen
+- `right [--speed 0.5]` - Rechts drehen
+- `stop` - Stoppen
+
+**Kopf**:
+- `head_left` - Kopf nach links
+- `head_right` - Kopf nach rechts
+- `head_up` - Kopf nach oben
+- `head_down` - Kopf nach unten
+- `head_center` - Kopf zentrieren
+
+**Services**:
+- `reset` - Alle Servos auf Home-Position
+- `smooth_on` / `smooth_off` - Smooth Movement Mode
+- `smooth_cam_on` / `smooth_cam_off` - Smooth Camera Mode
+
+**Monitoring**:
+- `status` - Aktuellen Status anzeigen
+- `battery` - Batteriespannung anzeigen
+- `monitor [--duration 10]` - Alle Topics überwachen
 
 ---
 
