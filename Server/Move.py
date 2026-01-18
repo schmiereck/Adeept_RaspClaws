@@ -232,7 +232,7 @@ def left_I(pos,wiggle,heightAdjust=0):
 				else:
 					pwm.set_pwm(1,0,pwm1+height_change)
 			elif pos == 3:
-				pwm.set_pwm(0,0,pwm0)
+				pwm.set_pwm(0,0,pwm0+int(wiggle/2))  # Halfway forward to avoid jerk back to center
 				if leftSide_height:
 					pwm.set_pwm(1,0,pwm1-height_change)
 				else:
@@ -257,7 +257,7 @@ def left_I(pos,wiggle,heightAdjust=0):
 				else:
 					pwm.set_pwm(1,0,pwm1+wiggle)
 			elif pos == 3:
-				pwm.set_pwm(0,0,pwm0)
+				pwm.set_pwm(0,0,pwm0-int(wiggle/2))  # Halfway back to avoid jerk to center
 				if leftSide_height:
 					pwm.set_pwm(1,0,pwm1-wiggle)
 				else:
@@ -291,7 +291,7 @@ def left_II(pos,wiggle,heightAdjust=0):
 				else:
 					pwm.set_pwm(3,0,pwm3+height_change)
 			elif pos == 3:
-				pwm.set_pwm(2,0,pwm2)
+				pwm.set_pwm(2,0,pwm2+int(wiggle/2))  # Halfway forward to avoid jerk
 				if leftSide_height:
 					pwm.set_pwm(3,0,pwm3-height_change)
 				else:
@@ -316,7 +316,7 @@ def left_II(pos,wiggle,heightAdjust=0):
 				else:
 					pwm.set_pwm(3,0,pwm3+wiggle)
 			elif pos == 3:
-				pwm.set_pwm(2,0,pwm2)
+				pwm.set_pwm(2,0,pwm2-int(wiggle/2))  # Halfway back to avoid jerk
 				if leftSide_height:
 					pwm.set_pwm(3,0,pwm3-wiggle)
 				else:
@@ -350,7 +350,7 @@ def left_III(pos,wiggle,heightAdjust=0):
 				else:
 					pwm.set_pwm(5,0,pwm5+height_change)
 			elif pos == 3:
-				pwm.set_pwm(4,0,pwm4)
+				pwm.set_pwm(4,0,pwm4+int(wiggle/2))  # Halfway forward to avoid jerk
 				if leftSide_height:
 					pwm.set_pwm(5,0,pwm5-height_change)
 				else:
@@ -375,7 +375,7 @@ def left_III(pos,wiggle,heightAdjust=0):
 				else:
 					pwm.set_pwm(5,0,pwm5+wiggle)
 			elif pos == 3:
-				pwm.set_pwm(4,0,pwm4)
+				pwm.set_pwm(4,0,pwm4-int(wiggle/2))  # Halfway back to avoid jerk
 				if leftSide_height:
 					pwm.set_pwm(5,0,pwm5-wiggle)
 				else:
@@ -409,7 +409,7 @@ def right_I(pos,wiggle,heightAdjust=0):
 				else:
 					pwm.set_pwm(7,0,pwm7+height_change)
 			elif pos == 3:
-				pwm.set_pwm(6,0,pwm6)
+				pwm.set_pwm(6,0,pwm6+int(wiggle/2))  # Halfway forward to avoid jerk
 				if rightSide_height:
 					pwm.set_pwm(7,0,pwm7-height_change)
 				else:
@@ -434,7 +434,7 @@ def right_I(pos,wiggle,heightAdjust=0):
 				else:
 					pwm.set_pwm(7,0,pwm7+height_change)
 			elif pos == 3:
-				pwm.set_pwm(6,0,pwm6)
+				pwm.set_pwm(6,0,pwm6-int(wiggle/2))  # Halfway back to avoid jerk
 				if rightSide_height:
 					pwm.set_pwm(7,0,pwm7-height_change)
 				else:
@@ -468,7 +468,7 @@ def right_II(pos,wiggle,heightAdjust=0):
 				else:
 					pwm.set_pwm(9,0,pwm9+height_change)
 			elif pos == 3:
-				pwm.set_pwm(8,0,pwm8)
+				pwm.set_pwm(8,0,pwm8+int(wiggle/2))  # Halfway forward to avoid jerk
 				if rightSide_height:
 					pwm.set_pwm(9,0,pwm9-height_change)
 				else:
@@ -493,7 +493,7 @@ def right_II(pos,wiggle,heightAdjust=0):
 				else:
 					pwm.set_pwm(9,0,pwm9+height_change)
 			elif pos == 3:
-				pwm.set_pwm(8,0,pwm8)
+				pwm.set_pwm(8,0,pwm8-int(wiggle/2))  # Halfway back to avoid jerk
 				if rightSide_height:
 					pwm.set_pwm(9,0,pwm9-height_change)
 				else:
@@ -528,7 +528,7 @@ def right_III(pos,wiggle,heightAdjust=0):
 				else:
 					pwm.set_pwm(11,0,pwm11+height_change)
 			elif pos == 3:
-				pwm.set_pwm(10,0,pwm10)
+				pwm.set_pwm(10,0,pwm10+int(wiggle/2))  # Halfway forward to avoid jerk
 				if rightSide_height:
 					pwm.set_pwm(11,0,pwm11-height_change)
 				else:
@@ -553,7 +553,7 @@ def right_III(pos,wiggle,heightAdjust=0):
 				else:
 					pwm.set_pwm(11,0,pwm11+height_change)
 			elif pos == 3:
-				pwm.set_pwm(10,0,pwm10)
+				pwm.set_pwm(10,0,pwm10-int(wiggle/2))  # Halfway back to avoid jerk
 				if rightSide_height:
 					pwm.set_pwm(11,0,pwm11-height_change)
 				else:
