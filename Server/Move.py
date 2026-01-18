@@ -1269,19 +1269,32 @@ def move_thread():
 	Main movement thread - coordinates all movement commands
 
 	This function is called repeatedly by the RobotM thread.
-	It processes ONE movement step per call based on current commands.
+	Original logic:
+	1. Check and execute directional movement (forward OR backward)
+	2. Check and execute turn movement (if turn_command set)
+	3. Always handle stand OR steady at the end
 	"""
+	global step_set
+
 	if not steadyMode:
-		# Try to handle directional movement (forward/backward)
-		moved = handle_direction_movement()
+		# Step 1: Handle directional movement (forward/backward)
+		# Only one of these will execute per cycle
+		if direction_command == 'forward' and turn_command == 'no':
+			execute_movement_step(35, 'no')
+		elif direction_command == 'backward' and turn_command == 'no':
+			execute_movement_step(-35, 'no')
 
-		# If no directional movement, try turning
-		if not moved:
-			moved = handle_turn_movement()
+		# Step 2: Handle turn movement (independent of directional movement)
+		if turn_command != 'no':
+			execute_movement_step(20, turn_command)
 
-		# If no movement at all, handle stand or steady
-		if not moved:
-			handle_stand_or_steady()
+		# Step 3: Always handle stand or steady at the end
+		if turn_command == 'no' and direction_command == 'stand':
+			stand()
+			step_set = 1
+		else:
+			steady_X()
+			steady()
 
 class RobotM(threading.Thread):
 	def __init__(self, *args, **kwargs):
@@ -1300,12 +1313,13 @@ class RobotM(threading.Thread):
 			self.__flag.wait()
 			move_thread()
 			# Sleep time controls movement speed
-			# 100ms = normal speed (10 steps per second)
-			# 50ms = smooth mode speed (20 steps per second)
-			if SmoothMode:
-				time.sleep(0.05)  # 50ms for smooth mode
-			else:
-				time.sleep(0.1)   # 100ms for normal mode
+			# We use shorter sleep intervals to respond quickly to pause()
+			sleep_time = 0.05 if SmoothMode else 0.1
+			sleep_start = time.time()
+			while (time.time() - sleep_start) < sleep_time:
+				if not self.__flag.is_set():
+					break  # Exit sleep early if paused
+				time.sleep(0.01)  # Check every 10ms
 
 rm = RobotM()
 rm.start()
