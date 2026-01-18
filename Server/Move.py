@@ -1217,8 +1217,10 @@ def execute_movement_step(speed, turn='no'):
 	if SmoothMode:
 		dove(step_set, speed, 0.001, DPI, turn)
 		increment_step()
+		time.sleep(0.05)  # Servos need time to move!
 	else:
 		move(step_set, speed, turn)
+		time.sleep(0.1)   # Servos need time to move!
 		increment_step()
 
 
@@ -1312,14 +1314,9 @@ class RobotM(threading.Thread):
 		while 1:
 			self.__flag.wait()
 			move_thread()
-			# Sleep time controls movement speed
-			# We use shorter sleep intervals to respond quickly to pause()
-			sleep_time = 0.05 if SmoothMode else 0.1
-			sleep_start = time.time()
-			while (time.time() - sleep_start) < sleep_time:
-				if not self.__flag.is_set():
-					break  # Exit sleep early if paused
-				time.sleep(0.01)  # Check every 10ms
+			# Small sleep to reduce CPU load and allow quick interruption
+			# The actual movement timing is handled in execute_movement_step()
+			time.sleep(0.01)  # 10ms to check for pause quickly
 
 rm = RobotM()
 rm.start()
