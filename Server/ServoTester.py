@@ -15,10 +15,10 @@ import Adafruit_PCA9685
 # Each leg has 2 servos: one for rotation (horizontal) and one for height (vertical)
 
 # Layout structure to match hardware
-# Left Side (Channels 0-5)          Right Side (Channels 6-11)
-# Front-Left (Left I): Ch 0-1       Front-Right (Right I): Ch 6-7
-# Back-Left (Left II): Ch 2-3       Back-Right (Right II): Ch 8-9
-# (Left III): Ch 4-5                (Right III): Ch 10-11
+# Based on Move.py lines 200-202:
+# left_I   -<forward>-- right_III
+# left_II  ---<BODY>---  right_II
+# left_III -<Backward>-   right_I
 
 SERVO_LAYOUT = {
     'left': {
@@ -26,27 +26,27 @@ SERVO_LAYOUT = {
             'Rotation': 0,
             'Height': 1
         },
-        'Back-Left (Left II)': {
+        'Mid-Left (Left II)': {
             'Rotation': 2,
             'Height': 3
         },
-        'Left III': {
+        'Back-Left (Left III)': {
             'Rotation': 4,
             'Height': 5
         }
     },
     'right': {
-        'Front-Right (Right I)': {
-            'Rotation': 6,
-            'Height': 7
+        'Front-Right (Right III)': {  # KORRIGIERT: right_III ist VORNE!
+            'Rotation': 10,
+            'Height': 11
         },
-        'Back-Right (Right II)': {
+        'Mid-Right (Right II)': {
             'Rotation': 8,
             'Height': 9
         },
-        'Right III': {
-            'Rotation': 10,
-            'Height': 11
+        'Back-Right (Right I)': {  # KORRIGIERT: right_I ist HINTEN!
+            'Rotation': 6,
+            'Height': 7
         }
     },
     'head': {

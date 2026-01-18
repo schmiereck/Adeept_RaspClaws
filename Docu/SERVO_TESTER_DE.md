@@ -132,27 +132,38 @@ Die GUI spiegelt das physische Layout des Roboters wider mit **zwei Spalten** (L
 - **Rotation**: Horizontale Bewegung (vor/zurück)
 - **Height**: Vertikale Bewegung (hoch/runter)
 
+**Wichtig**: Basierend auf `Move.py` Zeilen 200-202:
+```
+left_I   -<forward>-- right_III
+left_II  ---<BODY>---  right_II
+left_III -<Backward>-   right_I
+```
+
 #### Linke Seite (Kanäle 0-5)
 
 | Bein               | Position    | Servo-Funktion | Kanal |
 |--------------------|-------------|----------------|-------|
 | **Front-Left**     | Vorne-Links | Rotation       | 0     |
 | **(Left I)**       |             | Height         | 1     |
-| **Back-Left**      | Hinten-Links| Rotation       | 2     |
+| **Mid-Left**       | Mitte-Links | Rotation       | 2     |
 | **(Left II)**      |             | Height         | 3     |
-| **Left III**       | ?           | Rotation       | 4     |
-|                    |             | Height         | 5     |
+| **Back-Left**      | Hinten-Links| Rotation       | 4     |
+| **(Left III)**     |             | Height         | 5     |
 
 #### Rechte Seite (Kanäle 6-11)
 
 | Bein               | Position     | Servo-Funktion | Kanal |
 |--------------------|--------------|----------------|-------|
-| **Front-Right**    | Vorne-Rechts | Rotation       | 6     |
-| **(Right I)**      |              | Height         | 7     |
-| **Back-Right**     | Hinten-Rechts| Rotation       | 8     |
+| **Front-Right**    | Vorne-Rechts | Rotation       | 10    |
+| **(Right III)**    |              | Height         | 11    |
+| **Mid-Right**      | Mitte-Rechts | Rotation       | 8     |
 | **(Right II)**     |              | Height         | 9     |
-| **Right III**      | ?            | Rotation       | 10    |
-|                    |              | Height         | 11    |
+| **Back-Right**     | Hinten-Rechts| Rotation       | 6     |
+| **(Right I)**      |              | Height         | 7     |
+
+**⚠️ Achtung**: Die Nummerierung I/II/III ist auf der rechten Seite **umgekehrt**!
+- Links: I=vorne, II=mitte, III=hinten
+- Rechts: III=vorne, II=mitte, I=hinten (diagonal gegenüber!)
 
 #### Kopf (Kanäle 12-13)
 
@@ -171,25 +182,30 @@ Die GUI spiegelt das physische Layout des Roboters wider mit **zwei Spalten** (L
 ├────────────────────┬───────────────────────────────┤
 │    LEFT SIDE       │       RIGHT SIDE              │
 ├────────────────────┼───────────────────────────────┤
-│ Front-Left (I)     │ Front-Right (I)               │
+│ Front-Left (I)     │ Front-Right (III)  ← Ch 10-11│
 │  ├─ Rotation [300] │  ├─ Rotation [300]            │
 │  └─ Height   [300] │  └─ Height   [300]            │
 │                    │                               │
-│ Back-Left (II)     │ Back-Right (II)               │
+│ Mid-Left (II)      │ Mid-Right (II)     ← Ch 8-9  │
 │  ├─ Rotation [300] │  ├─ Rotation [300]            │
 │  └─ Height   [300] │  └─ Height   [300]            │
 │                    │                               │
-│ Left III           │ Right III                     │
+│ Back-Left (III)    │ Back-Right (I)     ← Ch 6-7  │
 │  ├─ Rotation [300] │  ├─ Rotation [300]            │
 │  └─ Height   [300] │  └─ Height   [300]            │
 └────────────────────┴───────────────────────────────┘
-                HEAD SERVOS
+                HEAD SERVOS (Ch 12-13)
         ┌──────────────────────┐
         │ Up/Down      [300]   │
         │ Left/Right   [300]   │
         └──────────────────────┘
      [Reset] [Min] [Max]       [Quit]
 ```
+
+**Diagonale Anordnung**:
+- Front-Left (Ch 0-1) ↔ Front-Right (Ch 10-11)
+- Mid-Left (Ch 2-3) ↔ Mid-Right (Ch 8-9)
+- Back-Left (Ch 4-5) ↔ Back-Right (Ch 6-7)
 
 ### PWM-Werte
 

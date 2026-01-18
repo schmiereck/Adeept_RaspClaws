@@ -125,27 +125,38 @@ The GUI reflects the physical layout of the robot with **two columns** (Left/Rig
 - **Rotation**: Horizontal movement (forward/backward)
 - **Height**: Vertical movement (up/down)
 
+**Important**: Based on `Move.py` lines 200-202:
+```
+left_I   -<forward>-- right_III
+left_II  ---<BODY>---  right_II
+left_III -<Backward>-   right_I
+```
+
 #### Left Side (Channels 0-5)
 
 | Leg                | Position     | Servo Function | Channel |
 |--------------------|--------------|----------------|---------|
 | **Front-Left**     | Front-Left   | Rotation       | 0       |
 | **(Left I)**       |              | Height         | 1       |
-| **Back-Left**      | Back-Left    | Rotation       | 2       |
+| **Mid-Left**       | Mid-Left     | Rotation       | 2       |
 | **(Left II)**      |              | Height         | 3       |
-| **Left III**       | ?            | Rotation       | 4       |
-|                    |              | Height         | 5       |
+| **Back-Left**      | Back-Left    | Rotation       | 4       |
+| **(Left III)**     |              | Height         | 5       |
 
 #### Right Side (Channels 6-11)
 
 | Leg                | Position     | Servo Function | Channel |
 |--------------------|--------------|----------------|---------|
-| **Front-Right**    | Front-Right  | Rotation       | 6       |
-| **(Right I)**      |              | Height         | 7       |
-| **Back-Right**     | Back-Right   | Rotation       | 8       |
+| **Front-Right**    | Front-Right  | Rotation       | 10      |
+| **(Right III)**    |              | Height         | 11      |
+| **Mid-Right**      | Mid-Right    | Rotation       | 8       |
 | **(Right II)**     |              | Height         | 9       |
-| **Right III**      | ?            | Rotation       | 10      |
-|                    |              | Height         | 11      |
+| **Back-Right**     | Back-Right   | Rotation       | 6       |
+| **(Right I)**      |              | Height         | 7       |
+
+**⚠️ Note**: Numbering I/II/III is **reversed** on the right side!
+- Left: I=front, II=mid, III=back
+- Right: III=front, II=mid, I=back (diagonal opposite!)
 
 #### Head (Channels 12-13)
 
@@ -164,25 +175,30 @@ The GUI reflects the physical layout of the robot with **two columns** (Left/Rig
 ├────────────────────┬───────────────────────────────┤
 │    LEFT SIDE       │       RIGHT SIDE              │
 ├────────────────────┼───────────────────────────────┤
-│ Front-Left (I)     │ Front-Right (I)               │
+│ Front-Left (I)     │ Front-Right (III)  ← Ch 10-11│
 │  ├─ Rotation [300] │  ├─ Rotation [300]            │
 │  └─ Height   [300] │  └─ Height   [300]            │
 │                    │                               │
-│ Back-Left (II)     │ Back-Right (II)               │
+│ Mid-Left (II)      │ Mid-Right (II)     ← Ch 8-9  │
 │  ├─ Rotation [300] │  ├─ Rotation [300]            │
 │  └─ Height   [300] │  └─ Height   [300]            │
 │                    │                               │
-│ Left III           │ Right III                     │
+│ Back-Left (III)    │ Back-Right (I)     ← Ch 6-7  │
 │  ├─ Rotation [300] │  ├─ Rotation [300]            │
 │  └─ Height   [300] │  └─ Height   [300]            │
 └────────────────────┴───────────────────────────────┘
-                HEAD SERVOS
+                HEAD SERVOS (Ch 12-13)
         ┌──────────────────────┐
         │ Up/Down      [300]   │
         │ Left/Right   [300]   │
         └──────────────────────┘
      [Reset] [Min] [Max]       [Quit]
 ```
+
+**Diagonal Layout**:
+- Front-Left (Ch 0-1) ↔ Front-Right (Ch 10-11)
+- Mid-Left (Ch 2-3) ↔ Mid-Right (Ch 8-9)
+- Back-Left (Ch 4-5) ↔ Back-Right (Ch 6-7)
 
 ### PWM Values
 
