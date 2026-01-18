@@ -20,7 +20,7 @@ Das Servo Tester Tool ist eine eigenständige GUI-Anwendung zum Testen und Kalib
 
 ### 1. Auf dem Raspberry Pi (mit Hardware)
 
-**Via SSH mit X11-Forwarding**:
+**Via SSH mit X11-Forwarding** (empfohlen, ohne Monitor):
 
 ```bash
 # Von Windows aus (mit X-Server wie VcXsrv oder Xming)
@@ -30,6 +30,13 @@ ssh -X pi@192.168.2.126
 cd /home/pi/adeept_raspclaws/Server
 python3 ServoTester.py
 ```
+
+💡 **Sie haben keinen Monitor am Pi?** 
+→ **Detaillierte Anleitung**: [SERVO_TESTER_SSH_X11_DE.md](SERVO_TESTER_SSH_X11_DE.md)
+- X-Server Installation auf Windows (VcXsrv/Xming/MobaXterm)
+- Schritt-für-Schritt Setup mit Screenshots
+- Troubleshooting häufiger Probleme
+- Komfort-Verbesserungen & Automatisierung
 
 **Direkt auf dem Pi** (mit Monitor):
 

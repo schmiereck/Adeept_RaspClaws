@@ -4,11 +4,25 @@
 
 ### On Raspberry Pi (SSH with X11)
 
+**Mit Monitor am Pi**:
 ```bash
+cd /home/pi/adeept_raspclaws/Server
+python3 ServoTester.py
+```
+
+**Ohne Monitor (SSH + X11-Forwarding)**:
+```bash
+# Von Windows aus:
 ssh -X pi@192.168.2.126
 cd /home/pi/adeept_raspclaws/Server
 python3 ServoTester.py
 ```
+
+💡 **Detaillierte SSH X11-Anleitung**: [SERVO_TESTER_SSH_X11_DE.md](../Docu/SERVO_TESTER_SSH_X11_DE.md)
+- X-Server Installation (VcXsrv)
+- Schritt-für-Schritt Setup
+- Troubleshooting
+- Komfort-Verbesserungen
 
 ### On Windows (Mock Mode)
 
