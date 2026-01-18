@@ -315,6 +315,8 @@ def initialize_leds():
 - ✅ Gleiche globalen Variablen
 - ✅ Keine Breaking Changes
 
+**⚠️ BEKANNTES PROBLEM**: Nach dem Refactoring wurde ein **Einrückungsfehler** in `Move.py` entdeckt und behoben. Siehe: `BUGFIX_MOVEMENT_INDENTATION_2026-01-18.md`
+
 ---
 
 ## 6. Checkliste für zukünftige Erweiterungen

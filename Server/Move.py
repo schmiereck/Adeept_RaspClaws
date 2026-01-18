@@ -1194,60 +1194,58 @@ direction_command = 'no'
 turn_command = 'no'
 
 
-def move_thread():
+# ==================== Helper Functions for Movement ====================
+
+def increment_step():
+	"""Increment step counter and wrap around"""
 	global step_set
-	stand_stu = 1
-	if not steadyMode:
-		if direction_command == 'forward' and turn_command == 'no':
-			if SmoothMode:
-				dove(step_set,35,0.001,DPI,'no')
-				step_set += 1
-				if step_set == 5:
-					step_set = 1
-				time.sleep(0.05)  # 50ms sleep to reduce CPU load in smooth mode
+	step_set += 1
+	if step_set == 5:
+		step_set = 1
 
-			else:
-				move(step_set, 35, 'no')
-				time.sleep(0.1)
-				step_set += 1
-				if step_set == 5:
-					step_set = 1
 
+def execute_movement_step(speed, turn='no'):
+	"""
+	Execute a single movement step with smooth or normal mode
+
+	Args:
+		speed: Movement speed (positive for forward, negative for backward)
+		turn: Turn command ('left', 'right', or 'no')
+	"""
+	global step_set
+
+	if SmoothMode:
+		dove(step_set, speed, 0.001, DPI, turn)
+		increment_step()
+		time.sleep(0.05)  # 50ms sleep to reduce CPU load in smooth mode
+	else:
+		move(step_set, speed, turn)
+		time.sleep(0.1)
+		increment_step()
+
+
+def handle_direction_movement():
+	"""Handle forward/backward movement"""
+	if direction_command == 'forward' and turn_command == 'no':
+		execute_movement_step(35, 'no')
+		return True
 	elif direction_command == 'backward' and turn_command == 'no':
-		if SmoothMode:
-			dove(step_set,-35,0.001,DPI,'no')
-			step_set += 1
-			if step_set == 5:
-				step_set = 1
-			time.sleep(0.05)  # 50ms sleep to reduce CPU load in smooth mode
+		execute_movement_step(-35, 'no')
+		return True
+	return False
 
-		else:
-			move(step_set, -35, 'no')
-			time.sleep(0.1)
-			step_set += 1
-			if step_set == 5:
-				step_set = 1
 
-	else:
-		pass
-
+def handle_turn_movement():
+	"""Handle left/right turning"""
 	if turn_command != 'no':
-		if SmoothMode:
-			dove(step_set,20,0.001,DPI,turn_command)
-			step_set += 1
-			if step_set == 5:
-				step_set = 1
-			time.sleep(0.05)  # 50ms sleep to reduce CPU load in smooth mode
+		execute_movement_step(20, turn_command)
+		return True
+	return False
 
-		else:
-			move(step_set, 20, turn_command)
-			time.sleep(0.1)
-			step_set += 1
-			if step_set == 5:
-				step_set = 1
 
-	else:
-		pass
+def handle_stand_or_steady():
+	"""Handle stand command or apply steady mode"""
+	global step_set
 
 	if turn_command == 'no' and direction_command == 'stand':
 		stand()
@@ -1255,6 +1253,20 @@ def move_thread():
 	else:
 		steady_X()
 		steady()
+
+
+# ==================== Main Movement Thread ====================
+
+def move_thread():
+	"""Main movement thread - coordinates all movement commands"""
+	if not steadyMode:
+		# Handle directional movement (forward/backward)
+		if not handle_direction_movement():
+			# If no direction movement, handle turning
+			handle_turn_movement()
+
+		# Always apply stand or steady
+		handle_stand_or_steady()
 
 class RobotM(threading.Thread):
 	def __init__(self, *args, **kwargs):
@@ -1278,53 +1290,77 @@ rm = RobotM()
 rm.start()
 rm.pause()
 
+
+# ==================== Command Input Processing ====================
+
+def set_direction_and_resume(direction, turn='no'):
+	"""Set direction command and resume robot movement"""
+	global direction_command, turn_command
+	direction_command = direction
+	turn_command = turn
+	rm.resume()
+
+
+def set_turn_and_resume(turn):
+	"""Set turn command and resume robot movement"""
+	global turn_command
+	turn_command = turn
+	rm.resume()
+
+
+def handle_movement_command(command):
+	"""Handle movement commands (forward, backward, left, right, stand, no)"""
+	global direction_command
+
+	movement_commands = {
+		'forward': lambda: set_direction_and_resume('forward', 'no'),
+		'backward': lambda: set_direction_and_resume('backward', 'no'),
+		'stand': lambda: (setattr(globals(), 'direction_command', 'stand'), rm.pause()),
+		'left': lambda: set_turn_and_resume('left'),
+		'right': lambda: set_turn_and_resume('right'),
+		'no': lambda: (setattr(globals(), 'turn_command', 'no'), rm.pause()),
+	}
+
+	if command in movement_commands:
+		movement_commands[command]()
+		return True
+	return False
+
+
+def handle_mode_command(command):
+	"""Handle mode commands (smooth, camera, steady)"""
+	global SmoothMode, SmoothCamMode, steadyMode
+
+	mode_commands = {
+		'slow': lambda: setattr(globals(), 'SmoothMode', 1),
+		'fast': lambda: setattr(globals(), 'SmoothMode', 0),
+		'smoothCam': lambda: setattr(globals(), 'SmoothCamMode', 1),
+		'smoothCamOff': lambda: setattr(globals(), 'SmoothCamMode', 0),
+		'steadyCamera': lambda: (setattr(globals(), 'steadyMode', 1), rm.resume()),
+		'steadyCameraOff': lambda: (setattr(globals(), 'steadyMode', 0), rm.pause()),
+	}
+
+	if command in mode_commands:
+		mode_commands[command]()
+		return True
+	return False
+
+
 def commandInput(command_input):
-	global direction_command, turn_command, SmoothMode, SmoothCamMode, steadyMode
-	if 'forward' == command_input and steadyMode == 0:
-		direction_command = 'forward'
-		turn_command = 'no'
-		rm.resume()
-	
-	elif 'backward' == command_input and steadyMode == 0:
-		direction_command = 'backward'
-		turn_command = 'no'
-		rm.resume()
+	"""
+	Process command input from GUI/controller
 
-	elif 'stand' in command_input and steadyMode == 0:
-		direction_command = 'stand'
-		rm.pause()
+	Commands:
+		Movement: forward, backward, stand, left, right, no
+		Modes: slow, fast, smoothCam, smoothCamOff, steadyCamera, steadyCameraOff
+	"""
+	# Mode commands can always be executed
+	if handle_mode_command(command_input):
+		return
 
-
-	elif 'left' == command_input and steadyMode == 0:
-		turn_command = 'left'
-		rm.resume()
-
-	elif 'right' == command_input and steadyMode == 0:
-		turn_command = 'right'
-		rm.resume()
-
-	elif 'no' in command_input and steadyMode == 0:
-		turn_command = 'no'
-		rm.pause()
-
-	elif 'slow' == command_input and steadyMode == 0:
-		SmoothMode = 1
-
-	elif 'fast' == command_input and steadyMode == 0:
-		SmoothMode = 0
-
-	elif 'smoothCam' == command_input:
-		SmoothCamMode = 1
-
-	elif 'smoothCamOff' == command_input:
-		SmoothCamMode = 0
-
-	elif 'steadyCamera' == command_input:
-		steadyMode = 1
-		rm.resume()
-	elif 'steadyCameraOff' == command_input:
-		steadyMode = 0
-		rm.pause()
+	# Movement commands only when not in steady camera mode
+	if steadyMode == 0:
+		handle_movement_command(command_input)
 
 
 
