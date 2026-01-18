@@ -204,366 +204,146 @@ left_III -<Backward>-   right_I
             pos=1
            /     \
           /       \
-         /         
-
+         /         \
     pos=2---pos=3---pos=4
 
 Change the value of wiggle to set the range and direction that the legs moves.
 '''
-def left_I(pos,wiggle,heightAdjust=0):
-	if pos == 0:
-		#pwm.set_pwm(0,0,pwm0)
-		if leftSide_height:
-			pwm.set_pwm(1,0,pwm1+heightAdjust)
-		else:
-			pwm.set_pwm(1,0,pwm1-heightAdjust)
+
+# ==================== Generic Leg Control (Refactored) ====================
+
+# Leg configuration: (horizontal_channel, height_channel, base_h, base_v, is_left_side)
+LEG_CONFIG = {
+	'left_I':   (0, 1, pwm0, pwm1, True),
+	'left_II':  (2, 3, pwm2, pwm3, True),
+	'left_III': (4, 5, pwm4, pwm5, True),
+	'right_I':  (6, 7, pwm6, pwm7, False),
+	'right_II': (8, 9, pwm8, pwm9, False),
+	'right_III':(10,11,pwm10,pwm11,False),
+}
+
+
+def leg_control(leg_name, pos, wiggle, heightAdjust=0):
+	"""
+	Generic leg control function for all 6 legs.
+	Replaces the 6 individual left_I/II/III and right_I/II/III functions.
+
+	Args:
+		leg_name: Name of the leg ('left_I', 'left_II', 'left_III', 'right_I', 'right_II', 'right_III')
+		pos: Position in walk cycle (0-4)
+		wiggle: Movement range (speed parameter)
+		heightAdjust: Height adjustment for pos=0
+	"""
+	h_channel, v_channel, base_h, base_v, is_left = LEG_CONFIG[leg_name]
+
+	# Determine direction and height flags based on side
+	if is_left:
+		direction_flag = leftSide_direction
+		height_flag = leftSide_height
 	else:
-		if leftSide_direction:
-			if pos == 1:
-				pwm.set_pwm(0,0,pwm0)
-				if leftSide_height:
-					pwm.set_pwm(1,0,pwm1+3*height_change)
-				else:
-					pwm.set_pwm(1,0,pwm1-3*height_change)
-			elif pos == 2:
-				pwm.set_pwm(0,0,pwm0+wiggle)
-				if leftSide_height:
-					pwm.set_pwm(1,0,pwm1-height_change)
-				else:
-					pwm.set_pwm(1,0,pwm1+height_change)
-			elif pos == 3:
-				pwm.set_pwm(0,0,pwm0+int(wiggle/2))  # Halfway forward to avoid jerk back to center
-				if leftSide_height:
-					pwm.set_pwm(1,0,pwm1-height_change)
-				else:
-					pwm.set_pwm(1,0,pwm1+height_change)
-			elif pos == 4:
-				pwm.set_pwm(0,0,pwm0-wiggle)
-				if leftSide_height:
-					pwm.set_pwm(1,0,pwm1-height_change)
-				else:
-					pwm.set_pwm(1,0,pwm1+height_change)
-		else:
-			if pos == 1:
-				pwm.set_pwm(0,0,pwm0)
-				if leftSide_height:
-					pwm.set_pwm(1,0,pwm1+3*wiggle)
-				else:
-					pwm.set_pwm(1,0,pwm1-3*wiggle)
-			elif pos == 2:
-				pwm.set_pwm(0,0,pwm0-wiggle)
-				if leftSide_height:
-					pwm.set_pwm(1,0,pwm1-wiggle)
-				else:
-					pwm.set_pwm(1,0,pwm1+wiggle)
-			elif pos == 3:
-				pwm.set_pwm(0,0,pwm0-int(wiggle/2))  # Halfway back to avoid jerk to center
-				if leftSide_height:
-					pwm.set_pwm(1,0,pwm1-wiggle)
-				else:
-					pwm.set_pwm(1,0,pwm1+wiggle)
-			elif pos == 4:
-				pwm.set_pwm(0,0,pwm0+wiggle)
-				if leftSide_height:
-					pwm.set_pwm(1,0,pwm1-wiggle)
-				else:
-					pwm.set_pwm(1,0,pwm1+wiggle)
+		direction_flag = rightSide_direction
+		height_flag = rightSide_height
 
-
-def left_II(pos,wiggle,heightAdjust=0):
 	if pos == 0:
-		if leftSide_height:
-			pwm.set_pwm(3,0,pwm3+heightAdjust)
+		# Position 0: Height adjustment only
+		#pwm.set_pwm(h_channel, 0, base_h)  # Commented out like in original
+		if height_flag:
+			pwm.set_pwm(v_channel, 0, base_v + heightAdjust)
 		else:
-			pwm.set_pwm(3,0,pwm3-heightAdjust)
+			pwm.set_pwm(v_channel, 0, base_v - heightAdjust)
 	else:
-		if leftSide_direction:
+		# Positions 1-4: Full movement cycle
+		if direction_flag:
+			# Forward direction logic
 			if pos == 1:
-				pwm.set_pwm(2,0,pwm2)
-				if leftSide_height:
-					pwm.set_pwm(3,0,pwm3+3*height_change)
+				pwm.set_pwm(h_channel, 0, base_h)
+				if height_flag:
+					pwm.set_pwm(v_channel, 0, base_v + 3*height_change)
 				else:
-					pwm.set_pwm(3,0,pwm3-3*height_change)
+					pwm.set_pwm(v_channel, 0, base_v - 3*height_change)
 			elif pos == 2:
-				pwm.set_pwm(2,0,pwm2+wiggle)
-				if leftSide_height:
-					pwm.set_pwm(3,0,pwm3-height_change)
+				pwm.set_pwm(h_channel, 0, base_h + wiggle)
+				if height_flag:
+					pwm.set_pwm(v_channel, 0, base_v - height_change)
 				else:
-					pwm.set_pwm(3,0,pwm3+height_change)
+					pwm.set_pwm(v_channel, 0, base_v + height_change)
 			elif pos == 3:
-				pwm.set_pwm(2,0,pwm2+int(wiggle/2))  # Halfway forward to avoid jerk
-				if leftSide_height:
-					pwm.set_pwm(3,0,pwm3-height_change)
+				pwm.set_pwm(h_channel, 0, base_h + int(wiggle/2))  # Halfway to avoid jerk
+				if height_flag:
+					pwm.set_pwm(v_channel, 0, base_v - height_change)
 				else:
-					pwm.set_pwm(3,0,pwm3+height_change)
+					pwm.set_pwm(v_channel, 0, base_v + height_change)
 			elif pos == 4:
-				pwm.set_pwm(2,0,pwm2-wiggle)
-				if leftSide_height:
-					pwm.set_pwm(3,0,pwm3-height_change)
+				pwm.set_pwm(h_channel, 0, base_h - wiggle)
+				if height_flag:
+					pwm.set_pwm(v_channel, 0, base_v - height_change)
 				else:
-					pwm.set_pwm(3,0,pwm3+height_change)
+					pwm.set_pwm(v_channel, 0, base_v + height_change)
 		else:
+			# Reverse direction logic
 			if pos == 1:
-				pwm.set_pwm(2,0,pwm2)
-				if leftSide_height:
-					pwm.set_pwm(3,0,pwm3+3*wiggle)
+				pwm.set_pwm(h_channel, 0, base_h)
+				if height_flag:
+					pwm.set_pwm(v_channel, 0, base_v + 3*wiggle)
 				else:
-					pwm.set_pwm(3,0,pwm3-3*wiggle)
+					pwm.set_pwm(v_channel, 0, base_v - 3*wiggle)
 			elif pos == 2:
-				pwm.set_pwm(2,0,pwm2-wiggle)
-				if leftSide_height:
-					pwm.set_pwm(3,0,pwm3-wiggle)
+				pwm.set_pwm(h_channel, 0, base_h - wiggle)
+				if height_flag:
+					pwm.set_pwm(v_channel, 0, base_v - wiggle)
 				else:
-					pwm.set_pwm(3,0,pwm3+wiggle)
+					pwm.set_pwm(v_channel, 0, base_v + wiggle)
 			elif pos == 3:
-				pwm.set_pwm(2,0,pwm2-int(wiggle/2))  # Halfway back to avoid jerk
-				if leftSide_height:
-					pwm.set_pwm(3,0,pwm3-wiggle)
+				pwm.set_pwm(h_channel, 0, base_h - int(wiggle/2))  # Halfway to avoid jerk
+				if height_flag:
+					pwm.set_pwm(v_channel, 0, base_v - wiggle)
 				else:
-					pwm.set_pwm(3,0,pwm3+wiggle)
+					pwm.set_pwm(v_channel, 0, base_v + wiggle)
 			elif pos == 4:
-				pwm.set_pwm(2,0,pwm2+wiggle)
-				if leftSide_height:
-					pwm.set_pwm(3,0,pwm3-wiggle)
+				pwm.set_pwm(h_channel, 0, base_h + wiggle)
+				if height_flag:
+					pwm.set_pwm(v_channel, 0, base_v - wiggle)
 				else:
-					pwm.set_pwm(3,0,pwm3+wiggle)
+					pwm.set_pwm(v_channel, 0, base_v + wiggle)
 
 
-def left_III(pos,wiggle,heightAdjust=0):
-	if pos == 0:
-		if leftSide_height:
-			pwm.set_pwm(5,0,pwm5+heightAdjust)
-		else:
-			pwm.set_pwm(5,0,pwm5-heightAdjust)
-	else:
-		if leftSide_direction:
-			if pos == 1:
-				pwm.set_pwm(4,0,pwm4)
-				if leftSide_height:
-					pwm.set_pwm(5,0,pwm5+3*height_change)
-				else:
-					pwm.set_pwm(5,0,pwm5-3*height_change)
-			elif pos == 2:
-				pwm.set_pwm(4,0,pwm4+wiggle)
-				if leftSide_height:
-					pwm.set_pwm(5,0,pwm5-height_change)
-				else:
-					pwm.set_pwm(5,0,pwm5+height_change)
-			elif pos == 3:
-				pwm.set_pwm(4,0,pwm4+int(wiggle/2))  # Halfway forward to avoid jerk
-				if leftSide_height:
-					pwm.set_pwm(5,0,pwm5-height_change)
-				else:
-					pwm.set_pwm(5,0,pwm5+height_change)
-			elif pos == 4:
-				pwm.set_pwm(4,0,pwm4-wiggle)
-				if leftSide_height:
-					pwm.set_pwm(5,0,pwm5-height_change)
-				else:
-					pwm.set_pwm(5,0,pwm5+height_change)
-		else:
-			if pos == 1:
-				pwm.set_pwm(4,0,pwm4)
-				if leftSide_height:
-					pwm.set_pwm(5,0,pwm5+3*wiggle)
-				else:
-					pwm.set_pwm(5,0,pwm5-3*wiggle)
-			elif pos == 2:
-				pwm.set_pwm(4,0,pwm4-wiggle)
-				if leftSide_height:
-					pwm.set_pwm(5,0,pwm5-wiggle)
-				else:
-					pwm.set_pwm(5,0,pwm5+wiggle)
-			elif pos == 3:
-				pwm.set_pwm(4,0,pwm4-int(wiggle/2))  # Halfway back to avoid jerk
-				if leftSide_height:
-					pwm.set_pwm(5,0,pwm5-wiggle)
-				else:
-					pwm.set_pwm(5,0,pwm5+wiggle)
-			elif pos == 4:
-				pwm.set_pwm(4,0,pwm4+wiggle)
-				if leftSide_height:
-					pwm.set_pwm(5,0,pwm5-wiggle)
-				else:
-					pwm.set_pwm(5,0,pwm5+wiggle)
+# ==================== Wrapper Functions (for backwards compatibility) ====================
+# The old 6 functions are now simple wrappers that call the generic leg_control()
+
+def left_I(pos, wiggle, heightAdjust=0):
+	"""Left leg I - uses generic leg_control"""
+	leg_control('left_I', pos, wiggle, heightAdjust)
 
 
-def right_I(pos,wiggle,heightAdjust=0):
-	if pos == 0:
-		if rightSide_height:
-			pwm.set_pwm(7,0,pwm7+heightAdjust)
-		else:
-			pwm.set_pwm(7,0,pwm7-heightAdjust)
-	else:
-		if rightSide_direction:
-			if pos == 1:
-				pwm.set_pwm(6,0,pwm6)
-				if rightSide_height:
-					pwm.set_pwm(7,0,pwm7+3*height_change)
-				else:
-					pwm.set_pwm(7,0,pwm7-3*height_change)
-			elif pos == 2:
-				pwm.set_pwm(6,0,pwm6+wiggle)
-				if rightSide_height:
-					pwm.set_pwm(7,0,pwm7-height_change)
-				else:
-					pwm.set_pwm(7,0,pwm7+height_change)
-			elif pos == 3:
-				pwm.set_pwm(6,0,pwm6+int(wiggle/2))  # Halfway forward to avoid jerk
-				if rightSide_height:
-					pwm.set_pwm(7,0,pwm7-height_change)
-				else:
-					pwm.set_pwm(7,0,pwm7+height_change)
-			elif pos == 4:
-				pwm.set_pwm(6,0,pwm6-wiggle)
-				if rightSide_height:
-					pwm.set_pwm(7,0,pwm7-height_change)
-				else:
-					pwm.set_pwm(7,0,pwm7+height_change)
-		else:
-			if pos == 1:
-				pwm.set_pwm(6,0,pwm6)
-				if rightSide_height:
-					pwm.set_pwm(7,0,pwm7+3*height_change)
-				else:
-					pwm.set_pwm(7,0,pwm7-3*height_change)
-			elif pos == 2:
-				pwm.set_pwm(6,0,pwm6-wiggle)
-				if rightSide_height:
-					pwm.set_pwm(7,0,pwm7-height_change)
-				else:
-					pwm.set_pwm(7,0,pwm7+height_change)
-			elif pos == 3:
-				pwm.set_pwm(6,0,pwm6-int(wiggle/2))  # Halfway back to avoid jerk
-				if rightSide_height:
-					pwm.set_pwm(7,0,pwm7-height_change)
-				else:
-					pwm.set_pwm(7,0,pwm7+height_change)
-			elif pos == 4:
-				pwm.set_pwm(6,0,pwm6+wiggle)
-				if rightSide_height:
-					pwm.set_pwm(7,0,pwm7-height_change)
-				else:
-					pwm.set_pwm(7,0,pwm7+height_change)
+def left_II(pos, wiggle, heightAdjust=0):
+	"""Left leg II - uses generic leg_control"""
+	leg_control('left_II', pos, wiggle, heightAdjust)
 
 
-def right_II(pos,wiggle,heightAdjust=0):
-	if pos == 0:
-		if rightSide_height:
-			pwm.set_pwm(9,0,pwm9+heightAdjust)
-		else:
-			pwm.set_pwm(9,0,pwm9-heightAdjust)
-	else:
-		if rightSide_direction:
-			if pos == 1:
-				pwm.set_pwm(8,0,pwm8)
-				if rightSide_height:
-					pwm.set_pwm(9,0,pwm9+3*height_change)
-				else:
-					pwm.set_pwm(9,0,pwm9-3*height_change)
-			elif pos == 2:
-				pwm.set_pwm(8,0,pwm8+wiggle)
-				if rightSide_height:
-					pwm.set_pwm(9,0,pwm9-height_change)
-				else:
-					pwm.set_pwm(9,0,pwm9+height_change)
-			elif pos == 3:
-				pwm.set_pwm(8,0,pwm8+int(wiggle/2))  # Halfway forward to avoid jerk
-				if rightSide_height:
-					pwm.set_pwm(9,0,pwm9-height_change)
-				else:
-					pwm.set_pwm(9,0,pwm9+height_change)
-			elif pos == 4:
-				pwm.set_pwm(8,0,pwm8-wiggle)
-				if rightSide_height:
-					pwm.set_pwm(9,0,pwm9-height_change)
-				else:
-					pwm.set_pwm(9,0,pwm9+height_change)
-		else:
-			if pos == 1:
-				pwm.set_pwm(8,0,pwm8)
-				if rightSide_height:
-					pwm.set_pwm(9,0,pwm9+3*height_change)
-				else:
-					pwm.set_pwm(9,0,pwm9-3*height_change)
-			elif pos == 2:
-				pwm.set_pwm(8,0,pwm8-wiggle)
-				if rightSide_height:
-					pwm.set_pwm(9,0,pwm9-height_change)
-				else:
-					pwm.set_pwm(9,0,pwm9+height_change)
-			elif pos == 3:
-				pwm.set_pwm(8,0,pwm8-int(wiggle/2))  # Halfway back to avoid jerk
-				if rightSide_height:
-					pwm.set_pwm(9,0,pwm9-height_change)
-				else:
-					pwm.set_pwm(9,0,pwm9+height_change)
-			elif pos == 4:
-				pwm.set_pwm(8,0,pwm8+wiggle)
-				if rightSide_height:
-					pwm.set_pwm(9,0,pwm9-height_change)
-				else:
-					pwm.set_pwm(9,0,pwm9+height_change)
+def left_III(pos, wiggle, heightAdjust=0):
+	"""Left leg III - uses generic leg_control"""
+	leg_control('left_III', pos, wiggle, heightAdjust)
 
 
-def right_III(pos,wiggle,heightAdjust=0):
-	if pos == 0:
-		if rightSide_height:
-			pwm.set_pwm(11,0,pwm11+heightAdjust)
-		else:
-			pwm.set_pwm(11,0,pwm11-heightAdjust)
-	else:
-		if rightSide_direction:
-			if pos == 1:
-				pwm.set_pwm(10,0,pwm10)
-				if rightSide_height:
-					pwm.set_pwm(11,0,pwm11+3*height_change)
-				else:
+def right_I(pos, wiggle, heightAdjust=0):
+	"""Right leg I - uses generic leg_control"""
+	leg_control('right_I', pos, wiggle, heightAdjust)
 
-					pwm.set_pwm(11,0,pwm11-3*height_change)
-			elif pos == 2:
-				pwm.set_pwm(10,0,pwm10+wiggle)
-				if rightSide_height:
-					pwm.set_pwm(11,0,pwm11-height_change)
-				else:
-					pwm.set_pwm(11,0,pwm11+height_change)
-			elif pos == 3:
-				pwm.set_pwm(10,0,pwm10+int(wiggle/2))  # Halfway forward to avoid jerk
-				if rightSide_height:
-					pwm.set_pwm(11,0,pwm11-height_change)
-				else:
-					pwm.set_pwm(11,0,pwm11+height_change)
-			elif pos == 4:
-				pwm.set_pwm(10,0,pwm10-wiggle)
-				if rightSide_height:
-					pwm.set_pwm(11,0,pwm11-height_change)
-				else:
-					pwm.set_pwm(11,0,pwm11+height_change)
-		else:
-			if pos == 1:
-				pwm.set_pwm(10,0,pwm10)
-				if rightSide_height:
-					pwm.set_pwm(11,0,pwm11+3*height_change)
-				else:
-					pwm.set_pwm(11,0,pwm11-3*height_change)
-			elif pos == 2:
-				pwm.set_pwm(10,0,pwm10-wiggle)
-				if rightSide_height:
-					pwm.set_pwm(11,0,pwm11-height_change)
-				else:
-					pwm.set_pwm(11,0,pwm11+height_change)
-			elif pos == 3:
-				pwm.set_pwm(10,0,pwm10-int(wiggle/2))  # Halfway back to avoid jerk
-				if rightSide_height:
-					pwm.set_pwm(11,0,pwm11-height_change)
-				else:
-					pwm.set_pwm(11,0,pwm11+height_change)
-			elif pos == 4:
-				pwm.set_pwm(10,0,pwm10+wiggle)
-				if rightSide_height:
-					pwm.set_pwm(11,0,pwm11-height_change)
-				else:
-					pwm.set_pwm(11,0,pwm11+height_change)
+
+def right_II(pos, wiggle, heightAdjust=0):
+	"""Right leg II - uses generic leg_control"""
+	leg_control('right_II', pos, wiggle, heightAdjust)
+
+
+def right_III(pos, wiggle, heightAdjust=0):
+	"""Right leg III - uses generic leg_control"""
+	leg_control('right_III', pos, wiggle, heightAdjust)
+
+
+# ==================== OLD IMPLEMENTATIONS REMOVED ====================
+# The old 360 lines of duplicated code for the 6 leg functions have been removed.
+# They have been replaced by the generic leg_control() function above.
+# This removed code duplication and improved maintainability significantly.
 
 
 def move(step_input, speed, command):
@@ -1188,7 +968,7 @@ def destroy():
 
 
 def interpolate(start, end, steps=10):
-	"""Interpoliert zwischen start und end in 'steps' Schritten für sanfte Servo-Bewegungen"""
+	"""Interpolate between start and end in 'steps' increments for smooth servo movements"""
 	if steps <= 0:
 		yield end
 		return
@@ -1372,7 +1152,7 @@ def set_turn_and_pause():
 
 
 def handle_movement_command(command):
-	"""Handle movement commands (forward, backward, left, right, stand, no)"""
+	"""Handle movement commands (forward, backward, stand, left, right, no)"""
 
 	movement_commands = {
 		'forward': lambda: set_direction_and_resume('forward', 'no'),

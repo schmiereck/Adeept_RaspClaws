@@ -52,6 +52,7 @@ steadyMode = 0
 battery_available = False
 adc = None
 
+# Try method 1: smbus (original method)
 try:
 	import smbus
 
@@ -70,13 +71,44 @@ try:
 	# Test read to verify it works
 	test_value = adc.analogRead(0)
 	battery_available = True
-	print("✓ ADS7830 battery monitor initialized successfully")
+	print("✓ ADS7830 battery monitor initialized successfully (using smbus)")
+	print(f"  Battery ADC test read: {test_value}")
 except Exception as e:
-	print(f"⚠ Battery monitoring not available: {e}")
-	battery_available = False
+	print(f"⚠ smbus method failed: {e}")
+	# Try method 2: adafruit_bus_device (fallback, like in BatteryLevelMonitoring.py example)
+	try:
+		import board
+		import busio
+		from adafruit_bus_device.i2c_device import I2CDevice
 
-# Battery constants (from Voltage.py)
-ADCVref = 4.93
+		class ADS7830_Adafruit(object):
+			def __init__(self):
+				self.cmd = 0x84
+				i2c = busio.I2C(board.SCL, board.SDA)
+				self.device = I2CDevice(i2c, 0x48)  # ADS7830 address
+
+			def analogRead(self, chn):
+				control_byte = self.cmd | (((chn << 2 | chn >> 1) & 0x07) << 4)
+				buffer = bytearray(1)
+				self.device.write_then_readinto(bytes([control_byte]), buffer)
+				return buffer[0]
+
+		# Try to initialize ADS7830 with Adafruit library
+		adc = ADS7830_Adafruit()
+		# Test read to verify it works
+		test_value = adc.analogRead(0)
+		battery_available = True
+		print("✓ ADS7830 battery monitor initialized successfully (using adafruit_bus_device)")
+		print(f"  Battery ADC test read: {test_value}")
+	except Exception as e2:
+		print(f"⚠ adafruit_bus_device method also failed: {e2}")
+		print("  Battery monitoring not available - no suitable I2C library found.")
+		print("  This is normal if ADS7830 ADC hardware is not connected.")
+		print("  Battery display will show 'N/A' in GUI.")
+		battery_available = False
+
+# Battery constants (from Voltage.py and BatteryLevelMonitoring.py)
+ADCVref = 4.93  # Can be adjusted based on actual reference voltage
 battery_channel = 0
 R15 = 3000
 R17 = 1000
