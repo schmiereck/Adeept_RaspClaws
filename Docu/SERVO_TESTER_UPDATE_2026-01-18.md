@@ -43,11 +43,14 @@ Jedes Bein ist nun als **Gruppe** dargestellt:
 - **Head Servos**: Blauer Title (#2196F3)
 - **Bein-Namen**: Gold (#FFD700)
 
-### 5. ✅ Vergrößertes Fenster
+### 5. ✅ Optimierte Fenstergröße
 
-- **Vorher**: 600x700 px
-- **Nachher**: 900x750 px
+- **Ursprünglich**: 600x700 px
+- **V2.0**: 900x750 px
+- **V2.1 (kompakt)**: 850x600 px
 - Bessere Nutzung des horizontalen Platzes
+- Kompakteres Design spart vertikalen Platz
+- Kleinere Schriften und reduzierte Abstände
 
 ## Vorher/Nachher Vergleich
 
@@ -172,6 +175,49 @@ Keine Änderungen am Code notwendig - vollständig rückwärtskompatibel!
 
 ---
 
-**Version**: 2.0
+## Update v2.1 - Kompaktes Layout
+
+**Änderungen zur Platzoptimierung**:
+
+### Fenstergröße
+- Reduziert von 900x750 auf **850x600 px**
+- ~20% weniger Höhe
+
+### Schriftgrößen
+- Titel: 18 → **14 pt**
+- Mode Indicator: 12 → **9 pt**
+- Info Label: 10 → **8 pt**
+- Spalten-Titel: 14 → **11 pt**
+- Bein-Namen: 12 → **9 pt**
+- Servo-Labels: 10/11 → **8/9 pt**
+- Min/Max Labels: 8 → **7 pt**
+- Buttons: 11 → **9 pt**
+
+### Abstände (Padding)
+- Header pady: 10 → **3 px**
+- Mode pady: 5 → **2 px**
+- Info pady: 5 → **2 px**
+- Main frame: 10,10 → **5,3 px**
+- Column padx: 5 → **3 px**
+- Leg groups: 5,10 → **3,3 px**
+- Servo controls: 5,3/5 → **3,1 px**
+- Buttons: 10,10 → **5,3 px**
+
+### Slider
+- Canvas height: 500 → **400 px**
+- Slider length compact: 300 → **250 px**
+- Slider length normal: 500 → **400 px**
+- Slider width: Standard → **8 px** (schmaler)
+
+### Button-Texte (gekürzt)
+- "Reset All to Default" → **"Reset All"**
+- "All to Min" → **"All Min"**
+- "All to Max" → **"All Max"**
+
+**Ergebnis**: Deutlich kompakteres Layout bei gleicher Funktionalität!
+
+---
+
+**Version**: 2.1 (kompakt)
 **Datum**: 2026-01-18
 **Status**: ✅ Produktionsbereit

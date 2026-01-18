@@ -116,7 +116,7 @@ class ServoTesterGUI:
     def __init__(self, root):
         self.root = root
         self.root.title('Adeept RaspClaws - Servo Tester')
-        self.root.geometry('900x750')
+        self.root.geometry('850x600')  # Kompakter: 850x600 statt 900x750
         self.root.configure(bg='#1E1E1E')
 
         # Initialize PWM controller
@@ -135,41 +135,41 @@ class ServoTesterGUI:
     def create_widgets(self):
         """Create all GUI widgets"""
 
-        # Title
+        # Title (kleiner)
         title_label = tk.Label(
             self.root,
             text='Servo Tester - Hardware Layout',
-            font=('Arial', 18, 'bold'),
+            font=('Arial', 14, 'bold'),  # 14 statt 18
             fg='#E1F5FE',
             bg='#1E1E1E'
         )
-        title_label.pack(pady=10)
+        title_label.pack(pady=3)  # 3 statt 10
 
-        # Mode indicator
+        # Mode indicator (kleiner)
         mode_text = "MOCK MODE" if self.pwm_controller.mock_mode else "HARDWARE MODE"
         mode_color = "#FF9800" if self.pwm_controller.mock_mode else "#4CAF50"
         mode_label = tk.Label(
             self.root,
             text=mode_text,
-            font=('Arial', 12),
+            font=('Arial', 9),  # 9 statt 12
             fg='#FFFFFF',
             bg=mode_color
         )
-        mode_label.pack(pady=5)
+        mode_label.pack(pady=2)  # 2 statt 5
 
-        # Info label
+        # Info label (kleiner)
         info_label = tk.Label(
             self.root,
             text='Layout reflects robot hardware: Left side | Right side',
-            font=('Arial', 10),
+            font=('Arial', 8),  # 8 statt 10
             fg='#B0BEC5',
             bg='#1E1E1E'
         )
-        info_label.pack(pady=5)
+        info_label.pack(pady=2)  # 2 statt 5
 
         # Main container for 2-column layout
         main_frame = tk.Frame(self.root, bg='#1E1E1E')
-        main_frame.pack(fill='both', expand=True, padx=10, pady=10)
+        main_frame.pack(fill='both', expand=True, padx=5, pady=3)  # 5,3 statt 10,10
 
         # Create left and right columns
         self.create_side_column(main_frame, 'left', 'LEFT SIDE', 0)
@@ -186,21 +186,21 @@ class ServoTesterGUI:
 
         # Column frame
         column_frame = tk.Frame(parent, bg='#1E1E1E')
-        column_frame.grid(row=0, column=column, sticky='nsew', padx=5)
+        column_frame.grid(row=0, column=column, sticky='nsew', padx=3)  # 3 statt 5
         parent.grid_columnconfigure(column, weight=1)
 
-        # Title
+        # Title (kleiner)
         title_label = tk.Label(
             column_frame,
             text=title,
-            font=('Arial', 14, 'bold'),
+            font=('Arial', 11, 'bold'),  # 11 statt 14
             fg='#4CAF50' if side == 'left' else '#FF6D00',
             bg='#1E1E1E'
         )
-        title_label.pack(pady=5)
+        title_label.pack(pady=2)  # 2 statt 5
 
         # Scrollable canvas for servos
-        canvas = tk.Canvas(column_frame, bg='#1E1E1E', highlightthickness=0, height=500)
+        canvas = tk.Canvas(column_frame, bg='#1E1E1E', highlightthickness=0, height=400)  # 400 statt 500
         scrollbar = tk.Scrollbar(column_frame, orient='vertical', command=canvas.yview)
         scrollable_frame = tk.Frame(canvas, bg='#1E1E1E')
 
@@ -222,20 +222,20 @@ class ServoTesterGUI:
     def create_leg_group(self, parent, leg_name, servos):
         """Create a group of servos for one leg"""
 
-        # Group frame
-        group_frame = tk.Frame(parent, bg='#2C2C2C', relief='raised', borderwidth=2)
-        group_frame.pack(fill='x', padx=5, pady=10)
+        # Group frame (kompakter)
+        group_frame = tk.Frame(parent, bg='#2C2C2C', relief='raised', borderwidth=1)  # borderwidth 1 statt 2
+        group_frame.pack(fill='x', padx=3, pady=3)  # 3,3 statt 5,10
 
-        # Leg name header
+        # Leg name header (kleiner)
         header_label = tk.Label(
             group_frame,
             text=leg_name,
-            font=('Arial', 12, 'bold'),
+            font=('Arial', 9, 'bold'),  # 9 statt 12
             fg='#FFD700',
             bg='#2C2C2C',
             anchor='w'
         )
-        header_label.pack(fill='x', padx=10, pady=5)
+        header_label.pack(fill='x', padx=5, pady=2)  # 5,2 statt 10,5
 
         # Create servo control for each servo in this leg
         for servo_function, channel in servos.items():
@@ -245,21 +245,21 @@ class ServoTesterGUI:
         """Create head servo section (centered)"""
 
         head_frame = tk.Frame(parent, bg='#1E1E1E')
-        head_frame.pack(fill='x', padx=10, pady=5)
+        head_frame.pack(fill='x', padx=10, pady=2)  # pady 2 statt 5
 
-        # Title
+        # Title (kleiner)
         title_label = tk.Label(
             head_frame,
             text='HEAD SERVOS',
-            font=('Arial', 14, 'bold'),
+            font=('Arial', 11, 'bold'),  # 11 statt 14
             fg='#2196F3',
             bg='#1E1E1E'
         )
-        title_label.pack(pady=5)
+        title_label.pack(pady=2)  # 2 statt 5
 
         # Container for head servos
-        head_controls = tk.Frame(head_frame, bg='#2C2C2C', relief='raised', borderwidth=2)
-        head_controls.pack(fill='x', padx=100, pady=5)
+        head_controls = tk.Frame(head_frame, bg='#2C2C2C', relief='raised', borderwidth=1)  # borderwidth 1 statt 2
+        head_controls.pack(fill='x', padx=100, pady=2)  # pady 2 statt 5
 
         # Create head servo controls
         for leg_name, servos in SERVO_LAYOUT['head'].items():
@@ -269,18 +269,18 @@ class ServoTesterGUI:
     def create_servo_control(self, parent, servo_name, channel, compact=False):
         """Create control widgets for a single servo"""
 
-        # Frame for this servo
+        # Frame for this servo (kompakter)
         frame = tk.Frame(parent, bg='#3C3C3C' if compact else '#2C2C2C', relief='flat' if compact else 'raised', borderwidth=1)
-        frame.pack(fill='x', padx=5, pady=3 if compact else 5)
+        frame.pack(fill='x', padx=3, pady=1)  # 3,1 statt 5,3/5
 
         # Servo name and channel
         header_frame = tk.Frame(frame, bg='#3C3C3C' if compact else '#2C2C2C')
-        header_frame.pack(fill='x', padx=5, pady=3)
+        header_frame.pack(fill='x', padx=3, pady=1)  # 3,1 statt 5,3
 
         name_label = tk.Label(
             header_frame,
             text=f'{servo_name} (Ch {channel})',
-            font=('Arial', 10 if compact else 11, 'bold' if not compact else 'normal'),
+            font=('Arial', 8 if compact else 9),  # 8/9 statt 10/11
             fg='#E1F5FE',
             bg='#3C3C3C' if compact else '#2C2C2C',
             anchor='w'
@@ -291,7 +291,7 @@ class ServoTesterGUI:
         value_label = tk.Label(
             header_frame,
             text=f'{PWM_DEFAULT}',
-            font=('Arial', 10 if compact else 11),
+            font=('Arial', 8 if compact else 9),  # 8/9 statt 10/11
             fg='#4CAF50',
             bg='#3C3C3C' if compact else '#2C2C2C',
             anchor='e',
@@ -300,13 +300,13 @@ class ServoTesterGUI:
         value_label.pack(side='right')
         self.value_labels[channel] = value_label
 
-        # Slider
+        # Slider (kompakter)
         slider = tk.Scale(
             frame,
             from_=PWM_MIN,
             to=PWM_MAX,
             orient='horizontal',
-            length=300 if compact else 500,
+            length=250 if compact else 400,  # 250/400 statt 300/500
             resolution=1,
             command=lambda value, ch=channel: self.on_slider_change(ch, value),
             bg='#3C3C3C' if compact else '#2C2C2C',
@@ -314,21 +314,22 @@ class ServoTesterGUI:
             troughcolor='#424242',
             highlightthickness=0,
             relief='flat',
-            showvalue=0
+            showvalue=0,
+            width=8  # Schmalerer Slider
         )
         slider.set(PWM_DEFAULT)
-        slider.pack(fill='x', padx=5, pady=2)
+        slider.pack(fill='x', padx=3, pady=1)  # 3,1 statt 5,2
         self.sliders[channel] = slider
 
-        # Min/Max labels (only if not compact)
+        # Min/Max labels (nur wenn nicht compact) - noch kleiner
         if not compact:
             range_frame = tk.Frame(frame, bg='#3C3C3C' if compact else '#2C2C2C')
-            range_frame.pack(fill='x', padx=10, pady=2)
+            range_frame.pack(fill='x', padx=5, pady=1)  # pady 1 statt 2
 
             min_label = tk.Label(
                 range_frame,
                 text=f'Min: {PWM_MIN}',
-                font=('Arial', 8),
+                font=('Arial', 7),  # 7 statt 8
                 fg='#B0BEC5',
                 bg='#3C3C3C' if compact else '#2C2C2C',
                 anchor='w'
@@ -338,7 +339,7 @@ class ServoTesterGUI:
             max_label = tk.Label(
                 range_frame,
                 text=f'Max: {PWM_MAX}',
-                font=('Arial', 8),
+                font=('Arial', 7),  # 7 statt 8
                 fg='#B0BEC5',
                 bg='#3C3C3C' if compact else '#2C2C2C',
                 anchor='e'
@@ -349,67 +350,67 @@ class ServoTesterGUI:
         """Create control buttons at the bottom"""
 
         button_frame = tk.Frame(self.root, bg='#1E1E1E')
-        button_frame.pack(fill='x', padx=10, pady=10)
+        button_frame.pack(fill='x', padx=5, pady=3)  # 5,3 statt 10,10
 
-        # Reset All button
+        # Reset All button (kompakter)
         reset_btn = tk.Button(
             button_frame,
-            text='Reset All to Default',
+            text='Reset All',  # Kürzerer Text
             command=self.reset_all_servos,
             bg='#2196F3',
             fg='#FFFFFF',
-            font=('Arial', 11, 'bold'),
+            font=('Arial', 9, 'bold'),  # 9 statt 11
             relief='raised',
-            borderwidth=2,
-            padx=20,
-            pady=10
+            borderwidth=1,  # 1 statt 2
+            padx=15,  # 15 statt 20
+            pady=5   # 5 statt 10
         )
-        reset_btn.pack(side='left', padx=5)
+        reset_btn.pack(side='left', padx=3)  # 3 statt 5
 
-        # Set All to Min button
+        # Set All to Min button (kompakter)
         min_btn = tk.Button(
             button_frame,
-            text='All to Min',
+            text='All Min',  # Kürzerer Text
             command=self.set_all_min,
             bg='#FF9800',
             fg='#FFFFFF',
-            font=('Arial', 11),
+            font=('Arial', 9),  # 9 statt 11
             relief='raised',
-            borderwidth=2,
-            padx=20,
-            pady=10
+            borderwidth=1,
+            padx=15,
+            pady=5
         )
-        min_btn.pack(side='left', padx=5)
+        min_btn.pack(side='left', padx=3)
 
-        # Set All to Max button
+        # Set All to Max button (kompakter)
         max_btn = tk.Button(
             button_frame,
-            text='All to Max',
+            text='All Max',  # Kürzerer Text
             command=self.set_all_max,
             bg='#FF9800',
             fg='#FFFFFF',
-            font=('Arial', 11),
+            font=('Arial', 9),
             relief='raised',
-            borderwidth=2,
-            padx=20,
-            pady=10
+            borderwidth=1,
+            padx=15,
+            pady=5
         )
-        max_btn.pack(side='left', padx=5)
+        max_btn.pack(side='left', padx=3)
 
-        # Quit button
+        # Quit button (kompakter)
         quit_btn = tk.Button(
             button_frame,
             text='Quit',
             command=self.on_quit,
             bg='#F44336',
             fg='#FFFFFF',
-            font=('Arial', 11, 'bold'),
+            font=('Arial', 9, 'bold'),
             relief='raised',
-            borderwidth=2,
-            padx=20,
-            pady=10
+            borderwidth=1,
+            padx=15,
+            pady=5
         )
-        quit_btn.pack(side='right', padx=5)
+        quit_btn.pack(side='right', padx=3)
 
     def on_slider_change(self, channel, value):
         """Handle slider value change"""
