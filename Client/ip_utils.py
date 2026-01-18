@@ -1,8 +1,12 @@
 """
 Utility functions for IP address management
 """
+import os
 
-IP_TXT_PATH = './IP.txt'
+# Robuste Pfad-Ermittlung: IP.txt liegt immer im Client-Verzeichnis
+# Diese Datei (ip_utils.py) liegt im Client-Verzeichnis, IP.txt auch
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+IP_TXT_PATH = os.path.join(_SCRIPT_DIR, 'IP.txt')
 
 
 def num_import(initial):
