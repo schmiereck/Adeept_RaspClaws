@@ -51,8 +51,8 @@ SERVO_LAYOUT = {
     },
     'head': {
         'Head': {
-            'Up/Down': 12,
-            'Left/Right': 13
+            'Up/Down': 13,      # KORRIGIERT: look_up/look_down verwenden Ch 13
+            'Left/Right': 12    # KORRIGIERT: look_left/look_right verwenden Ch 12
         }
     }
 }

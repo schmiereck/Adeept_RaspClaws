@@ -162,8 +162,8 @@ left_III -<Backward>-   right_I
 
 | Component  | Servo Function | Channel |
 |------------|----------------|---------|
-| **Head**   | Up/Down        | 12      |
-|            | Left/Right     | 13      |
+| **Head**   | Up/Down        | 13      |
+|            | Left/Right     | 12      |
 
 ### GUI Layout
 

@@ -1,12 +1,12 @@
 # ServoTester - Korrektur der Servo-Zuordnung
 
 **Datum**: 2026-01-18  
-**Problem**: Rechte Seite Servos vertauscht (vorne/hinten)  
+**Problem**: Rechte Seite Servos vertauscht (vorne/hinten) + Head Servos vertauscht  
 **Status**: ✅ Behoben
 
 ---
 
-## Problem
+## Problem 1: Rechte Seite (Beine)
 
 Die Servo-Zuordnung im ServoTester war für die **rechte Seite falsch**:
 
@@ -22,7 +22,36 @@ Die Servo-Zuordnung im ServoTester war für die **rechte Seite falsch**:
 
 ---
 
-## Ursache
+## Problem 2: Head (Kopf)
+
+Die Servo-Zuordnung für den **Head war ebenfalls vertauscht**:
+
+**Vorher (FALSCH)**:
+- Up/Down → Ch 12 ❌
+- Left/Right → Ch 13 ❌
+
+**Tatsächlich (RICHTIG)**:
+- Up/Down → **Ch 13** ✓
+- Left/Right → **Ch 12** ✓
+
+**Verifikation aus Move.py**:
+```python
+def look_up(wiggle):
+    pwm.set_pwm(13, 0, Up_Down_input)    # Ch 13 für Up/Down
+
+def look_down(wiggle):
+    pwm.set_pwm(13, 0, Up_Down_input)    # Ch 13 für Up/Down
+
+def look_left(wiggle):
+    pwm.set_pwm(12, 0, Left_Right_input) # Ch 12 für Left/Right
+
+def look_right(wiggle):
+    pwm.set_pwm(12, 0, Left_Right_input) # Ch 12 für Left/Right
+```
+
+---
+
+## Ursache (Beine)
 
 Die Zuordnung basierte auf einer falschen Annahme:
 - Links: I=Front, II=Mid, III=Back
@@ -45,7 +74,7 @@ left_III -<Backward>-   right_I
 
 ## Lösung
 
-### Korrigierte Zuordnung
+### Korrigierte Zuordnung (Beine)
 
 #### Linke Seite (unverändert):
 ```
@@ -59,6 +88,13 @@ Back-Left (Left III)  → Ch 4-5
 Front-Right (Right III) → Ch 10-11  ← GEÄNDERT
 Mid-Right (Right II)    → Ch 8-9    ← Unverändert
 Back-Right (Right I)    → Ch 6-7    ← GEÄNDERT
+```
+
+### Korrigierte Zuordnung (Head)
+
+```
+Up/Down    → Ch 13  ← GEÄNDERT (war Ch 12)
+Left/Right → Ch 12  ← GEÄNDERT (war Ch 13)
 ```
 
 ### Diagonale Anordnung
@@ -89,6 +125,7 @@ T  │         │ H
 **SERVO_LAYOUT Struktur korrigiert**:
 
 ```python
+# Beine (rechte Seite)
 'right': {
     'Front-Right (Right III)': {  # KORRIGIERT
         'Rotation': 10,
@@ -102,18 +139,25 @@ T  │         │ H
         'Rotation': 6,
         'Height': 7
     }
+},
+# Head (Kopf)
+'head': {
+    'Head': {
+        'Up/Down': 13,      # KORRIGIERT (war 12)
+        'Left/Right': 12    # KORRIGIERT (war 13)
+    }
 }
 ```
 
 ### 2. `Docu/SERVO_TESTER_DE.md`
 
-- Kanal-Mapping Tabelle korrigiert
+- Kanal-Mapping Tabelle korrigiert (Beine & Head)
 - GUI-Layout Diagramm aktualisiert
 - Hinweis auf diagonale Anordnung hinzugefügt
 
 ### 3. `Docu/SERVO_TESTER_EN.md`
 
-- Channel mapping table corrected
+- Channel mapping table corrected (Legs & Head)
 - GUI layout diagram updated
 - Note about diagonal arrangement added
 
@@ -163,12 +207,13 @@ right_I(step_I, -speed, 0)    # Back-Right (diagonal gegenüber!)
 ## Ergebnis
 
 ✅ **ServoTester zeigt jetzt korrekte Positionen an**:
-- Front-Right ist wirklich vorne (Ch 10-11)
-- Back-Right ist wirklich hinten (Ch 6-7)
+- **Beine**: Front-Right ist wirklich vorne (Ch 10-11), Back-Right ist wirklich hinten (Ch 6-7)
+- **Head**: Up/Down verwendet Ch 13, Left/Right verwendet Ch 12
 
 ✅ **Übereinstimmung mit Move.py**:
 - Die Bein-Gruppen entsprechen den Funktionen in Move.py
 - Diagonale Anordnung ist korrekt dargestellt
+- Head-Funktionen (`look_up`, `look_down`, `look_left`, `look_right`) stimmen überein
 
 ✅ **Keine Hardware-Änderung nötig**:
 - Die Servos sind korrekt angeschlossen
