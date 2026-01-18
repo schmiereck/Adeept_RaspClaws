@@ -1217,15 +1217,16 @@ def execute_movement_step(speed, turn='no'):
 	if SmoothMode:
 		dove(step_set, speed, 0.001, DPI, turn)
 		increment_step()
-		time.sleep(0.05)  # 50ms sleep to reduce CPU load in smooth mode
 	else:
 		move(step_set, speed, turn)
-		time.sleep(0.1)
 		increment_step()
 
 
 def handle_direction_movement():
-	"""Handle forward/backward movement"""
+	"""
+	Handle forward/backward movement
+	Returns True if movement was executed, False otherwise
+	"""
 	if direction_command == 'forward' and turn_command == 'no':
 		execute_movement_step(35, 'no')
 		return True
@@ -1236,7 +1237,10 @@ def handle_direction_movement():
 
 
 def handle_turn_movement():
-	"""Handle left/right turning"""
+	"""
+	Handle left/right turning
+	Returns True if turn was executed, False otherwise
+	"""
 	if turn_command != 'no':
 		execute_movement_step(20, turn_command)
 		return True
@@ -1244,7 +1248,10 @@ def handle_turn_movement():
 
 
 def handle_stand_or_steady():
-	"""Handle stand command or apply steady mode"""
+	"""
+	Handle stand command or apply steady mode
+	Only called when not moving
+	"""
 	global step_set
 
 	if turn_command == 'no' and direction_command == 'stand':
@@ -1258,15 +1265,23 @@ def handle_stand_or_steady():
 # ==================== Main Movement Thread ====================
 
 def move_thread():
-	"""Main movement thread - coordinates all movement commands"""
-	if not steadyMode:
-		# Handle directional movement (forward/backward)
-		if not handle_direction_movement():
-			# If no direction movement, handle turning
-			handle_turn_movement()
+	"""
+	Main movement thread - coordinates all movement commands
 
-		# Always apply stand or steady
-		handle_stand_or_steady()
+	This function is called repeatedly by the RobotM thread.
+	It processes ONE movement step per call based on current commands.
+	"""
+	if not steadyMode:
+		# Try to handle directional movement (forward/backward)
+		moved = handle_direction_movement()
+
+		# If no directional movement, try turning
+		if not moved:
+			moved = handle_turn_movement()
+
+		# If no movement at all, handle stand or steady
+		if not moved:
+			handle_stand_or_steady()
 
 class RobotM(threading.Thread):
 	def __init__(self, *args, **kwargs):
@@ -1284,7 +1299,13 @@ class RobotM(threading.Thread):
 		while 1:
 			self.__flag.wait()
 			move_thread()
-			time.sleep(0.01)  # 10ms sleep to reduce CPU load
+			# Sleep time controls movement speed
+			# 100ms = normal speed (10 steps per second)
+			# 50ms = smooth mode speed (20 steps per second)
+			if SmoothMode:
+				time.sleep(0.05)  # 50ms for smooth mode
+			else:
+				time.sleep(0.1)   # 100ms for normal mode
 
 rm = RobotM()
 rm.start()
