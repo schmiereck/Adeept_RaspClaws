@@ -203,331 +203,415 @@ def FPV_thread():
 fps_threading = None
 
 
+# ==================== Command Handlers ====================
+
+def handle_movement_command(data):
+	"""Handle movement commands (forward, backward, left, right, etc.)"""
+	global direction_command, turn_command
+
+	if data == 'forward':
+		direction_command = 'forward'
+		move.commandInput(direction_command)
+	elif data == 'backward':
+		direction_command = 'backward'
+		move.commandInput(direction_command)
+	elif 'DS' in data:
+		direction_command = 'stand'
+		move.commandInput(direction_command)
+	elif data == 'left':
+		direction_command = 'left'
+		move.commandInput(direction_command)
+	elif data == 'right':
+		direction_command = 'right'
+		move.commandInput(direction_command)
+	elif 'TS' in data:
+		direction_command = 'no'
+		move.commandInput(direction_command)
+	else:
+		return False  # Command not handled
+	return True  # Command was handled
+
+
+def handle_camera_command(data):
+	"""Handle camera movement commands (up, down, left, right, home)"""
+	if data == 'up':
+		move.look_up()
+	elif data == 'down':
+		move.look_down()
+	elif data == 'home':
+		move.home()
+	elif data == 'lookleft':
+		move.look_left()
+	elif data == 'lookright':
+		move.look_right()
+	elif data == 'steadyCamera':
+		move.commandInput(data)
+		tcpCliSock.send('steadyCamera'.encode())
+	elif data == 'steadyCameraOff':
+		move.commandInput(data)
+		tcpCliSock.send('steadyCameraOff'.encode())
+	elif data == 'smoothCam':
+		move.commandInput(data)
+		tcpCliSock.send('smoothCam'.encode())
+	elif data == 'smoothCamOff':
+		move.commandInput(data)
+		tcpCliSock.send('smoothCamOff'.encode())
+	else:
+		return False  # Command not handled
+	return True  # Command was handled
+
+
+def handle_computer_vision_command(data):
+	"""Handle computer vision commands (findColor, motionGet, stopCV, etc.)"""
+	global direction_command, turn_command
+
+	if data == 'findColor':
+		fpv.FindColor(1)
+		tcpCliSock.send('findColor'.encode())
+	elif 'motionGet' in data:
+		fpv.WatchDog(1)
+		tcpCliSock.send('motionGet'.encode())
+	elif 'stopCV' in data:
+		fpv.FindColor(0)
+		fpv.WatchDog(0)
+		fpv.FindLineMode(0)
+		tcpCliSock.send('stopCV'.encode())
+		direction_command = 'stand'
+		turn_command = 'no'
+		move.commandInput('stand')
+		move.commandInput('no')
+	elif 'findColorSet' in data:
+		try:
+			command_dict = ast.literal_eval(data)
+			if 'data' in command_dict and len(command_dict['data']) == 3:
+				r, g, b = command_dict['data']
+				fpv.colorFindSet(r, g, b)
+				print(f"color: r={r}, g={g}, b={b}")
+		except (SyntaxError, ValueError):
+			print("The received string format is incorrect and cannot be parsed.")
+	else:
+		return False  # Command not handled
+	return True  # Command was handled
+
+
+def handle_speed_command(data):
+	"""Handle speed control commands (fast, slow)"""
+	if data == 'fast':
+		move.commandInput(data)
+		tcpCliSock.send('fast'.encode())
+	elif data == 'slow':
+		move.commandInput(data)
+		tcpCliSock.send('slow'.encode())
+	else:
+		return False  # Command not handled
+	return True  # Command was handled
+
+
+def handle_led_command(data):
+	"""Handle LED commands (police, policeOff)"""
+	global ws2812
+
+	if data == 'police':
+		if ws2812:
+			ws2812.police()
+		tcpCliSock.send('police'.encode())
+	elif data == 'policeOff':
+		if ws2812:
+			ws2812.breath(70, 70, 255)
+		tcpCliSock.send('policeOff'.encode())
+	else:
+		return False  # Command not handled
+	return True  # Command was handled
+
+
+def handle_switch_command(data):
+	"""Handle GPIO switch commands (Switch_1/2/3 on/off)"""
+	if 'Switch_1_on' in data:
+		switch.switch(1, 1)
+		tcpCliSock.send('Switch_1_on'.encode())
+	elif 'Switch_1_off' in data:
+		switch.switch(1, 0)
+		tcpCliSock.send('Switch_1_off'.encode())
+	elif 'Switch_2_on' in data:
+		switch.switch(2, 1)
+		tcpCliSock.send('Switch_2_on'.encode())
+	elif 'Switch_2_off' in data:
+		switch.switch(2, 0)
+		tcpCliSock.send('Switch_2_off'.encode())
+	elif 'Switch_3_on' in data:
+		switch.switch(3, 1)
+		tcpCliSock.send('Switch_3_on'.encode())
+	elif 'Switch_3_off' in data:
+		switch.switch(3, 0)
+		tcpCliSock.send('Switch_3_off'.encode())
+	else:
+		return False  # Command not handled
+	return True  # Command was handled
+
+
+def handle_line_tracking_command(data):
+	"""Handle line tracking / FindLine commands"""
+	global steadyMode
+
+	if data == 'CVFL' and steadyMode == 0:
+		if not FPV.FindLineMode:
+			FPV.FindLineMode = 1
+			tcpCliSock.send('CVFL_on'.encode())
+	elif data == 'CVFLColorSet 0':
+		FPV.lineColorSet = 0
+	elif data == 'CVFLColorSet 255':
+		FPV.lineColorSet = 255
+	elif 'CVFLL1' in data:
+		try:
+			set_lip1 = data.split()
+			lip1_set = int(set_lip1[1])
+			FPV.linePos_1 = lip1_set
+		except:
+			pass
+	elif 'CVFLL2' in data:
+		try:
+			set_lip2 = data.split()
+			lip2_set = int(set_lip2[1])
+			FPV.linePos_2 = lip2_set
+		except:
+			pass
+	else:
+		return False  # Command not handled
+	return True  # Command was handled
+
+
+def process_client_command(data):
+	"""Main command dispatcher - routes commands to appropriate handlers"""
+	# Try each handler in order
+	if handle_movement_command(data):
+		return
+	if handle_camera_command(data):
+		return
+	if handle_computer_vision_command(data):
+		return
+	if handle_speed_command(data):
+		return
+	if handle_led_command(data):
+		return
+	if handle_switch_command(data):
+		return
+	if handle_line_tracking_command(data):
+		return
+
+	# Command not recognized - this is OK, just ignore
+	pass
+
+
+# ==================== Main Server Loop ====================
+
 def run():
-    global direction_command, turn_command, SmoothMode, steadyMode, ws2812
-    info_threading=threading.Thread(target=info_send_client)   #Define a thread for communication
-    info_threading.setDaemon(True)                             #'True' means it is a front thread,it would close when the mainloop() closes
-    info_threading.start()                                     #Thread starts
+	global direction_command, turn_command, SmoothMode, steadyMode, ws2812
+	info_threading=threading.Thread(target=info_send_client)   #Define a thread for communication
+	info_threading.setDaemon(True)                             #'True' means it is a front thread,it would close when the mainloop() closes
+	info_threading.start()                                     #Thread starts
 
-    Y_pitch = 300
-    Y_pitch_MAX = 600
-    Y_pitch_MIN = 100
+	Y_pitch = 300
+	Y_pitch_MAX = 600
+	Y_pitch_MIN = 100
 
-    while True:
-        try:
-            data = ''
-            data = str(tcpCliSock.recv(BUFSIZ).decode())
-            if not data:
-                # Empty string means socket was closed by client
-                print("Client disconnected (empty recv)")
-                sys.stdout.flush()
-                break  # Exit loop to wait for new connection
-            elif 'forward' == data:
-                direction_command = 'forward'
-                move.commandInput(direction_command)
-            elif 'backward' == data:
-                direction_command = 'backward'
-                move.commandInput(direction_command)
-            elif 'DS' in data:
-                direction_command = 'stand'
-                move.commandInput(direction_command)
+	while True:
+		try:
+			data = ''
+			data = str(tcpCliSock.recv(BUFSIZ).decode())
+			if not data:
+				# Empty string means socket was closed by client
+				print("Client disconnected (empty recv)")
+				sys.stdout.flush()
+				break  # Exit loop to wait for new connection
 
-            elif 'left' == data:
-                direction_command = 'left'
-                move.commandInput(direction_command)
-            elif 'right' == data:
-                direction_command = 'right'
-                move.commandInput(direction_command)
-            elif 'TS' in data:
-                direction_command = 'no'
-                move.commandInput(direction_command)
+			# Process the command using the dispatcher
+			process_client_command(data)
 
-            elif 'up' == data:
-                move.look_up()
-            elif 'down' == data:
-                move.look_down()
-            elif 'home' == data:
-                move.home()
+			print(data)
+			time.sleep(0.01)  # 10ms sleep to reduce CPU load (100 updates/sec is sufficient)
 
-            elif 'lookleft' == data:
-                move.look_left()
-            elif 'lookright' == data:
-                move.look_right()
-
-            elif 'findColor' ==  data:
-                fpv.FindColor(1)
-                tcpCliSock.send(('findColor').encode())
-
-            elif 'motionGet' in data:
-                fpv.WatchDog(1)
-                tcpCliSock.send(('motionGet').encode())
-
-            elif 'steadyCamera' == data:
-                move.commandInput(data)
-                tcpCliSock.send(('steadyCamera').encode())
-            elif 'steadyCameraOff' == data:
-                move.commandInput(data)
-                tcpCliSock.send(('steadyCameraOff').encode())
-
-            elif 'stopCV' in data:
-                fpv.FindColor(0)
-                fpv.WatchDog(0)
-                fpv.FindLineMode(0)
-                tcpCliSock.send(('stopCV').encode())
-                direction_command = 'stand'
-                turn_command = 'no'
-                move.commandInput('stand')
-                move.commandInput('no')
-
-            elif 'fast' in data:
-                move.commandInput(data)
-                tcpCliSock.send(('fast').encode())
-
-            elif 'slow' in data:
-                move.commandInput(data)
-                tcpCliSock.send(('slow').encode())
-
-            elif 'smoothCam' == data:
-                move.commandInput(data)
-                tcpCliSock.send(('smoothCam').encode())
-
-            elif 'smoothCamOff' == data:
-                move.commandInput(data)
-                tcpCliSock.send(('smoothCamOff').encode())
-
-            elif 'police' == data:
-                if ws2812:
-                    ws2812.police()
-                tcpCliSock.send(('police').encode())
-
-            elif 'policeOff' == data:
-                if ws2812:
-                    ws2812.breath(70,70,255)
-                tcpCliSock.send(('policeOff').encode())
-
-            elif 'Switch_1_on' in data:
-                switch.switch(1,1)
-                tcpCliSock.send(('Switch_1_on').encode())
-
-            elif 'Switch_1_off' in data:
-                switch.switch(1,0)
-                tcpCliSock.send(('Switch_1_off').encode())
-
-            elif 'Switch_2_on' in data:
-                switch.switch(2,1)
-                tcpCliSock.send(('Switch_2_on').encode())
-
-            elif 'Switch_2_off' in data:
-                switch.switch(2,0)
-                tcpCliSock.send(('Switch_2_off').encode())
-
-            elif 'Switch_3_on' in data:
-                switch.switch(3,1)
-                tcpCliSock.send(('Switch_3_on').encode())
-
-            elif 'Switch_3_off' in data:
-                switch.switch(3,0)
-                tcpCliSock.send(('Switch_3_off').encode())
-
-            elif 'CVFL' == data and steadyMode == 0:
-                if not FPV.FindLineMode:
-                    FPV.FindLineMode = 1
-                    tcpCliSock.send(('CVFL_on').encode())
-
-            elif 'CVFLColorSet 0' ==  data:
-                FPV.lineColorSet = 0
-
-            elif 'CVFLColorSet 255' ==  data:
-                FPV.lineColorSet = 255
-
-            elif 'CVFLL1' in data:
-                try:
-                    set_lip1=data.split()
-                    lip1_set = int(set_lip1[1])
-                    FPV.linePos_1 = lip1_set
-                except:
-                    pass
-
-            elif 'CVFLL2' in data:
-                try:
-                    set_lip2=data.split()
-                    lip2_set = int(set_lip2[1])
-                    FPV.linePos_2 = lip2_set
-                except:
-                    pass
-
-            elif 'findColorSet' in data:
-                try:
-                    command_dict = ast.literal_eval(data)
-                    if 'data' in command_dict and len(command_dict['data']) == 3:
-                        r, g, b = command_dict['data']
-                        fpv.colorFindSet(r, g, b)
-                        print(f"color: r={r}, g={g}, b={b}")
-                except (SyntaxError, ValueError):
-                    print("The received string format is incorrect and cannot be parsed.")
-            else:
-                pass
-            print(data)
-            time.sleep(0.01)  # 10ms sleep to reduce CPU load (100 updates/sec is sufficient)
-
-        except (ConnectionResetError, BrokenPipeError, ConnectionAbortedError, OSError) as e:
-            print(f"\n\033[38;5;3mWarning:\033[0m Client connection lost: {e}")
-            print("Waiting for new client connection...")
-            break  # Exit the loop to wait for a new connection
-        except Exception as e:
-            print(f"\n\033[38;5;1mError:\033[0m Unexpected error in main loop: {e}")
-            import traceback
-            traceback.print_exc()
-            break  # Exit the loop on unexpected errors
+		except (ConnectionResetError, BrokenPipeError, ConnectionAbortedError, OSError) as e:
+			print(f"\n\033[38;5;3mWarning:\033[0m Client connection lost: {e}")
+			print("Waiting for new client connection...")
+			break  # Exit the loop to wait for a new connection
+		except Exception as e:
+			print(f"\n\033[38;5;1mError:\033[0m Unexpected error in main loop: {e}")
+			import traceback
+			traceback.print_exc()
+			break  # Exit the loop on unexpected errors
 
 
 def destory():
-    move.clean_all()
+	move.clean_all()
 
+
+# ==================== Initialization Functions ====================
+
+def initialize_leds():
+	"""Initialize WS2812 LED strip"""
+	ws2812 = None
+	try:
+		print("Initializing WS2812 LEDs...")
+		ws2812 = robotLight.Adeept_SPI_LedPixel(16, 255)
+		if ws2812.check_spi_state() != 0:
+			print("WS2812 initialized successfully")
+			ws2812.start()
+			ws2812.breath(70, 70, 255)
+		else:
+			print("\033[38;5;3mWarning:\033[0m SPI not available for WS2812 LEDs")
+			ws2812.led_close()
+			ws2812 = None
+	except KeyboardInterrupt:
+		if ws2812:
+			ws2812.led_close()
+		raise
+	except Exception as e:
+		print(f"\033[38;5;3mWarning:\033[0m Could not initialize WS2812 LEDs: {e}")
+		ws2812 = None
+	return ws2812
+
+
+def start_video_thread():
+	"""Start FPV video streaming thread"""
+	global fps_threading
+	print("Starting FPV video stream thread (runs continuously)...")
+	fps_threading = threading.Thread(target=FPV_thread)
+	fps_threading.setDaemon(True)
+	fps_threading.start()
+	print("FPV thread started. Clients can connect to video stream.")
+
+
+def check_network_and_start_ap(ws2812):
+	"""Check network connectivity and start Access Point if needed"""
+	try:
+		s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+		s.connect(("1.1.1.1", 80))
+		ipaddr_check = s.getsockname()[0]
+		s.close()
+		print(ipaddr_check)
+	except:
+		ap_threading = threading.Thread(target=ap_thread)
+		ap_threading.setDaemon(True)
+		ap_threading.start()
+
+		if ws2812:
+			# LED animation for AP mode
+			for brightness in [50, 100, 150, 200, 255]:
+				ws2812.set_all_led_color_data(0, 16, brightness)
+				ws2812.show()
+				time.sleep(1)
+			ws2812.set_all_led_color_data(35, 255, 35)
+			ws2812.show()
+
+
+def setup_server_socket(addr):
+	"""Create and configure server socket"""
+	tcpSerSock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	tcpSerSock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+	tcpSerSock.bind(addr)
+	tcpSerSock.listen(5)
+	return tcpSerSock
+
+
+def set_led_connected_state(ws2812):
+	"""Set LED to connected state (blue)"""
+	try:
+		if ws2812:
+			ws2812.breath_status_set(0)
+			ws2812.set_all_led_color_data(64, 128, 255)
+			ws2812.show()
+			print("WS2812 LEDs set to blue (connected state)")
+		else:
+			print("WS2812 LEDs not available - skipping LED setup")
+	except Exception as e:
+		print(f"\033[38;5;3mWarning:\033[0m Could not set WS2812 LED color: {e}")
+
+
+def cleanup_after_disconnect(tcpCliSock, tcpSerSock, ws2812):
+	"""Clean up sockets and LEDs after client disconnect"""
+	print("\n" + "="*50)
+	print("Client disconnected. Cleaning up...")
+	print("="*50)
+
+	# Close sockets
+	try:
+		tcpCliSock.close()
+		print("✓ Client socket closed")
+	except Exception as e:
+		print(f"! Error closing client socket: {e}")
+
+	try:
+		tcpSerSock.close()
+		print("✓ Server socket closed")
+	except Exception as e:
+		print(f"! Error closing server socket: {e}")
+
+	# Reset LED color to indicate waiting state
+	try:
+		if ws2812:
+			ws2812.set_all_led_color_data(70, 70, 255)
+			ws2812.breath_status_set(1)
+			ws2812.show()
+			print("✓ LED reset to waiting state (breathing)")
+	except Exception as e:
+		print(f"! Error resetting LED: {e}")
+
+	# Give some time for cleanup and port release
+	print("\nWaiting 2 seconds before accepting new connection...")
+	time.sleep(2)
+
+	print("\n" + "="*50)
+	print("Ready for new connection...")
+	print("="*50 + "\n")
+
+
+# ==================== Main Entry Point ====================
 
 if __name__ == '__main__':
-    switch.switchSetup()
-    switch.set_all_switch_off()
-    move.init_all()
+	switch.switchSetup()
+	switch.set_all_switch_off()
+	move.init_all()
 
-    HOST = ''
-    PORT = 10223                              #Define port serial 
-    BUFSIZ = 1024                             #Define buffer size
-    ADDR = (HOST, PORT)
+	HOST = ''
+	PORT = 10223
+	BUFSIZ = 1024
+	ADDR = (HOST, PORT)
 
-    # Initialize WS2812 LEDs
-    ws2812 = None
-    try:
-        print("Initializing WS2812 LEDs...")
-        ws2812 = robotLight.Adeept_SPI_LedPixel(16, 255)
-        if ws2812.check_spi_state() != 0:
-            print("WS2812 initialized successfully")
-            ws2812.start()
-            ws2812.breath(70, 70, 255)
-        else:
-            print("\033[38;5;3mWarning:\033[0m SPI not available for WS2812 LEDs")
-            ws2812.led_close()
-            ws2812 = None
-    except KeyboardInterrupt:
-        if ws2812:
-            ws2812.led_close()
-        raise
-    except Exception as e:
-        print(f"\033[38;5;3mWarning:\033[0m Could not initialize WS2812 LEDs: {e}")
-        ws2812 = None
+	# Initialize WS2812 LEDs
+	ws2812 = initialize_leds()
 
-    # Clean up old video ready marker
-    try:
-        if os.path.exists('/tmp/video_ready'):
-            os.remove('/tmp/video_ready')
-            print("✓ Cleaned up old video ready marker")
-    except:
-        pass
+	# Clean up old video ready marker
+	try:
+		if os.path.exists('/tmp/video_ready'):
+			os.remove('/tmp/video_ready')
+			print("✓ Cleaned up old video ready marker")
+	except:
+		pass
 
-    # Start FPV thread ONCE at server startup (not per client connection!)
-    print("Starting FPV video stream thread (runs continuously)...")
-    fps_threading = threading.Thread(target=FPV_thread)
-    fps_threading.setDaemon(True)
-    fps_threading.start()
-    print("FPV thread started. Clients can connect to video stream.")
+	# Start FPV thread ONCE at server startup
+	start_video_thread()
 
-    while  1:
-        try:
-            s =socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
-            s.connect(("1.1.1.1",80))
-            ipaddr_check=s.getsockname()[0]
-            s.close()
-            print(ipaddr_check)
-        except:
-            ap_threading=threading.Thread(target=ap_thread)   #Define a thread for data receiving
-            ap_threading.setDaemon(True)                          #'True' means it is a front thread,it would close when the mainloop() closes
-            ap_threading.start()                                  #Thread starts
+	# Main connection loop
+	while 1:
+		check_network_and_start_ap(ws2812)
 
-            if ws2812:
-                ws2812.set_all_led_color_data(0,16,50)
-                ws2812.show()
-                time.sleep(1)
-                ws2812.set_all_led_color_data(0,16,100)
-                ws2812.show()
-                time.sleep(1)
-                ws2812.set_all_led_color_data(0,16,150)
-                ws2812.show()
-                time.sleep(1)
-                ws2812.set_all_led_color_data(0,16,200)
-                ws2812.show()
-                time.sleep(1)
-                ws2812.set_all_led_color_data(0,16,255)
-                ws2812.show()
-                time.sleep(1)
-                ws2812.set_all_led_color_data(35,255,35)
-                ws2812.show()
+		# Setup server socket and wait for client
+		try:
+			tcpSerSock = setup_server_socket(ADDR)
+			print('waiting for connection...')
+			tcpCliSock, addr = tcpSerSock.accept()
+			print('...connected from :', addr)
+		except Exception as e:
+			print(f"Error setting up connection: {e}")
+			time.sleep(1)
+			continue
 
-        # MOVED INSIDE while loop - Repeat after each disconnect
-        try:
-            tcpSerSock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            tcpSerSock.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
-            tcpSerSock.bind(ADDR)
-            tcpSerSock.listen(5)                      #Start server,waiting for client
-            print('waiting for connection...')
-            tcpCliSock, addr = tcpSerSock.accept()
-            print('...connected from :', addr)
+		# Set LED to connected state
+		set_led_connected_state(ws2812)
 
-            # Note: VIDEO_READY signal is now sent in info_send_client thread
-            # which starts automatically when run() is called
+		# Run the command processing loop
+		run()
 
-        except Exception as e:
-            print(f"Error setting up connection: {e}")
-            time.sleep(1)
-            continue  # Try again
-
-        try:
-            if ws2812:
-                ws2812.breath_status_set(0)
-                ws2812.set_all_led_color_data(64,128,255)
-                ws2812.show()
-                print("WS2812 LEDs set to blue (connected state)")
-            else:
-                print("WS2812 LEDs not available - skipping LED setup")
-        except Exception as e:
-            print(f"\033[38;5;3mWarning:\033[0m Could not set WS2812 LED color: {e}")
-
-        # Run the command processing loop
-        run()
-
-        # After run() exits (client disconnected), clean up and loop back
-        print("\n" + "="*50)
-        print("Client disconnected. Cleaning up...")
-        print("="*50)
-
-        # Close sockets
-        try:
-            tcpCliSock.close()
-            print("✓ Client socket closed")
-        except Exception as e:
-            print(f"! Error closing client socket: {e}")
-
-        try:
-            tcpSerSock.close()
-            print("✓ Server socket closed")
-        except Exception as e:
-            print(f"! Error closing server socket: {e}")
-
-        # Reset LED color to indicate waiting state
-        try:
-            if ws2812:
-                ws2812.set_all_led_color_data(70, 70, 255)
-                ws2812.breath_status_set(1)
-                ws2812.show()
-                print("✓ LED reset to waiting state (breathing)")
-        except Exception as e:
-            print(f"! Error resetting LED: {e}")
-
-        # Give some time for cleanup and port release
-        print("\nWaiting 2 seconds before accepting new connection...")
-        time.sleep(2)
-
-        print("\n" + "="*50)
-        print("Ready for new connection...")
-        print("="*50 + "\n")
-        # Loop back to accept new connection
+		# Clean up after disconnect
+		cleanup_after_disconnect(tcpCliSock, tcpSerSock, ws2812)
 

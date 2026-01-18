@@ -135,193 +135,231 @@ fps_threading.start()									 #Thread starts
 ########>>>>>VIDEO<<<<<########
 
 
+# ==================== Command Helper Functions ====================
+
+def send_command(command):
+	"""Send a command to the server"""
+	tcpClicSock.send(command.encode())
 
 
-def call_forward(event):		 #When this function is called,client commands the car to move forward
-	global c_f_stu
-	if c_f_stu == 0:
-		tcpClicSock.send(('forward').encode())
-		c_f_stu=1
+def send_movement_command(command, state_var_name, state_value=1):
+	"""Send movement command and update state variable"""
+	global c_f_stu, c_b_stu, c_l_stu, c_r_stu, c_ls_stu, c_rs_stu
+
+	state_dict = {
+		'c_f_stu': lambda: globals().update({'c_f_stu': state_value}),
+		'c_b_stu': lambda: globals().update({'c_b_stu': state_value}),
+		'c_l_stu': lambda: globals().update({'c_l_stu': state_value}),
+		'c_r_stu': lambda: globals().update({'c_r_stu': state_value}),
+		'c_ls_stu': lambda: globals().update({'c_ls_stu': state_value}),
+		'c_rs_stu': lambda: globals().update({'c_rs_stu': state_value}),
+	}
+
+	current_state = globals().get(state_var_name, 0)
+	if current_state == 0:
+		send_command(command)
+		state_dict[state_var_name]()
 
 
-def call_back(event):			#When this function is called,client commands the car to move backward
-	global c_b_stu 
-	if c_b_stu == 0:
-		tcpClicSock.send(('backward').encode())
-		c_b_stu=1
+# ==================== Movement Callbacks ====================
 
-def call_DS(event):
-	global DS_stu
-	tcpClicSock.send(('DS').encode())
-	DS_stu = 0
-
-def call_TS(event):
-	global TS_stu
-	tcpClicSock.send(('TS').encode())
-	TS_stu = 0
-def call_FB_stop(event):			#When this function is called,client commands the car to stop moving
-	global c_f_stu,c_b_stu,c_l_stu,c_r_stu,c_ls_stu,c_rs_stu
-	c_f_stu=0
-	c_b_stu=0
-	tcpClicSock.send(('DS').encode())
+def call_forward(event):
+	"""Command car to move forward"""
+	send_movement_command('forward', 'c_f_stu')
 
 
-def call_Turn_stop(event):			#When this function is called,client commands the car to stop moving
-	global c_f_stu,c_b_stu,c_l_stu,c_r_stu,c_ls_stu,c_rs_stu
-	c_l_stu=0
-	c_r_stu=0
-	c_ls_stu=0
-	c_rs_stu=0
-	tcpClicSock.send(('TS').encode())
+def call_back(event):
+	"""Command car to move backward"""
+	send_movement_command('backward', 'c_b_stu')
 
 
-def call_Left(event):			#When this function is called,client commands the car to turn left
-	global c_l_stu
-	if c_l_stu == 0:
-		tcpClicSock.send(('left').encode())
-		c_l_stu=1
+def call_Left(event):
+	"""Command car to turn left"""
+	send_movement_command('left', 'c_l_stu')
 
 
-def call_Right(event):		   #When this function is called,client commands the car to turn right
-	global c_r_stu
-	if c_r_stu == 0:
-		tcpClicSock.send(('right').encode())
-		c_r_stu=1
+def call_Right(event):
+	"""Command car to turn right"""
+	send_movement_command('right', 'c_r_stu')
 
 
 def call_LeftSide(event):
-	global c_ls_stu
-	if c_ls_stu == 0:
-		tcpClicSock.send(('leftside').encode())
-		c_ls_stu=1
+	"""Command car to strafe left"""
+	send_movement_command('leftside', 'c_ls_stu')
 
 
 def call_RightSide(event):
-	global c_rs_stu
-	if c_rs_stu == 0:
-		tcpClicSock.send(('rightside').encode())
-		c_rs_stu=1
+	"""Command car to strafe right"""
+	send_movement_command('rightside', 'c_rs_stu')
 
+
+def call_DS(event):
+	"""Direction Stop"""
+	global DS_stu
+	send_command('DS')
+	DS_stu = 0
+
+
+def call_TS(event):
+	"""Turn Stop"""
+	global TS_stu
+	send_command('TS')
+	TS_stu = 0
+
+
+def call_FB_stop(event):
+	"""Stop forward/backward movement"""
+	global c_f_stu, c_b_stu
+	c_f_stu = 0
+	c_b_stu = 0
+	send_command('DS')
+
+
+def call_Turn_stop(event):
+	"""Stop turning movement"""
+	global c_l_stu, c_r_stu, c_ls_stu, c_rs_stu
+	c_l_stu = 0
+	c_r_stu = 0
+	c_ls_stu = 0
+	c_rs_stu = 0
+	send_command('TS')
+
+
+# ==================== Camera Callbacks ====================
 
 def call_headup(event):
-	tcpClicSock.send(('up').encode())
+	send_command('up')
 
 
 def call_headdown(event):
-	tcpClicSock.send(('down').encode())
+	send_command('down')
 
 
 def call_headleft(event):
-	tcpClicSock.send(('lookleft').encode())
+	send_command('lookleft')
 
 
 def call_headright(event):
-	tcpClicSock.send(('lookright').encode())
- 
+	send_command('lookright')
+
+
 def call_LRstop(event):
-	tcpClicSock.send(('LRstop').encode())
- 
+	send_command('LRstop')
+
+
 def call_UDstop(event):
-	tcpClicSock.send(('UDstop').encode())
+	send_command('UDstop')
+
 
 def call_headhome(event):
-	tcpClicSock.send(('home').encode())
+	send_command('home')
 
+
+# ==================== Mode Toggle Callbacks ====================
 
 def call_steady(event):
+	"""Toggle steady camera mode"""
 	global steadyMode
 	if steadyMode == 0:
-		tcpClicSock.send(('steadyCamera').encode())
+		send_command('steadyCamera')
 		steadyMode = 1
 	else:
-		tcpClicSock.send(('steadyCameraOff').encode())
+		send_command('steadyCameraOff')
 		steadyMode = 0
 
 
 def call_FindColor(event):
+	"""Toggle find color mode"""
 	global funcMode
 	if funcMode == 0:
-		tcpClicSock.send(('findColor').encode())
+		send_command('findColor')
 		funcMode = 1
 	else:
-		tcpClicSock.send(('stopCV').encode())
+		send_command('stopCV')
 		funcMode = 0
 
 
 def call_WatchDog(event):
+	"""Toggle watchdog/motion detection mode"""
 	global funcMode
 	if funcMode == 0:
-		tcpClicSock.send(('motionGet').encode())
+		send_command('motionGet')
 		funcMode = 1
 	else:
-		tcpClicSock.send(('stopCV').encode())
+		send_command('stopCV')
 		funcMode = 0
 
 
 def call_Smooth(event):
+	"""Toggle smooth movement mode"""
 	global SmoothMode
 	if SmoothMode == 0:
-		tcpClicSock.send(('slow').encode())
+		send_command('slow')
 		SmoothMode = 1
 	else:
-		tcpClicSock.send(('fast').encode())
+		send_command('fast')
 		SmoothMode = 0
 
+
 def call_SmoothCam(event):
+	"""Toggle smooth camera movement mode"""
 	global SmoothCamMode
 	if SmoothCamMode == 0:
-		tcpClicSock.send(('smoothCam').encode())
+		send_command('smoothCam')
 		SmoothCamMode = 1
 	else:
-		tcpClicSock.send(('smoothCamOff').encode())
+		send_command('smoothCamOff')
 		SmoothCamMode = 0
 
+
 def call_Police(event):
+	"""Toggle police LED mode"""
 	global funcMode
 	if funcMode == 0:
-		tcpClicSock.send(('police').encode())
+		send_command('police')
 		funcMode = 1
 	else:
-		tcpClicSock.send(('policeOff').encode())
+		send_command('policeOff')
 		funcMode = 0
 
+
 def call_Switch_1(event):
+	"""Toggle GPIO Switch 1"""
 	if Switch_1 == 0:
-		tcpClicSock.send(('Switch_1_on').encode())
+		send_command('Switch_1_on')
 	else:
-		tcpClicSock.send(('Switch_1_off').encode())
+		send_command('Switch_1_off')
 
 
 def call_Switch_2(event):
+	"""Toggle GPIO Switch 2"""
 	if Switch_2 == 0:
-		tcpClicSock.send(('Switch_2_on').encode())
+		send_command('Switch_2_on')
 	else:
-		tcpClicSock.send(('Switch_2_off').encode())
+		send_command('Switch_2_off')
 
 
 def call_Switch_3(event):
+	"""Toggle GPIO Switch 3"""
 	if Switch_3 == 0:
-		tcpClicSock.send(('Switch_3_on').encode())
+		send_command('Switch_3_on')
 	else:
-		tcpClicSock.send(('Switch_3_off').encode())
+		send_command('Switch_3_off')
 
 
 def all_btn_red():
-	Btn_Steady.config(bg='#FF6D00', fg='#000000')
-	Btn_FindColor.config(bg='#FF6D00', fg='#000000')
-	Btn_WatchDog.config(bg='#FF6D00', fg='#000000')
-	Btn_Smooth.config(bg='#FF6D00', fg='#000000')
-	Btn_Police.config(bg='#FF6D00', fg='#000000')
+	"""Set all mode buttons to active (red) color"""
+	for btn in [Btn_Steady, Btn_FindColor, Btn_WatchDog, Btn_Smooth, Btn_Police]:
+		btn.config(bg='#FF6D00', fg='#000000')
 
 
 def all_btn_normal():
-	Btn_Steady.config(bg=color_btn, fg=color_text)
-	Btn_FindColor.config(bg=color_btn, fg=color_text)
-	Btn_WatchDog.config(bg=color_btn, fg=color_text)
-	Btn_Smooth.config(bg=color_btn, fg=color_text)
-	Btn_Police.config(bg=color_btn, fg=color_text)
+	"""Set all mode buttons to normal color"""
+	for btn in [Btn_Steady, Btn_FindColor, Btn_WatchDog, Btn_Smooth, Btn_Police]:
+		btn.config(bg=color_btn, fg=color_text)
 
 
+# ==================== Connection Thread ====================
 def connection_thread():
 	global funcMode, Switch_3, Switch_2, Switch_1, SmoothMode, SmoothCamMode, steadyMode
 	global CPU_TEP, CPU_USE, RAM_USE, BATTERY_VOLTAGE
@@ -475,68 +513,94 @@ def connection_thread():
 		print(car_info)
 
 
+# ==================== Connection Functions ====================
 
-def socket_connect():	 #Call this function to connect with the server
-	global ADDR,tcpClicSock,BUFSIZ,ip_stu,ipaddr,ip_adr,video_thread_started
+def update_connection_status(status, color, message=''):
+	"""Update connection status display"""
+	l_ip_4.config(text=status, bg=color)
+	if message:
+		l_ip_5.config(text=message)
+
+
+def get_server_address():
+	"""Get server IP address from Entry or default config"""
+	ip_adr = E1.get()
+
+	if ip_adr == '':
+		ip_adr = num_import('IP:')
+		update_connection_status('Connecting', '#FF8F00', f'Default:{ip_adr}')
+
+	return ip_adr
+
+
+def establish_connection(server_ip, server_port):
+	"""Try to establish connection with server"""
+	global tcpClicSock, ip_stu
+
+	BUFSIZ = 1024
+	ADDR = (server_ip, server_port)
+	tcpClicSock = socket(AF_INET, SOCK_STREAM)
+
+	for i in range(1, 6):  # Try 5 times if disconnected
+		if ip_stu == 1:
+			print(f"Connecting to server @ {server_ip}:{server_port}...")
+			print("Connecting")
+
+			try:
+				tcpClicSock.connect(ADDR)
+				print("Connected")
+				return True
+			except:
+				print(f"Cannot connect to server, try {i}/5 time(s)")
+				update_connection_status(f'Try {i}/5 time(s)', '#EF6C00')
+				time.sleep(1)
+				continue
+		else:
+			break
+
+	return False
+
+
+def start_connection_threads():
+	"""Start connection and video threads"""
+	global video_thread_started
+
+	connection_threading = thread.Thread(target=connection_thread, daemon=True)
+	connection_threading.start()
+
+	print("Waiting for video server to initialize...")
+
+
+def socket_connect():
+	"""Call this function to connect with the server"""
+	global ADDR, tcpClicSock, BUFSIZ, ip_stu, ipaddr, ip_adr, video_thread_started
 
 	# Reset video thread flag for new connection
 	video_thread_started = False
 
-	ip_adr=E1.get()	   #Get the IP address from Entry
+	# Get server address
+	ip_adr = get_server_address()
 
-	if ip_adr == '':	  #If no input IP address in Entry,import a default IP
-		ip_adr=num_import('IP:')
-		l_ip_4.config(text='Connecting')
-		l_ip_4.config(bg='#FF8F00')
-		l_ip_5.config(text='Default:%s'%ip_adr)
-		pass
-	
 	SERVER_IP = ip_adr
-	SERVER_PORT = 10223   #Define port serial 
-	BUFSIZ = 1024		 #Define buffer size
-	ADDR = (SERVER_IP, SERVER_PORT)
-	tcpClicSock = socket(AF_INET, SOCK_STREAM) #Set connection value for socket
+	SERVER_PORT = 10223
 
-	for i in range (1,6): #Try 5 times if disconnected
-		#try:
+	# Try to establish connection
+	if establish_connection(SERVER_IP, SERVER_PORT):
+		# Connection successful
+		update_connection_status('Connected', '#558B2F', f'IP:{ip_adr}')
+
+		replace_num('IP:', ip_adr)
+		E1.config(state='disabled')
+		Btn14.config(state='disabled')
+
+		ip_stu = 0  # '0' means connected
+
+		# Start connection threads
+		start_connection_threads()
+	else:
+		# Connection failed
 		if ip_stu == 1:
-			print("Connecting to server @ %s:%d..." %(SERVER_IP, SERVER_PORT))
-			print("Connecting")
-			tcpClicSock.connect(ADDR)		#Connection with the server
-		
-			print("Connected")
-		
-			l_ip_5.config(text='IP:%s'%ip_adr)
-			l_ip_4.config(text='Connected')
-			l_ip_4.config(bg='#558B2F')
-
-			replace_num('IP:',ip_adr)
-			E1.config(state='disabled')	  #Disable the Entry
-			Btn14.config(state='disabled')   #Disable the Entry
-
-			ip_stu=0						 #'0' means connected
-
-			connection_threading=thread.Thread(target=connection_thread, daemon=True)		 #Define a thread for FPV and OpenCV
-			connection_threading.start()									 #Thread starts
-
-			# NOTE: Video thread will be started when VIDEO_READY signal is received
-			print("Waiting for video server to initialize...")
-
-
-
-			break
-		else:
-			print("Cannot connecting to server,try it latter!")
-			l_ip_4.config(text='Try %d/5 time(s)'%i)
-			l_ip_4.config(bg='#EF6C00')
-			print('Try %d/5 time(s)'%i)
-			ip_stu=1
-			time.sleep(1)
-			continue
-
-	if ip_stu == 1:
-		l_ip_4.config(text='Disconnected')
-		l_ip_4.config(bg='#F44336')
+			update_connection_status('Disconnected', '#F44336')
 
 
 def connect(event):	   #Call this function to connect with the server
