@@ -527,6 +527,14 @@ netstat -ano | findstr :10223
 - `Server/RobotLight.py`: LED-Steuerung (WS2812)
 - `Server/Switch.py`: GPIO Switches
 - `Server/Voltage.py`: Batterie-Überwachung
+- **`Server/ServoTester.py`**: Servo-Test-Tool mit GUI (standalone)
+
+**Tools**:
+- `Server/ServoTester.py`: Standalone GUI zum Testen einzelner Servos
+  - Schieberegler für alle 8 Servo-Kanäle
+  - SSH-fähig (X11-Forwarding)
+  - Mock-Mode für Entwicklung ohne Hardware
+  - Dokumentation: `Docu/SERVO_TESTER_DE.md` / `SERVO_TESTER_EN.md`
 
 ### 11.3 Dokumentation
 
