@@ -80,6 +80,7 @@ pip install -r requirements.txt
 - Kamera: OV5647 (libcamera v0.6.0+rpt20251202)
 - PCA9685 PWM Controller: Adresse **0x40** (früher 0x5F)
 - I²C Bus: busnum=1
+- **ADS7830 ADC**: Adresse **0x48** (Batterie-Überwachung, 8-Kanal 8-Bit)
 - WS2812 LEDs: 16 LEDs (über SPI, optional)
 - MPU6050: Gyroskop/Accelerometer (optional)
 
@@ -89,6 +90,7 @@ sudo i2cdetect -y 1
 ```
 Erwartete Adressen:
 - 0x40: PCA9685 PWM Controller
+- 0x48: ADS7830 ADC (Batterie-Überwachung)
 - 0x68: MPU6050 (optional)
 
 ---
@@ -337,13 +339,24 @@ command = {'data': [r, g, b]}  # RGB Werte
 
 **Client empfängt alle 1-3 Sekunden**:
 ```
-INFO:<CPU_TEMP> <CPU_USAGE> <RAM_USAGE>
+INFO:<CPU_TEMP> <CPU_USAGE> <RAM_USAGE> <BATTERY_VOLTAGE>
 ```
 
-Beispiel: `INFO:58.0 4.3 42.6`
+Beispiel: `INFO:58.0 4.3 42.6 7.8`
 - CPU Temperatur: 58.0°C
 - CPU Auslastung: 4.3%
 - RAM Auslastung: 42.6%
+- Batteriespannung: 7.8V
+
+**GUI Anzeige**:
+- CPU Temp, CPU Usage, RAM Usage: Immer sichtbar
+- **Battery**: Mit Farb-Codierung (Grün/Orange/Rot) basierend auf Ladezustand
+  - Grün: ≥ 60% (≥ 7.44V)
+  - Orange: 30-60% (6.72V - 7.44V)
+  - Rot: < 30% (< 6.72V)
+  - Grau: "N/A" wenn Hardware nicht verfügbar
+
+Dokumentation: `Docu/BATTERY_MONITOR_DE.md` / `Docu/BATTERY_MONITOR_EN.md`
 
 ---
 

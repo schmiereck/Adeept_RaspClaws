@@ -324,7 +324,7 @@ def all_btn_normal():
 
 def connection_thread():
 	global funcMode, Switch_3, Switch_2, Switch_1, SmoothMode, SmoothCamMode, steadyMode
-	global CPU_TEP, CPU_USE, RAM_USE
+	global CPU_TEP, CPU_USE, RAM_USE, BATTERY_VOLTAGE
 	global video_thread_started  # Use the global flag
 
 	while 1:
@@ -347,16 +347,48 @@ def connection_thread():
 			continue
 
 		elif car_info.startswith('INFO:'):
-			# Process CPU/RAM info from server
+			# Process CPU/RAM/Battery info from server
 			try:
 				info_data = car_info[5:].strip()  # Remove 'INFO:' prefix
 				info_get = info_data.split()
-				if len(info_get) >= 3:
+				if len(info_get) >= 4:
+					# New format: CPU_TEMP CPU_USE RAM_USE BATTERY_VOLTAGE
+					CPU_TEP, CPU_USE, RAM_USE, BATTERY_VOLTAGE = info_get[0], info_get[1], info_get[2], info_get[3]
+					CPU_TEP_lab.config(text='CPU Temp: %s℃'%CPU_TEP)
+					CPU_USE_lab.config(text='CPU Usage: %s'%CPU_USE)
+					RAM_lab.config(text='RAM Usage: %s'%RAM_USE)
+
+					# Update battery display with color coding
+					battery_volt = float(BATTERY_VOLTAGE)
+					if battery_volt == 0.0:
+						# Battery monitoring not available
+						BATTERY_lab.config(text='Battery: N/A', bg='#757575', fg=color_text)
+					else:
+						# Calculate percentage (6.0V = 0%, 8.4V = 100%)
+						Vref = 8.4
+						WarningThreshold = 6.0
+						battery_percent = ((battery_volt - WarningThreshold) / (Vref - WarningThreshold)) * 100
+						battery_percent = max(0, min(100, battery_percent))  # Clamp to 0-100%
+
+						# Color coding: green > 60%, orange 30-60%, red < 30%
+						if battery_percent >= 60:
+							bg_color = '#4CAF50'  # Green
+						elif battery_percent >= 30:
+							bg_color = '#FF9800'  # Orange
+						else:
+							bg_color = '#F44336'  # Red
+
+						BATTERY_lab.config(text='Battery: %.1fV (%.0f%%)'%(battery_volt, battery_percent),
+						                   bg=bg_color, fg='#FFFFFF')
+				elif len(info_get) >= 3:
+					# Old format without battery (backwards compatibility)
 					CPU_TEP, CPU_USE, RAM_USE = info_get[0], info_get[1], info_get[2]
 					CPU_TEP_lab.config(text='CPU Temp: %s℃'%CPU_TEP)
 					CPU_USE_lab.config(text='CPU Usage: %s'%CPU_USE)
 					RAM_lab.config(text='RAM Usage: %s'%RAM_USE)
-			except:
+					BATTERY_lab.config(text='Battery: N/A', bg='#757575', fg=color_text)
+			except Exception as e:
+				print(f"⚠ Error processing INFO: {e}")
 				pass
 		elif 'findColor' in car_info:
 			funcMode = 1
@@ -595,7 +627,7 @@ def scale_FL(x,y,w):#1
 
 
 def loop():					  #GUI
-	global tcpClicSock,root,E1,connect,l_ip_4,l_ip_5,color_btn,color_text,Btn14,CPU_TEP_lab,CPU_USE_lab,RAM_lab,canvas_ultra,color_text,var_lip1,var_lip2,var_err,var_R,var_B,var_G,var_ec,Btn_Police,Btn_Steady,Btn_FindColor,Btn_WatchDog,Btn_Fun5,Btn_Fun6,Btn_Switch_1,Btn_Switch_2,Btn_Switch_3,Btn_Smooth,Btn_SmoothCam,color_bg   #1 The value of tcpClicSock changes in the function loop(),would also changes in global so the other functions could use it.
+	global tcpClicSock,root,E1,connect,l_ip_4,l_ip_5,color_btn,color_text,Btn14,CPU_TEP_lab,CPU_USE_lab,RAM_lab,BATTERY_lab,canvas_ultra,color_text,var_lip1,var_lip2,var_err,var_R,var_B,var_G,var_ec,Btn_Police,Btn_Steady,Btn_FindColor,Btn_WatchDog,Btn_Fun5,Btn_Fun6,Btn_Switch_1,Btn_Switch_2,Btn_Switch_3,Btn_Smooth,Btn_SmoothCam,color_bg   #1 The value of tcpClicSock changes in the function loop(),would also changes in global so the other functions could use it.
 	while True:
 		color_bg='#000000'		#Set background color
 		color_text='#E1F5FE'	  #Set text color
@@ -625,12 +657,15 @@ def loop():					  #GUI
 		RAM_lab=tk.Label(root,width=18,text='RAM Usage:',fg=color_text,bg='#212121')
 		RAM_lab.place(x=400,y=75)						 #Define a Label and put it in position
 
+		BATTERY_lab=tk.Label(root,width=18,text='Battery: N/A',fg=color_text,bg='#757575')
+		BATTERY_lab.place(x=400,y=105)					 #Define a Label and put it in position
+
 
 		l_ip_4=tk.Label(root,width=18,text='Disconnected',fg=color_text,bg='#F44336')
-		l_ip_4.place(x=400,y=110)						 #Define a Label and put it in position
+		l_ip_4.place(x=400,y=140)						 #Define a Label and put it in position
 
 		l_ip_5=tk.Label(root,width=18,text='Use default IP',fg=color_text,bg=color_btn)
-		l_ip_5.place(x=400,y=145)						 #Define a Label and put it in position
+		l_ip_5.place(x=400,y=175)						 #Define a Label and put it in position
 
 		E1 = tk.Entry(root,show=None,width=16,bg="#37474F",fg='#eceff1')
 		E1.place(x=180,y=40)							 #Define a Entry and put it in position
