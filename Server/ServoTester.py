@@ -12,15 +12,49 @@ import Adafruit_PCA9685
 # ==================== Servo Configuration ====================
 
 # Servo channel mapping (from Move.py and RPIservo.py)
-SERVO_CHANNELS = {
-    'Head Up/Down': 0,      # Vertical head movement
-    'Head Left/Right': 1,   # Horizontal head rotation
-    'Leg 1': 4,             # Front-right leg
-    'Leg 2': 5,             # Back-right leg
-    'Leg 3': 6,             # Back-left leg
-    'Leg 4': 7,             # Front-left leg
-    'Arm 1': 8,             # Right arm
-    'Arm 2': 9,             # Left arm
+# Each leg has 2 servos: one for rotation (horizontal) and one for height (vertical)
+
+# Layout structure to match hardware
+# Left Side (Channels 0-5)          Right Side (Channels 6-11)
+# Front-Left (Left I): Ch 0-1       Front-Right (Right I): Ch 6-7
+# Back-Left (Left II): Ch 2-3       Back-Right (Right II): Ch 8-9
+# (Left III): Ch 4-5                (Right III): Ch 10-11
+
+SERVO_LAYOUT = {
+    'left': {
+        'Front-Left (Left I)': {
+            'Rotation': 0,
+            'Height': 1
+        },
+        'Back-Left (Left II)': {
+            'Rotation': 2,
+            'Height': 3
+        },
+        'Left III': {
+            'Rotation': 4,
+            'Height': 5
+        }
+    },
+    'right': {
+        'Front-Right (Right I)': {
+            'Rotation': 6,
+            'Height': 7
+        },
+        'Back-Right (Right II)': {
+            'Rotation': 8,
+            'Height': 9
+        },
+        'Right III': {
+            'Rotation': 10,
+            'Height': 11
+        }
+    },
+    'head': {
+        'Head': {
+            'Up/Down': 12,
+            'Left/Right': 13
+        }
+    }
 }
 
 # Default ranges (can be adjusted per servo if needed)
@@ -82,7 +116,7 @@ class ServoTesterGUI:
     def __init__(self, root):
         self.root = root
         self.root.title('Adeept RaspClaws - Servo Tester')
-        self.root.geometry('600x700')
+        self.root.geometry('900x750')
         self.root.configure(bg='#1E1E1E')
 
         # Initialize PWM controller
@@ -104,7 +138,7 @@ class ServoTesterGUI:
         # Title
         title_label = tk.Label(
             self.root,
-            text='Servo Tester',
+            text='Servo Tester - Hardware Layout',
             font=('Arial', 18, 'bold'),
             fg='#E1F5FE',
             bg='#1E1E1E'
@@ -126,16 +160,48 @@ class ServoTesterGUI:
         # Info label
         info_label = tk.Label(
             self.root,
-            text='Move sliders to test each servo',
+            text='Layout reflects robot hardware: Left side | Right side',
             font=('Arial', 10),
             fg='#B0BEC5',
             bg='#1E1E1E'
         )
         info_label.pack(pady=5)
 
-        # Scrollable frame for servos
-        canvas = tk.Canvas(self.root, bg='#1E1E1E', highlightthickness=0)
-        scrollbar = ttk.Scrollbar(self.root, orient='vertical', command=canvas.yview)
+        # Main container for 2-column layout
+        main_frame = tk.Frame(self.root, bg='#1E1E1E')
+        main_frame.pack(fill='both', expand=True, padx=10, pady=10)
+
+        # Create left and right columns
+        self.create_side_column(main_frame, 'left', 'LEFT SIDE', 0)
+        self.create_side_column(main_frame, 'right', 'RIGHT SIDE', 1)
+
+        # Create head section (centered below)
+        self.create_head_section(self.root)
+
+        # Control buttons at bottom
+        self.create_control_buttons()
+
+    def create_side_column(self, parent, side, title, column):
+        """Create a column for left or right side servos"""
+
+        # Column frame
+        column_frame = tk.Frame(parent, bg='#1E1E1E')
+        column_frame.grid(row=0, column=column, sticky='nsew', padx=5)
+        parent.grid_columnconfigure(column, weight=1)
+
+        # Title
+        title_label = tk.Label(
+            column_frame,
+            text=title,
+            font=('Arial', 14, 'bold'),
+            fg='#4CAF50' if side == 'left' else '#FF6D00',
+            bg='#1E1E1E'
+        )
+        title_label.pack(pady=5)
+
+        # Scrollable canvas for servos
+        canvas = tk.Canvas(column_frame, bg='#1E1E1E', highlightthickness=0, height=500)
+        scrollbar = tk.Scrollbar(column_frame, orient='vertical', command=canvas.yview)
         scrollable_frame = tk.Frame(canvas, bg='#1E1E1E')
 
         scrollable_frame.bind(
@@ -146,33 +212,77 @@ class ServoTesterGUI:
         canvas.create_window((0, 0), window=scrollable_frame, anchor='nw')
         canvas.configure(yscrollcommand=scrollbar.set)
 
-        # Create servo controls
-        for servo_name, channel in SERVO_CHANNELS.items():
-            self.create_servo_control(scrollable_frame, servo_name, channel)
+        # Create servo controls for this side
+        for leg_name, servos in SERVO_LAYOUT[side].items():
+            self.create_leg_group(scrollable_frame, leg_name, servos)
 
-        canvas.pack(side='left', fill='both', expand=True, padx=10, pady=10)
+        canvas.pack(side='left', fill='both', expand=True)
         scrollbar.pack(side='right', fill='y')
 
-        # Control buttons at bottom
-        self.create_control_buttons()
+    def create_leg_group(self, parent, leg_name, servos):
+        """Create a group of servos for one leg"""
 
-    def create_servo_control(self, parent, servo_name, channel):
+        # Group frame
+        group_frame = tk.Frame(parent, bg='#2C2C2C', relief='raised', borderwidth=2)
+        group_frame.pack(fill='x', padx=5, pady=10)
+
+        # Leg name header
+        header_label = tk.Label(
+            group_frame,
+            text=leg_name,
+            font=('Arial', 12, 'bold'),
+            fg='#FFD700',
+            bg='#2C2C2C',
+            anchor='w'
+        )
+        header_label.pack(fill='x', padx=10, pady=5)
+
+        # Create servo control for each servo in this leg
+        for servo_function, channel in servos.items():
+            self.create_servo_control(group_frame, f"{servo_function}", channel, compact=True)
+
+    def create_head_section(self, parent):
+        """Create head servo section (centered)"""
+
+        head_frame = tk.Frame(parent, bg='#1E1E1E')
+        head_frame.pack(fill='x', padx=10, pady=5)
+
+        # Title
+        title_label = tk.Label(
+            head_frame,
+            text='HEAD SERVOS',
+            font=('Arial', 14, 'bold'),
+            fg='#2196F3',
+            bg='#1E1E1E'
+        )
+        title_label.pack(pady=5)
+
+        # Container for head servos
+        head_controls = tk.Frame(head_frame, bg='#2C2C2C', relief='raised', borderwidth=2)
+        head_controls.pack(fill='x', padx=100, pady=5)
+
+        # Create head servo controls
+        for leg_name, servos in SERVO_LAYOUT['head'].items():
+            for servo_function, channel in servos.items():
+                self.create_servo_control(head_controls, f"{servo_function}", channel, compact=True)
+
+    def create_servo_control(self, parent, servo_name, channel, compact=False):
         """Create control widgets for a single servo"""
 
         # Frame for this servo
-        frame = tk.Frame(parent, bg='#2C2C2C', relief='raised', borderwidth=1)
-        frame.pack(fill='x', padx=5, pady=5)
+        frame = tk.Frame(parent, bg='#3C3C3C' if compact else '#2C2C2C', relief='flat' if compact else 'raised', borderwidth=1)
+        frame.pack(fill='x', padx=5, pady=3 if compact else 5)
 
         # Servo name and channel
-        header_frame = tk.Frame(frame, bg='#2C2C2C')
-        header_frame.pack(fill='x', padx=10, pady=5)
+        header_frame = tk.Frame(frame, bg='#3C3C3C' if compact else '#2C2C2C')
+        header_frame.pack(fill='x', padx=5, pady=3)
 
         name_label = tk.Label(
             header_frame,
             text=f'{servo_name} (Ch {channel})',
-            font=('Arial', 11, 'bold'),
+            font=('Arial', 10 if compact else 11, 'bold' if not compact else 'normal'),
             fg='#E1F5FE',
-            bg='#2C2C2C',
+            bg='#3C3C3C' if compact else '#2C2C2C',
             anchor='w'
         )
         name_label.pack(side='left')
@@ -181,59 +291,59 @@ class ServoTesterGUI:
         value_label = tk.Label(
             header_frame,
             text=f'{PWM_DEFAULT}',
-            font=('Arial', 11),
+            font=('Arial', 10 if compact else 11),
             fg='#4CAF50',
-            bg='#2C2C2C',
-            anchor='e'
+            bg='#3C3C3C' if compact else '#2C2C2C',
+            anchor='e',
+            width=5
         )
         value_label.pack(side='right')
         self.value_labels[channel] = value_label
 
         # Slider
-        slider_frame = tk.Frame(frame, bg='#2C2C2C')
-        slider_frame.pack(fill='x', padx=10, pady=5)
-
         slider = tk.Scale(
-            slider_frame,
+            frame,
             from_=PWM_MIN,
             to=PWM_MAX,
             orient='horizontal',
-            length=500,
+            length=300 if compact else 500,
             resolution=1,
             command=lambda value, ch=channel: self.on_slider_change(ch, value),
-            bg='#2C2C2C',
+            bg='#3C3C3C' if compact else '#2C2C2C',
             fg='#E1F5FE',
             troughcolor='#424242',
             highlightthickness=0,
-            relief='flat'
+            relief='flat',
+            showvalue=0
         )
         slider.set(PWM_DEFAULT)
-        slider.pack(fill='x')
+        slider.pack(fill='x', padx=5, pady=2)
         self.sliders[channel] = slider
 
-        # Min/Max labels
-        range_frame = tk.Frame(frame, bg='#2C2C2C')
-        range_frame.pack(fill='x', padx=10, pady=2)
+        # Min/Max labels (only if not compact)
+        if not compact:
+            range_frame = tk.Frame(frame, bg='#3C3C3C' if compact else '#2C2C2C')
+            range_frame.pack(fill='x', padx=10, pady=2)
 
-        min_label = tk.Label(
-            range_frame,
-            text=f'Min: {PWM_MIN}',
-            font=('Arial', 8),
-            fg='#B0BEC5',
-            bg='#2C2C2C',
-            anchor='w'
-        )
-        min_label.pack(side='left')
+            min_label = tk.Label(
+                range_frame,
+                text=f'Min: {PWM_MIN}',
+                font=('Arial', 8),
+                fg='#B0BEC5',
+                bg='#3C3C3C' if compact else '#2C2C2C',
+                anchor='w'
+            )
+            min_label.pack(side='left')
 
-        max_label = tk.Label(
-            range_frame,
-            text=f'Max: {PWM_MAX}',
-            font=('Arial', 8),
-            fg='#B0BEC5',
-            bg='#2C2C2C',
-            anchor='e'
-        )
-        max_label.pack(side='right')
+            max_label = tk.Label(
+                range_frame,
+                text=f'Max: {PWM_MAX}',
+                font=('Arial', 8),
+                fg='#B0BEC5',
+                bg='#3C3C3C' if compact else '#2C2C2C',
+                anchor='e'
+            )
+            max_label.pack(side='right')
 
     def create_control_buttons(self):
         """Create control buttons at the bottom"""

@@ -117,18 +117,72 @@ python ServoTester.py
 
 ## Servo-Kanäle
 
-### Kanal-Mapping
+### Kanal-Mapping & Hardware-Layout
 
-| Kanal | Servo-Name       | Funktion                    |
-|-------|------------------|-----------------------------|
-| 0     | Head Up/Down     | Vertikale Kopfbewegung      |
-| 1     | Head Left/Right  | Horizontale Kopfrotation    |
-| 4     | Leg 1            | Vorne-rechts Bein           |
-| 5     | Leg 2            | Hinten-rechts Bein          |
-| 6     | Leg 3            | Hinten-links Bein           |
-| 7     | Leg 4            | Vorne-links Bein            |
-| 8     | Arm 1            | Rechter Arm                 |
-| 9     | Arm 2            | Linker Arm                  |
+Die GUI spiegelt das physische Layout des Roboters wider mit **zwei Spalten** (Links/Rechts).
+
+**Jedes Bein hat 2 Servos**:
+- **Rotation**: Horizontale Bewegung (vor/zurück)
+- **Height**: Vertikale Bewegung (hoch/runter)
+
+#### Linke Seite (Kanäle 0-5)
+
+| Bein               | Position    | Servo-Funktion | Kanal |
+|--------------------|-------------|----------------|-------|
+| **Front-Left**     | Vorne-Links | Rotation       | 0     |
+| **(Left I)**       |             | Height         | 1     |
+| **Back-Left**      | Hinten-Links| Rotation       | 2     |
+| **(Left II)**      |             | Height         | 3     |
+| **Left III**       | ?           | Rotation       | 4     |
+|                    |             | Height         | 5     |
+
+#### Rechte Seite (Kanäle 6-11)
+
+| Bein               | Position     | Servo-Funktion | Kanal |
+|--------------------|--------------|----------------|-------|
+| **Front-Right**    | Vorne-Rechts | Rotation       | 6     |
+| **(Right I)**      |              | Height         | 7     |
+| **Back-Right**     | Hinten-Rechts| Rotation       | 8     |
+| **(Right II)**     |              | Height         | 9     |
+| **Right III**      | ?            | Rotation       | 10    |
+|                    |              | Height         | 11    |
+
+#### Kopf (Kanäle 12-13)
+
+| Komponente | Servo-Funktion | Kanal |
+|------------|----------------|-------|
+| **Head**   | Up/Down        | 12    |
+|            | Left/Right     | 13    |
+
+### GUI-Layout
+
+```
+┌────────────────────────────────────────────────────┐
+│          Servo Tester - Hardware Layout            │
+│               [HARDWARE MODE]                      │
+│   Layout reflects robot hardware: Left | Right     │
+├────────────────────┬───────────────────────────────┤
+│    LEFT SIDE       │       RIGHT SIDE              │
+├────────────────────┼───────────────────────────────┤
+│ Front-Left (I)     │ Front-Right (I)               │
+│  ├─ Rotation [300] │  ├─ Rotation [300]            │
+│  └─ Height   [300] │  └─ Height   [300]            │
+│                    │                               │
+│ Back-Left (II)     │ Back-Right (II)               │
+│  ├─ Rotation [300] │  ├─ Rotation [300]            │
+│  └─ Height   [300] │  └─ Height   [300]            │
+│                    │                               │
+│ Left III           │ Right III                     │
+│  ├─ Rotation [300] │  ├─ Rotation [300]            │
+│  └─ Height   [300] │  └─ Height   [300]            │
+└────────────────────┴───────────────────────────────┘
+                HEAD SERVOS
+        ┌──────────────────────┐
+        │ Up/Down      [300]   │
+        │ Left/Right   [300]   │
+        └──────────────────────┘
+     [Reset] [Min] [Max]       [Quit]
+```
 
 ### PWM-Werte
 
