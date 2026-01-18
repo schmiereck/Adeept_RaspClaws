@@ -33,6 +33,9 @@ try:
 except Exception as e:
 	print("Couldn't import numpy:", e)
 
+# ==================== Global Variables ====================
+BUFSIZ = 1024  # Buffer size for socket communication
+
 ip_stu=1		#Shows connection status
 c_f_stu = 0
 c_b_stu = 0
@@ -537,7 +540,6 @@ def establish_connection(server_ip, server_port):
 	"""Try to establish connection with server"""
 	global tcpClicSock, ip_stu
 
-	BUFSIZ = 1024
 	ADDR = (server_ip, server_port)
 	tcpClicSock = socket(AF_INET, SOCK_STREAM)
 
@@ -573,7 +575,7 @@ def start_connection_threads():
 
 def socket_connect():
 	"""Call this function to connect with the server"""
-	global ADDR, tcpClicSock, BUFSIZ, ip_stu, ipaddr, ip_adr, video_thread_started
+	global ADDR, tcpClicSock, ip_stu, ipaddr, ip_adr, video_thread_started
 
 	# Reset video thread flag for new connection
 	video_thread_started = False
