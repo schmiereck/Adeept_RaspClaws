@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  raspclaws_ros2:
+    build:
+      context: .
+      dockerfile: Dockerfile.ros2
+    container_name: raspclaws_ros2
+
+    # Privileged mode for hardware access (I2C, GPIO, SPI)
+    privileged: true
+
+    # Network mode: host for ROS 2 DDS discovery
+    network_mode: host
+
+    # Device access
+    devices:
+      - /dev/i2c-1:/dev/i2c-1        # I2C for PCA9685 servos
+      - /dev/spidev0.0:/dev/spidev0.0 # SPI for WS2812 LEDs (optional)
+      - /dev/gpiomem:/dev/gpiomem    # GPIO access
+
+    # Environment variables
+    environment:
+      - ROS_DOMAIN_ID=0                # ROS 2 domain ID (0-232)
+      - ROS_LOCALHOST_ONLY=0           # Allow network communication
+      - PYTHONUNBUFFERED=1
+
+    # Restart policy
+    restart: unless-stopped
+
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "ros2", "node", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s

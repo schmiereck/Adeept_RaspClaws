@@ -528,13 +528,25 @@ netstat -ano | findstr :10223
 - `Server/Switch.py`: GPIO Switches
 - `Server/Voltage.py`: Batterie-Überwachung
 - **`Server/ServoTester.py`**: Servo-Test-Tool mit GUI (standalone)
+- **`Server/ROSServer.py`**: ROS 2 Server (in Entwicklung)
 
 **Tools**:
 - `Server/ServoTester.py`: Standalone GUI zum Testen einzelner Servos
-  - Schieberegler für alle 8 Servo-Kanäle
+  - Schieberegler für alle 14 Servo-Kanäle
   - SSH-fähig (X11-Forwarding)
   - Mock-Mode für Entwicklung ohne Hardware
   - Dokumentation: `Docu/SERVO_TESTER_DE.md` / `SERVO_TESTER_EN.md`
+
+**ROS 2 Integration**:
+- `Server/ROSServer.py`: ROS 2 Humble Node
+  - Docker Container (ros-humble-ros-base)
+  - Topics: cmd_vel, battery, cpu_usage, status
+  - Services: reset_servos, set_smooth_mode, set_smooth_cam
+  - Dokumentation: `Docu/ROS2_INTEGRATION_DE.md`
+- `Dockerfile.ros2`: Docker Image für Pi
+- `docker-compose.ros2.yml`: Docker Compose Setup
+- `start_ros2.sh`: Start-Script für Pi
+- `test_ros2_client.sh`: Test-Script für PC/Jetson
 
 ### 11.3 Dokumentation
 
@@ -547,17 +559,46 @@ Alle Dokumente unter `Docu/`:
 
 ## 12. Zukünftige Entwicklung
 
-### 12.1 ROS 2 Integration (Geplant)
+### 12.1 ROS 2 Integration (🚧 In Entwicklung)
 
-**Vorbereitung**:
-- Server-Architektur ist bereits modular
-- Move.py kann als ROS2 Node adaptiert werden
-- FPV Stream kann als ROS2 Topic publiziert werden
+**Status**: Phase 1 - Basis-Implementierung
 
-**Vorschlag**:
-- Separate ROS2 Bridge Node erstellen
-- Bestehende Socket-Kommunikation beibehalten (für Legacy-Clients)
-- Parallele ROS2 Topics hinzufügen
+**Architektur**:
+```
+PC/Jetson (ROS 2 Desktop)
+  ├── Cosmos Reason 2 (Navigation)
+  └── ROS 2 Planner (Path Planning)
+         │
+         ↓ (ROS 2 DDS Network)
+         │
+Raspberry Pi (Docker)
+  └── ROSServer.py (ros-humble-ros-base)
+       └── Move.py / RPIservo.py (Hardware)
+```
+
+**Implementiert**:
+- ✅ ROSServer.py Node
+- ✅ cmd_vel Topic (Bewegungssteuerung)
+- ✅ head_cmd Topic (Kopfbewegung)
+- ✅ Services (reset, smooth_mode, smooth_cam)
+- ✅ Docker Setup (ros-humble-ros-base)
+- ✅ Dokumentation
+
+**In Planung**:
+- [ ] Camera Topic (sensor_msgs/Image)
+- [ ] Odometry Topic
+- [ ] TF Transforms
+- [ ] IMU Integration (MPU6050)
+- [ ] Navigation2 Stack
+- [ ] Cosmos Reason 2 Integration
+
+**Erste Schritte**:
+1. Docker auf Pi installieren
+2. `docker-compose -f docker-compose.ros2.yml build`
+3. `docker-compose -f docker-compose.ros2.yml up -d`
+4. Test: `ros2 node list` (sollte `/raspclaws_node` zeigen)
+
+**Dokumentation**: `Docu/ROS2_INTEGRATION_DE.md`
 
 ### 12.2 Verbesserungsideen
 
