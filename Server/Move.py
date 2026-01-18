@@ -567,6 +567,10 @@ def right_III(pos,wiggle,heightAdjust=0):
 
 
 def move(step_input, speed, command):
+	"""
+	Execute a movement step with interpolation for smoother servo movements.
+	Now uses multiple intermediate steps to avoid jerky movements.
+	"""
 	step_I  = step_input
 	step_II = step_input + 2
 
@@ -575,30 +579,41 @@ def move(step_input, speed, command):
 	if speed == 0:
 		return
 
-	if command == 'no':
-		right_I(step_I, speed, 0)
-		left_II(step_I, speed, 0)
-		right_III(step_I, speed, 0)
+	# Use 5 intermediate steps for smoother movement
+	# This makes servo movements less jerky, especially height changes
+	interpolation_steps = 5
 
-		left_I(step_II, speed, 0)
-		right_II(step_II, speed, 0)
-		left_III(step_II, speed, 0)
-	elif command == 'left':
-		right_I(step_I, speed, 0)
-		left_II(step_I, -speed, 0)
-		right_III(step_I, speed, 0)
+	for i in range(interpolation_steps):
+		# Calculate intermediate speed (gradually increase)
+		intermediate_speed = int(speed * (i + 1) / interpolation_steps)
 
-		left_I(step_II, -speed, 0)
-		right_II(step_II, speed, 0)
-		left_III(step_II, -speed, 0)
-	elif command == 'right':
-		right_I(step_I, -speed, 0)
-		left_II(step_I, speed, 0)
-		right_III(step_I, -speed, 0)
+		if command == 'no':
+			right_I(step_I, intermediate_speed, 0)
+			left_II(step_I, intermediate_speed, 0)
+			right_III(step_I, intermediate_speed, 0)
 
-		left_I(step_II, speed, 0)
-		right_II(step_II, -speed, 0)
-		left_III(step_II, speed, 0)
+			left_I(step_II, intermediate_speed, 0)
+			right_II(step_II, intermediate_speed, 0)
+			left_III(step_II, intermediate_speed, 0)
+		elif command == 'left':
+			right_I(step_I, intermediate_speed, 0)
+			left_II(step_I, -intermediate_speed, 0)
+			right_III(step_I, intermediate_speed, 0)
+
+			left_I(step_II, -intermediate_speed, 0)
+			right_II(step_II, intermediate_speed, 0)
+			left_III(step_II, -intermediate_speed, 0)
+		elif command == 'right':
+			right_I(step_I, -intermediate_speed, 0)
+			left_II(step_I, intermediate_speed, 0)
+			right_III(step_I, -intermediate_speed, 0)
+
+			left_I(step_II, intermediate_speed, 0)
+			right_II(step_II, -intermediate_speed, 0)
+			left_III(step_II, intermediate_speed, 0)
+
+		# Small delay between interpolation steps for smooth movement
+		time.sleep(0.02)  # 20ms between steps = 100ms total for 5 steps
 
 
 def stand():
@@ -1220,7 +1235,9 @@ def execute_movement_step(speed, turn='no'):
 		time.sleep(0.05)  # Servos need time to move!
 	else:
 		move(step_set, speed, turn)
-		time.sleep(0.1)   # Servos need time to move!
+		# move() now has interpolation with sleeps (~100ms total)
+		# Just a small additional sleep for stability
+		time.sleep(0.02)  # Small additional delay
 		increment_step()
 
 
