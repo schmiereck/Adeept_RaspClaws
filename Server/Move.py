@@ -1343,17 +1343,30 @@ def set_turn_and_resume(turn):
 	rm.resume()
 
 
+def set_direction_and_pause(direction):
+	"""Set direction command and pause robot movement"""
+	global direction_command
+	direction_command = direction
+	rm.pause()
+
+
+def set_turn_and_pause():
+	"""Set turn to 'no' and pause robot movement"""
+	global turn_command
+	turn_command = 'no'
+	rm.pause()
+
+
 def handle_movement_command(command):
 	"""Handle movement commands (forward, backward, left, right, stand, no)"""
-	global direction_command
 
 	movement_commands = {
 		'forward': lambda: set_direction_and_resume('forward', 'no'),
 		'backward': lambda: set_direction_and_resume('backward', 'no'),
-		'stand': lambda: (setattr(globals(), 'direction_command', 'stand'), rm.pause()),
+		'stand': lambda: set_direction_and_pause('stand'),
 		'left': lambda: set_turn_and_resume('left'),
 		'right': lambda: set_turn_and_resume('right'),
-		'no': lambda: (setattr(globals(), 'turn_command', 'no'), rm.pause()),
+		'no': lambda: set_turn_and_pause(),
 	}
 
 	if command in movement_commands:
@@ -1366,18 +1379,27 @@ def handle_mode_command(command):
 	"""Handle mode commands (smooth, camera, steady)"""
 	global SmoothMode, SmoothCamMode, steadyMode
 
-	mode_commands = {
-		'slow': lambda: setattr(globals(), 'SmoothMode', 1),
-		'fast': lambda: setattr(globals(), 'SmoothMode', 0),
-		'smoothCam': lambda: setattr(globals(), 'SmoothCamMode', 1),
-		'smoothCamOff': lambda: setattr(globals(), 'SmoothCamMode', 0),
-		'steadyCamera': lambda: (setattr(globals(), 'steadyMode', 1), rm.resume()),
-		'steadyCameraOff': lambda: (setattr(globals(), 'steadyMode', 0), rm.pause()),
-	}
-
-	if command in mode_commands:
-		mode_commands[command]()
+	if command == 'slow':
+		SmoothMode = 1
 		return True
+	elif command == 'fast':
+		SmoothMode = 0
+		return True
+	elif command == 'smoothCam':
+		SmoothCamMode = 1
+		return True
+	elif command == 'smoothCamOff':
+		SmoothCamMode = 0
+		return True
+	elif command == 'steadyCamera':
+		steadyMode = 1
+		rm.resume()
+		return True
+	elif command == 'steadyCameraOff':
+		steadyMode = 0
+		rm.pause()
+		return True
+
 	return False
 
 
