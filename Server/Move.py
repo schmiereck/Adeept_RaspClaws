@@ -694,17 +694,16 @@ def dove_smooth(phase, speed, timeLast, command):
 	if command == 'no':
 		# Forward/backward movement
 		if phase < 0.5:
-			# Group 1 (L1, R2, L3) in air, moving from -speed to +speed
+			# Group 1 (L1, R2, L3) in air, moving from +speed to -speed
 			t = phase * 2  # 0.0 to 1.0
 
-			# Horizontal: smooth transition from -speed to +speed using cosine
-			# Note: Negated to fix direction (positive speed = forward)
-			h1 = -int(speed * math.cos(t * math.pi))  # -speed → +speed
+			# Horizontal: smooth transition from +speed to -speed using cosine
+			h1 = int(speed * math.cos(t * math.pi))  # +speed → -speed
 
 			# Vertical: smooth arc using sine (lift up and down)
 			v1 = int(3 * speed * math.sin(t * math.pi))  # 0 → 3*speed → 0
 
-			# Group 2 (R1, L2, R3) on ground, moving from +speed to -speed
+			# Group 2 (R1, L2, R3) on ground, moving from -speed to +speed
 			h2 = -h1  # Opposite horizontal position
 			v2 = -10  # Stay on ground
 
@@ -717,12 +716,11 @@ def dove_smooth(phase, speed, timeLast, command):
 			dove_Left_II(h2, v2)
 			dove_Right_III(h2, v2)
 		else:
-			# Group 2 (R1, L2, R3) in air, moving from -speed to +speed
+			# Group 2 (R1, L2, R3) in air, moving from +speed to -speed
 			t = (phase - 0.5) * 2  # 0.0 to 1.0
 
 			# Horizontal: smooth transition
-			# Note: Negated to fix direction (positive speed = forward)
-			h2 = -int(speed * math.cos(t * math.pi))  # -speed → +speed
+			h2 = int(speed * math.cos(t * math.pi))  # +speed → -speed
 
 			# Vertical: smooth arc
 			v2 = int(3 * speed * math.sin(t * math.pi))  # 0 → 3*speed → 0
@@ -1439,10 +1437,10 @@ def move_thread():
 		# Step 1: Handle directional movement (forward/backward)
 		# Only one of these will execute per cycle
 		if direction_command == 'forward' and turn_command == 'no':
-			execute_movement_step(35, 'no')
+			execute_movement_step(-35, 'no')  # Negative speed = forward
 			movement_executed = True
 		elif direction_command == 'backward' and turn_command == 'no':
-			execute_movement_step(-35, 'no')
+			execute_movement_step(35, 'no')  # Positive speed = backward
 			movement_executed = True
 
 		# Step 2: Handle turn movement (independent of directional movement)
