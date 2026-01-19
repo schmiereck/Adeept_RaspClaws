@@ -277,7 +277,14 @@ Phase 4: Gruppe B (R1, L2, R3) hebt ab
 - **2 DOF Constraints:** Swing + Lift only, no radius adjustment
 - **Expert Feedback:** Kollege hat Tripod-Gait Prinzip erklärt
 - Vorher: FT42 (Power Management)
-- Nächste: TBD
+- **Nachher: FT44 (Responsive Stop) - Behebt Stop-Problem aus dieser Implementierung**
+
+## Known Issues (behoben in FT44)
+
+⚠️ **Stop-Verhalten:** Diese Implementierung erzwang kompletten 4-Step Zyklus vor Stop.
+- Problem: Button loslassen stoppt erst nach komplettem Zyklus
+- Verzögerung: Bis zu 3 Steps (ca. 0.6s)
+- **Fix:** FT44 implementiert Stop am Ende jedes Steps (4x reaktiver!)
 
 ## Danksagung
 

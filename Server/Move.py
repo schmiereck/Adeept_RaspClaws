@@ -1051,7 +1051,8 @@ def dove(step_input, speed, timeLast, dpi, command):
 				else:
 					pass
 
-				if move_stu == 0 and command == 'no':
+				# Stop at end of step if move_stu == 0 (button released)
+				if move_stu == 0:
 					break
 
 		elif step_input == 2:
@@ -1114,7 +1115,8 @@ def dove(step_input, speed, timeLast, dpi, command):
 				else:
 					pass
 
-				if move_stu == 0 and command == 'no':
+				# Stop at end of step if move_stu == 0 (button released)
+				if move_stu == 0:
 					break
 		elif step_input == 3:
 			# Interpolate second group from +speed to -speed
@@ -1177,7 +1179,8 @@ def dove(step_input, speed, timeLast, dpi, command):
 				else:
 					pass
 
-				if move_stu == 0 and command == 'no':
+				# Stop at end of step if move_stu == 0 (button released)
+				if move_stu == 0:
 					break
 		elif step_input == 4:
 			# Continue smoothly from step 3: interpolate from -speed to +speed
@@ -1238,7 +1241,8 @@ def dove(step_input, speed, timeLast, dpi, command):
 				else:
 					pass
 
-				if move_stu == 0 and command == 'no':
+				# Stop at end of step if move_stu == 0 (button released)
+				if move_stu == 0:
 					break
 	else:
 		speed = -speed
@@ -1261,6 +1265,10 @@ def dove(step_input, speed, timeLast, dpi, command):
 					time.sleep(timeLast/dpi)
 				else:
 					pass
+
+				# Stop at end of step if move_stu == 0 (button released)
+				if move_stu == 0:
+					break
 		elif step_input == 2:
 			# Continue smoothly from step 1 for backward movement
 			num_steps = dpi
@@ -1280,6 +1288,10 @@ def dove(step_input, speed, timeLast, dpi, command):
 					time.sleep(timeLast/dpi)
 				else:
 					pass
+
+				# Stop at end of step if move_stu == 0 (button released)
+				if move_stu == 0:
+					break
 		elif step_input == 3:
 			# Backward movement second group: interpolate from -speed to +speed
 			num_steps = dpi
@@ -1299,6 +1311,10 @@ def dove(step_input, speed, timeLast, dpi, command):
 					time.sleep(timeLast/dpi)
 				else:
 					pass
+
+				# Stop at end of step if move_stu == 0 (button released)
+				if move_stu == 0:
+					break
 		elif step_input == 4:
 			# Continue smoothly from step 3 for backward movement
 			num_steps = dpi
@@ -1318,6 +1334,10 @@ def dove(step_input, speed, timeLast, dpi, command):
 					time.sleep(timeLast/dpi)
 				else:
 					pass
+
+				# Stop at end of step if move_stu == 0 (button released)
+				if move_stu == 0:
+					break
 
 
 def steady_X():
