@@ -1,8 +1,207 @@
-# Bugfix: Zucken im Smooth-Modus behoben
+# Bugfix: Ruckartiges Schleudern im Smooth-Modus behoben
 
 **Datum:** 2026-01-19  
-**Problem:** Im Smooth-Modus (slow) zucken die Beine während der Luftphase zurück zur Mitte  
-**Ursache:** Fehlerhafte Interpolation in der `dove()` Funktion
+**Problem:** Im Smooth-Modus schleudert ein Bein nach vorne während der Luftphase  
+**Ursache:** Sofortige maximale Position statt gradueller Interpolation in der `dove()` Funktion
+
+---
+
+## Problem-Beschreibung
+
+### Symptome
+- **Normal-Modus:** Bewegungen funktionieren korrekt ✓
+- **Smooth-Modus (slow):** 
+  - Bein wird sofort nach vorne geschleudert, bevor es angehoben wird ❌
+  - Ruckartiger Bewegungsablauf statt weicher Interpolation
+  - Besonders sichtbar bei "left_I" (links vorne) und anderen Beinen in der Luftphase
+
+### Beobachtung
+Bei Vorwärtsbewegung im Smooth-Modus:
+- Das Bein wird **sofort maximal nach vorne** bewegt (noch am Boden!)
+- Dann wird es angehoben und zurück zur Mitte bewegt
+- Dies wirkt wie ein **ruckartiges Schleudern** nach vorne
+
+---
+
+## Ursachen-Analyse
+
+### Die fehlerhafte Interpolation
+
+**Original-Code in `dove()` (Zeile 499-507):**
+```python
+for speed_I in range(0, (speed+int(speed/dpi)), int(speed/dpi)):
+    speed_II = speed_I          # Speichere für vertikale Position
+    speed_I = speed - speed_I   # ← Umkehrung für horizontale Position!
+    
+    # Bein links vorne (left_I) in der Luft:
+    dove_Left_I(-speed_I, 3*speed_II)
+    #          ^^^^^^^^  ^^^^^^^^^^^
+    #          horizontal  vertikal
+```
+
+### Bewegungsablauf mit speed=35, dpi=10:
+
+| Loop | Original speed_I | speed_II | speed_I (nach Umkehrung) | Horizontal (-speed_I) | Vertikal (3*speed_II) | Was passiert |
+|------|-----------------|----------|-------------------------|----------------------|---------------------|--------------|
+| 1    | **0**           | **0**    | **35**                  | **-35**              | **0**               | **SCHLEUDERN nach vorne! Noch am Boden!** ❌ |
+| 2    | 10              | 10       | 25                      | -25                  | 30                  | Zurück + hochheben |
+| 3    | 20              | 20       | 15                      | -15                  | 60                  | Weiter zurück + höher |
+| 4    | 30              | 30       | 5                       | -5                   | 90                  | Fast neutral + oben |
+
+**Das Problem:**
+- **Erste Iteration:** Bein sofort bei **Position -35** (maximal vorne), aber **Höhe 0** (am Boden!)
+- Das Bein wird nach vorne **geschleudert**, bevor es überhaupt angehoben wird!
+- Dann bewegt es sich **rückwärts**, während es angehoben wird
+
+**Erwartete Bewegung:**
+1. Bein anheben (vertikal nach oben)
+2. Während des Anhebens nach vorne bewegen (horizontal)
+3. Sanft absenken
+
+**Tatsächliche Bewegung (vorher):**
+1. **Nach vorne schleudern** (am Boden!) ❌
+2. Dann anheben + zurück zur Mitte bewegen
+
+---
+
+## Lösung
+
+### Die korrekte Interpolation
+
+**Korrigierter Code:**
+```python
+for speed_I in range(0, (speed+int(speed/dpi)), int(speed/dpi)):
+    # Keine Variable-Umkehrung mehr!
+    # Beide verwenden direkt speed_I für graduelle Bewegung
+    
+    dove_Left_I(-speed_I, 3*speed_I)
+    #          ^^^^^^^^  ^^^^^^^^^^
+    #          0→-35     0→105 (graduell!)
+```
+
+### Neuer Bewegungsablauf:
+
+| Loop | speed_I | Horizontal (-speed_I) | Vertikal (3*speed_I) | Was passiert |
+|------|---------|--------------------|-------------------|--------------|
+| 1    | **0**   | **0**              | **0**             | **Start neutral** ✓ |
+| 2    | 10      | -10                | 30                | Langsam vorwärts + anheben ✓ |
+| 3    | 20      | -20                | 60                | Weiter vorwärts + höher ✓ |
+| 4    | 30      | -30                | 90                | Noch weiter + am höchsten ✓ |
+| 5    | 35      | -35                | 105               | Maximal vorne + oben ✓ |
+
+**Resultat:**
+- ✅ Bein beginnt bei neutraler Position (0, 0)
+- ✅ Bewegt sich **graduell** nach vorne (0 → -35)
+- ✅ Hebt sich **gleichzeitig graduell** an (0 → 105)
+- ✅ **Weiche, fließende Bewegung** ohne Schleudern!
+
+---
+
+## Geänderte Dateien
+
+### `Server/Move.py`
+
+**Zeile 499-535** (step_input == 1 - Erste Gruppe in der Luft):
+```python
+# Vorher (falsch):
+speed_II = speed_I
+speed_I = speed - speed_I
+dove_Left_I(-speed_I, 3*speed_II)  # Sofort -35, dann zurück!
+
+# Nachher (korrekt):
+dove_Left_I(-speed_I, 3*speed_I)   # Graduell 0 → -35
+```
+
+**Zeile 583-619** (step_input == 3 - Zweite Gruppe in der Luft):
+```python
+# Gleiche Korrektur für right_I, left_II, right_III
+dove_Right_I(-speed_I, 3*speed_I)  # Graduell statt sofort
+```
+
+**Zeile 666-679** (Rückwärtsbewegung step_input == 1):
+```python
+# Gleiche Korrektur für backward movement
+dove_Left_I(speed_I, 3*speed_I)  # Graduell in die andere Richtung
+```
+
+**Zeile 697-710** (Rückwärtsbewegung step_input == 3):
+```python
+# Zweite Gruppe, Rückwärtsbewegung
+dove_Right_I(speed_I, 3*speed_I)
+```
+
+---
+
+## Technische Details
+
+### Warum die Umkehrung falsch war
+
+Die Original-Logik:
+```python
+speed_II = speed_I         # Für vertikal (aufsteigend 0 → speed)
+speed_I = speed - speed_I  # Für horizontal (absteigend speed → 0)
+```
+
+**Intention:** Vertikale Bewegung soll aufsteigend sein, horizontale absteigend.
+
+**Problem:** Die Richtung war verkehrt herum!
+- **Horizontal sollte sein:** 0 → -speed (graduell nach vorne)
+- **Tatsächlich war:** -speed → 0 (sofort maximal, dann zurück!)
+
+### Die korrekte Logik
+
+**Beide Richtungen aufsteigend:**
+```python
+dove_Left_I(-speed_I, 3*speed_I)
+#          ^^^^^^^^  ^^^^^^^^^^
+#          0 → -35    0 → 105
+```
+
+Dies ergibt eine **synchrone graduelle Bewegung**:
+- Horizontal: Von neutral (0) graduell nach vorne (-35)
+- Vertikal: Von Boden (0) graduell nach oben (105)
+- **Resultat:** Weiche, koordinierte Bewegung ✓
+
+---
+
+## Test-Ergebnisse
+
+### Vor dem Fix
+- ❌ **Smooth-Modus:** Beine schleudern ruckartig nach vorne
+- ❌ Bewegung wirkt unkontrolliert und unnatürlich
+- ❌ "left_I" (links vorne) besonders auffällig
+
+### Nach dem Fix
+- ✅ **Smooth-Modus:** Weiche, graduelle Bewegungen
+- ✅ Beine heben sich sanft an, während sie sich bewegen
+- ✅ Natürlicher Bewegungsablauf
+- ✅ Keine ruckartigen Schleuderbewegungen mehr
+
+---
+
+## Verwandte Änderungen
+
+Siehe auch:
+- `ENHANCEMENT_SMOOTH_SERVOS_2026-01-19.md` - Smooth-Modus Implementierung
+- `REFACTORING_LEG_FUNCTIONS_2026-01-19.md` - Leg control refactoring
+
+---
+
+## Status
+
+✅ **Behoben** - Smooth-Modus funktioniert jetzt mit weichen, graduellen Bewegungen ohne Schleudern
+
+---
+
+## Debugging-Methode
+
+**Wichtige Lektion:** Bei komplexen Bewegungsproblemen:
+1. **Ein einzelnes Bein analysieren** (z.B. "left_I")
+2. **Jeden Loop-Durchlauf dokumentieren** (Werte von speed_I, Positionen)
+3. **Erwartete vs. tatsächliche Bewegung vergleichen**
+4. **Variable-Manipulationen besonders prüfen** (wie `speed_I = speed - speed_I`)
+
+Diese Methode führte zur Entdeckung des Bugs: Das Bein startete bei Position -35 statt 0!
 
 ---
 

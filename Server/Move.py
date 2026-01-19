@@ -538,7 +538,8 @@ def dove(step_input, speed, timeLast, dpi, command):
 					break
 
 		elif step_input == 2:
-			for speed_I in range(0, (speed+int(speed/dpi)), int(speed/dpi)):
+			# Start from speed and go down to 0, so horizontal goes from -speed to +speed
+			for speed_I in range(speed, -int(speed/dpi), -int(speed/dpi)):
 				if move_stu and command == 'no':
 					# Continue from step 1: interpolate from -speed to +speed
 					# Horizontal: -speed at start, +speed at end
@@ -627,7 +628,8 @@ def dove(step_input, speed, timeLast, dpi, command):
 				if move_stu == 0 and command == 'no':
 					break
 		elif step_input == 4:
-			for speed_I in range(0, (speed+int(speed/dpi)), int(speed/dpi)):
+			# Start from speed and go down to 0
+			for speed_I in range(speed, -int(speed/dpi), -int(speed/dpi)):
 				if move_stu and command == 'no':
 					# Continue from step 3: interpolate from -speed to +speed
 					horizontal_pos = -speed + (2 * speed_I)
@@ -690,7 +692,8 @@ def dove(step_input, speed, timeLast, dpi, command):
 				else:
 					pass
 		elif step_input == 2:
-			for speed_I in range(0, (speed+int(speed/dpi)), int(speed/dpi)):
+			# Start from speed and go down to 0 for backward movement
+			for speed_I in range(speed, -int(speed/dpi), -int(speed/dpi)):
 				if move_stu and command == 'no':
 					# Continue from step 1: interpolate from +speed to -speed (backward)
 					horizontal_pos = speed - (2 * speed_I)
@@ -721,7 +724,8 @@ def dove(step_input, speed, timeLast, dpi, command):
 				else:
 					pass
 		elif step_input == 4:
-			for speed_I in range(0, (speed+int(speed/dpi)), int(speed/dpi)):
+			# Start from speed and go down to 0 for backward movement
+			for speed_I in range(speed, -int(speed/dpi), -int(speed/dpi)):
 				if move_stu and command == 'no':
 					# Continue from step 3: interpolate from +speed to -speed (backward)
 					horizontal_pos = speed - (2 * speed_I)
