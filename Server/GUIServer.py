@@ -77,9 +77,13 @@ except Exception as e:
 	print(f"⚠ smbus method failed: {e}")
 	# Try method 2: adafruit_bus_device (fallback, like in BatteryLevelMonitoring.py example)
 	try:
-		import board
-		import busio
-		from adafruit_bus_device.i2c_device import I2CDevice
+		# Try to import adafruit libraries (may not be installed)
+		try:
+			import board
+			import busio
+			from adafruit_bus_device.i2c_device import I2CDevice  # type: ignore
+		except ImportError as import_error:
+			raise Exception(f"Adafruit libraries not installed: {import_error}")
 
 		class ADS7830_Adafruit(object):
 			def __init__(self):
@@ -298,37 +302,7 @@ def handle_camera_command(data):
 	return True  # Command was handled
 
 
-def handle_computer_vision_command(data):
-	"""Handle computer vision commands (findColor, motionGet, stopCV, etc.)"""
-	global direction_command, turn_command
-
-	if data == 'findColor':
-		fpv.FindColor(1)
-		tcpCliSock.send('findColor'.encode())
-	elif 'motionGet' in data:
-		fpv.WatchDog(1)
-		tcpCliSock.send('motionGet'.encode())
-	elif 'stopCV' in data:
-		fpv.FindColor(0)
-		fpv.WatchDog(0)
-		fpv.FindLineMode(0)
-		tcpCliSock.send('stopCV'.encode())
-		direction_command = 'stand'
-		turn_command = 'no'
-		move.commandInput('stand')
-		move.commandInput('no')
-	elif 'findColorSet' in data:
-		try:
-			command_dict = ast.literal_eval(data)
-			if 'data' in command_dict and len(command_dict['data']) == 3:
-				r, g, b = command_dict['data']
-				fpv.colorFindSet(r, g, b)
-				print(f"color: r={r}, g={g}, b={b}")
-		except (SyntaxError, ValueError):
-			print("The received string format is incorrect and cannot be parsed.")
-	else:
-		return False  # Command not handled
-	return True  # Command was handled
+# Note: handle_computer_vision_command removed - CV features (FindColor, WatchDog, LineFollow) not needed
 
 
 def handle_speed_command(data):
@@ -389,35 +363,7 @@ def handle_switch_command(data):
 	return True  # Command was handled
 
 
-def handle_line_tracking_command(data):
-	"""Handle line tracking / FindLine commands"""
-	global steadyMode
-
-	if data == 'CVFL' and steadyMode == 0:
-		if not FPV.FindLineMode:
-			FPV.FindLineMode = 1
-			tcpCliSock.send('CVFL_on'.encode())
-	elif data == 'CVFLColorSet 0':
-		FPV.lineColorSet = 0
-	elif data == 'CVFLColorSet 255':
-		FPV.lineColorSet = 255
-	elif 'CVFLL1' in data:
-		try:
-			set_lip1 = data.split()
-			lip1_set = int(set_lip1[1])
-			FPV.linePos_1 = lip1_set
-		except:
-			pass
-	elif 'CVFLL2' in data:
-		try:
-			set_lip2 = data.split()
-			lip2_set = int(set_lip2[1])
-			FPV.linePos_2 = lip2_set
-		except:
-			pass
-	else:
-		return False  # Command not handled
-	return True  # Command was handled
+# Note: handle_line_tracking_command removed - Line Following feature not needed
 
 
 def process_client_command(data):
@@ -427,16 +373,14 @@ def process_client_command(data):
 		return
 	if handle_camera_command(data):
 		return
-	if handle_computer_vision_command(data):
-		return
+	# Note: handle_computer_vision_command removed - CV features not needed
 	if handle_speed_command(data):
 		return
 	if handle_led_command(data):
 		return
 	if handle_switch_command(data):
 		return
-	if handle_line_tracking_command(data):
-		return
+	# Note: handle_line_tracking_command removed - Line Following not needed
 	if handle_power_management_command(data):
 		return
 
