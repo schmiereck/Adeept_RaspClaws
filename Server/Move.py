@@ -31,6 +31,15 @@ pwm13 = 300
 pwm14 = 300
 pwm15 = 300
 
+# Current servo positions (initialized to base positions)
+# These track the actual servo positions for smooth interpolation
+servo_current_pos = [
+	pwm0, pwm1, pwm2, pwm3,
+	pwm4, pwm5, pwm6, pwm7,
+	pwm8, pwm9, pwm10, pwm11,
+	pwm12, pwm13, pwm14, pwm15
+]
+
 '''
 change this variables to 0 to reverse all the servos.
 '''
@@ -147,6 +156,78 @@ target_X = 0
 target_Y = 0
 
 
+# ==================== Servo Position Tracking & Smooth Interpolation ====================
+
+def set_servo_smooth(channel, target_pos, steps=5):
+	"""
+	Smoothly move servo from current position to target position.
+	Automatically updates servo_current_pos[channel].
+
+	Args:
+		channel: Servo channel (0-15)
+		target_pos: Target PWM position
+		steps: Number of interpolation steps (default 5)
+	"""
+	global servo_current_pos
+
+	if channel < 0 or channel > 15:
+		return
+
+	current = servo_current_pos[channel]
+
+	# If already at target, just set it
+	if abs(current - target_pos) < 2:
+		pwm.set_pwm(channel, 0, target_pos)
+		servo_current_pos[channel] = target_pos
+		return
+
+	# Interpolate from current to target
+	for i in range(steps + 1):
+		t = i / steps
+		pos = int(current + (target_pos - current) * t)
+		pwm.set_pwm(channel, 0, pos)
+		time.sleep(0.002)  # Small delay for smooth motion
+
+	# Update tracked position
+	servo_current_pos[channel] = target_pos
+
+
+def set_servo_immediate(channel, target_pos):
+	"""
+	Immediately set servo position without interpolation.
+	Updates servo_current_pos[channel].
+
+	Args:
+		channel: Servo channel (0-15)
+		target_pos: Target PWM position
+	"""
+	global servo_current_pos
+
+	if channel < 0 or channel > 15:
+		return
+
+	pwm.set_pwm(channel, 0, target_pos)
+	servo_current_pos[channel] = target_pos
+
+
+def get_servo_pos(channel):
+	"""
+	Get current servo position.
+
+	Args:
+		channel: Servo channel (0-15)
+
+	Returns:
+		Current PWM position
+	"""
+	if channel < 0 or channel > 15:
+		return 300  # Default
+	return servo_current_pos[channel]
+
+
+# ==================== End of Position Tracking ====================
+
+
 '''
 Set a default pwm value for all servos.
 '''
@@ -164,6 +245,9 @@ def mpu6050Test():
 
 		
 def init_all():
+	global servo_current_pos
+
+	# Initialize all servos to base positions
 	pwm.set_pwm(0, 0, pwm0)
 	pwm.set_pwm(1, 0, pwm1)
 	pwm.set_pwm(2, 0, pwm2)
@@ -184,6 +268,14 @@ def init_all():
 	pwm.set_pwm(14, 0, pwm14)
 	pwm.set_pwm(15, 0, pwm15)
 	
+	# Update position tracking
+	servo_current_pos = [
+		pwm0, pwm1, pwm2, pwm3,
+		pwm4, pwm5, pwm6, pwm7,
+		pwm8, pwm9, pwm10, pwm11,
+		pwm12, pwm13, pwm14, pwm15
+	]
+
 
 init_all()
 
@@ -416,75 +508,99 @@ def stand():
 making the servo moves smooth.
 '''
 def dove_Left_I(horizontal, vertical):
+	# Horizontal servo (channel 0)
 	if leftSide_direction:
-		pwm.set_pwm(0,0,pwm0 + horizontal)
+		target_h = pwm0 + horizontal
 	else:
-		pwm.set_pwm(0,0,pwm0 - horizontal)
+		target_h = pwm0 - horizontal
+	set_servo_smooth(0, target_h, steps=3)
 
+	# Vertical servo (channel 1)
 	if leftSide_height:
-		pwm.set_pwm(1,0,pwm1+vertical)
+		target_v = pwm1 + vertical
 	else:
-		pwm.set_pwm(1,0,pwm1-vertical)
+		target_v = pwm1 - vertical
+	set_servo_smooth(1, target_v, steps=3)
 
 
 def dove_Left_II(horizontal, vertical):
+	# Horizontal servo (channel 2)
 	if leftSide_direction:
-		pwm.set_pwm(2,0,pwm2 + horizontal)
+		target_h = pwm2 + horizontal
 	else:
-		pwm.set_pwm(2,0,pwm2 - horizontal)
+		target_h = pwm2 - horizontal
+	set_servo_smooth(2, target_h, steps=3)
 
+	# Vertical servo (channel 3)
 	if leftSide_height:
-		pwm.set_pwm(3,0,pwm3+vertical)
+		target_v = pwm3 + vertical
 	else:
-		pwm.set_pwm(3,0,pwm3-vertical)
+		target_v = pwm3 - vertical
+	set_servo_smooth(3, target_v, steps=3)
 
 
 def dove_Left_III(horizontal, vertical):
+	# Horizontal servo (channel 4)
 	if leftSide_direction:
-		pwm.set_pwm(4,0,pwm4 + horizontal)
+		target_h = pwm4 + horizontal
 	else:
-		pwm.set_pwm(4,0,pwm4 - horizontal)
+		target_h = pwm4 - horizontal
+	set_servo_smooth(4, target_h, steps=3)
 
+	# Vertical servo (channel 5)
 	if leftSide_height:
-		pwm.set_pwm(5,0,pwm5+vertical)
+		target_v = pwm5 + vertical
 	else:
-		pwm.set_pwm(5,0,pwm5-vertical)
+		target_v = pwm5 - vertical
+	set_servo_smooth(5, target_v, steps=3)
 
 
 def dove_Right_I(horizontal, vertical):
+	# Horizontal servo (channel 6)
 	if rightSide_direction:
-		pwm.set_pwm(6,0,pwm6 + horizontal)
+		target_h = pwm6 + horizontal
 	else:
-		pwm.set_pwm(6,0,pwm6 - horizontal)
+		target_h = pwm6 - horizontal
+	set_servo_smooth(6, target_h, steps=3)
 
+	# Vertical servo (channel 7)
 	if rightSide_height:
-		pwm.set_pwm(7,0,pwm7+vertical)
+		target_v = pwm7 + vertical
 	else:
-		pwm.set_pwm(7,0,pwm7-vertical)
+		target_v = pwm7 - vertical
+	set_servo_smooth(7, target_v, steps=3)
 
 
 def dove_Right_II(horizontal, vertical):
+	# Horizontal servo (channel 8)
 	if rightSide_direction:
-		pwm.set_pwm(8,0,pwm8 + horizontal)
+		target_h = pwm8 + horizontal
 	else:
-		pwm.set_pwm(8,0,pwm8 - horizontal)
+		target_h = pwm8 - horizontal
+	set_servo_smooth(8, target_h, steps=3)
 
+	# Vertical servo (channel 9)
 	if rightSide_height:
-		pwm.set_pwm(9,0,pwm9+vertical)
+		target_v = pwm9 + vertical
 	else:
-		pwm.set_pwm(9,0,pwm9-vertical)
+		target_v = pwm9 - vertical
+	set_servo_smooth(9, target_v, steps=3)
 
 
 def dove_Right_III(horizontal, vertical):
+	# Horizontal servo (channel 10)
 	if rightSide_direction:
-		pwm.set_pwm(10,0,pwm10 + horizontal)
+		target_h = pwm10 + horizontal
 	else:
-		pwm.set_pwm(10,0,pwm10 - horizontal)
+		target_h = pwm10 - horizontal
+	set_servo_smooth(10, target_h, steps=3)
 
+	# Vertical servo (channel 11)
 	if rightSide_height:
-		pwm.set_pwm(11,0,pwm11+vertical)
+		target_v = pwm11 + vertical
 	else:
-		pwm.set_pwm(11,0,pwm11-vertical)
+		target_v = pwm11 - vertical
+	set_servo_smooth(11, target_v, steps=3)
 
 
 def dove(step_input, speed, timeLast, dpi, command):
