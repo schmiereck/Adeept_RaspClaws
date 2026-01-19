@@ -215,7 +215,7 @@ def info_send_client():
             servo_positions = move.get_servo_positions_info()
             info_data = 'INFO:' + get_cpu_tempfunc() + ' ' + get_cpu_use() + ' ' + get_ram_info() + ' ' + battery_voltage + ' | ' + servo_positions + '\n'
             tcpCliSock.send(info_data.encode())
-            time.sleep(1)
+            time.sleep(0.2)  # 200ms update interval for better servo analysis
         except Exception as e:
             print(f"⚠ Failed to send INFO: {e}")
             sys.stdout.flush()

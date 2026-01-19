@@ -440,9 +440,10 @@ def connection_thread():
 					RAM_lab.config(text='RAM Usage: %s'%RAM_USE)
 					BATTERY_lab.config(text='Battery: N/A', bg='#757575', fg=color_text)
 
-					# Log servo positions to terminal
+					# Log servo positions to terminal with timestamp
 					if servo_info:
-						print(f"[SERVOS] {servo_info}")
+						timestamp = int(time.time() * 1000)  # Milliseconds since epoch
+						print(f"[{timestamp}] [SERVOS] {servo_info}")
 
 			except Exception as e:
 				print(f"⚠ Error processing INFO: {e}")
