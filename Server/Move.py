@@ -498,11 +498,12 @@ def dove(step_input, speed, timeLast, dpi, command):
 		if step_input == 1:
 			for speed_I in range(0, (speed+int(speed/dpi)), int(speed/dpi)):
 				if move_stu and command == 'no':
-					speed_II = speed_I
-					speed_I = speed - speed_I
-					dove_Left_I(-speed_I, 3*speed_II)
-					dove_Right_II(-speed_I, 3*speed_II)
-					dove_Left_III(-speed_I, 3*speed_II)
+					# Gradual lift and forward motion
+					# Horizontal: gradually move forward (0 to -speed)
+					# Vertical: gradually lift up (0 to 3*speed)
+					dove_Left_I(-speed_I, 3*speed_I)
+					dove_Right_II(-speed_I, 3*speed_I)
+					dove_Left_III(-speed_I, 3*speed_I)
 
 					dove_Right_I(speed_I, -10)
 					dove_Left_II(speed_I, -10)
@@ -512,22 +513,19 @@ def dove(step_input, speed, timeLast, dpi, command):
 					pass
 
 				if command == 'left':
-					speed_II = speed_I
-					speed_I = speed - speed_I
-					dove_Left_I(speed_I, 3*speed_II)
-					dove_Right_II(-speed_I, 3*speed_II)
-					dove_Left_III(speed_I, 3*speed_II)
+					# Same logic for left turn
+					dove_Left_I(speed_I, 3*speed_I)
+					dove_Right_II(-speed_I, 3*speed_I)
+					dove_Left_III(speed_I, 3*speed_I)
 
 					dove_Right_I(speed_I, -10)
 					dove_Left_II(-speed_I, -10)
 					dove_Right_III(speed_I, -10)
 					time.sleep(timeLast/dpi)
 				elif command == 'right':
-					speed_II = speed_I
-					speed_I = speed - speed_I
-					dove_Left_I(-speed_I, 3*speed_II)
-					dove_Right_II(speed_I, 3*speed_II)
-					dove_Left_III(-speed_I, 3*speed_II)
+					dove_Left_I(-speed_I, 3*speed_I)
+					dove_Right_II(speed_I, 3*speed_I)
+					dove_Left_III(-speed_I, 3*speed_I)
 
 					dove_Right_I(-speed_I, -10)
 					dove_Left_II(speed_I, -10)
@@ -585,40 +583,37 @@ def dove(step_input, speed, timeLast, dpi, command):
 		elif step_input == 3:
 			for speed_I in range(0, (speed+int(speed/dpi)), int(speed/dpi)):
 				if move_stu and command == 'no':
-					speed_II = speed_I
-					speed_I = speed - speed_I
+					# Gradual lift and forward motion for second group
+					# Horizontal: gradually move forward
+					# Vertical: gradually lift up
 					dove_Left_I(speed_I, -10)
 					dove_Right_II(speed_I, -10)
 					dove_Left_III(speed_I, -10)
 
-					dove_Right_I(-speed_I, 3*speed_II)
-					dove_Left_II(-speed_I, 3*speed_II)
-					dove_Right_III(-speed_I, 3*speed_II)
+					dove_Right_I(-speed_I, 3*speed_I)
+					dove_Left_II(-speed_I, 3*speed_I)
+					dove_Right_III(-speed_I, 3*speed_I)
 					time.sleep(timeLast/dpi)
 				else:
 					pass
 
 				if command == 'left':
-					speed_II = speed_I
-					speed_I = speed - speed_I
 					dove_Left_I(-speed_I, -10)
 					dove_Right_II(speed_I, -10)
 					dove_Left_III(-speed_I, -10)
 
-					dove_Right_I(-speed_I, 3*speed_II)
-					dove_Left_II(speed_I, 3*speed_II)
-					dove_Right_III(-speed_I, 3*speed_II)
+					dove_Right_I(-speed_I, 3*speed_I)
+					dove_Left_II(speed_I, 3*speed_I)
+					dove_Right_III(-speed_I, 3*speed_I)
 					time.sleep(timeLast/dpi)
 				elif command == 'right':
-					speed_II = speed_I
-					speed_I = speed - speed_I
 					dove_Left_I(speed_I, -10)
 					dove_Right_II(-speed_I, -10)
 					dove_Left_III(speed_I, -10)
 
-					dove_Right_I(speed_I, 3*speed_II)
-					dove_Left_II(-speed_I, 3*speed_II)
-					dove_Right_III(speed_I, 3*speed_II)
+					dove_Right_I(speed_I, 3*speed_I)
+					dove_Left_II(-speed_I, 3*speed_I)
+					dove_Right_III(speed_I, 3*speed_I)
 					time.sleep(timeLast/dpi)
 				else:
 					pass
@@ -673,11 +668,10 @@ def dove(step_input, speed, timeLast, dpi, command):
 		if step_input == 1:
 			for speed_I in range(0, (speed+int(speed/dpi)), int(speed/dpi)):
 				if move_stu and command == 'no':
-					speed_II = speed_I
-					speed_I = speed - speed_I
-					dove_Left_I(speed_I, 3*speed_II)
-					dove_Right_II(speed_I, 3*speed_II)
-					dove_Left_III(speed_I, 3*speed_II)
+					# Gradual backward movement
+					dove_Left_I(speed_I, 3*speed_I)
+					dove_Right_II(speed_I, 3*speed_I)
+					dove_Left_III(speed_I, 3*speed_I)
 
 					dove_Right_I(-speed_I, -10)
 					dove_Left_II(-speed_I, -10)
@@ -703,15 +697,14 @@ def dove(step_input, speed, timeLast, dpi, command):
 		elif step_input == 3:
 			for speed_I in range(0, (speed+int(speed/dpi)), int(speed/dpi)):
 				if move_stu and command == 'no':
-					speed_II = speed_I
-					speed_I = speed - speed_I
+					# Gradual backward movement for second group
 					dove_Left_I(-speed_I, -10)
 					dove_Right_II(-speed_I, -10)
 					dove_Left_III(-speed_I, -10)
 
-					dove_Right_I(speed_I, 3*speed_II)
-					dove_Left_II(speed_I, 3*speed_II)
-					dove_Right_III(speed_I, 3*speed_II)
+					dove_Right_I(speed_I, 3*speed_I)
+					dove_Left_II(speed_I, 3*speed_I)
+					dove_Right_III(speed_I, 3*speed_I)
 					time.sleep(timeLast/dpi)
 				else:
 					pass
