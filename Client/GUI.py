@@ -352,13 +352,13 @@ def call_Switch_3(event):
 
 def all_btn_red():
 	"""Set all mode buttons to active (red) color"""
-	for btn in [Btn_Steady, Btn_FindColor, Btn_WatchDog, Btn_Smooth, Btn_Police]:
+	for btn in [Btn_Steady, Btn_FindColor, Btn_WatchDog, Btn_Police]:
 		btn.config(bg='#FF6D00', fg='#000000')
 
 
 def all_btn_normal():
 	"""Set all mode buttons to normal color"""
-	for btn in [Btn_Steady, Btn_FindColor, Btn_WatchDog, Btn_Smooth, Btn_Police]:
+	for btn in [Btn_Steady, Btn_FindColor, Btn_WatchDog, Btn_Police]:
 		btn.config(bg=color_btn, fg=color_text)
 
 
@@ -464,15 +464,7 @@ def connection_thread():
 			SmoothMode = 1
 			Btn_WatchDog.config(bg='#FF6D00', fg='#000000')
 
-		elif 'slow' in car_info:
-			funcMode = 1
-			SmoothMode = 1
-			Btn_Smooth.config(bg='#FF6D00', fg='#000000')
-
-		elif 'fast' in car_info:
-			funcMode = 0
-			SmoothMode = 0
-			Btn_Smooth.config(bg=color_btn, fg=color_text)
+		# Note: slow/fast messages removed - movement is always smooth now
 
 		elif 'smoothCam' in car_info:
 			SmoothCamMode = 1
@@ -707,7 +699,7 @@ def scale_FL(x,y,w):#1
 
 
 def loop():					  #GUI
-	global tcpClicSock,root,E1,connect,l_ip_4,l_ip_5,color_btn,color_text,Btn14,CPU_TEP_lab,CPU_USE_lab,RAM_lab,BATTERY_lab,canvas_ultra,color_text,var_lip1,var_lip2,var_err,var_R,var_B,var_G,var_ec,Btn_Police,Btn_Steady,Btn_FindColor,Btn_WatchDog,Btn_Fun5,Btn_Fun6,Btn_Switch_1,Btn_Switch_2,Btn_Switch_3,Btn_Smooth,Btn_SmoothCam,color_bg   #1 The value of tcpClicSock changes in the function loop(),would also changes in global so the other functions could use it.
+	global tcpClicSock,root,E1,connect,l_ip_4,l_ip_5,color_btn,color_text,Btn14,CPU_TEP_lab,CPU_USE_lab,RAM_lab,BATTERY_lab,canvas_ultra,color_text,var_lip1,var_lip2,var_err,var_R,var_B,var_G,var_ec,Btn_Police,Btn_Steady,Btn_FindColor,Btn_WatchDog,Btn_Fun5,Btn_Fun6,Btn_Switch_1,Btn_Switch_2,Btn_Switch_3,Btn_SmoothCam,color_bg   #1 The value of tcpClicSock changes in the function loop(),would also changes in global so the other functions could use it.
 	while True:
 		color_bg='#000000'		#Set background color
 		color_text='#E1F5FE'	  #Set text color
@@ -893,65 +885,63 @@ def loop():					  #GUI
 		showvalue=1,tickinterval=None,resolution=1,variable=var_G,troughcolor='#00E676',command=G_send,fg=color_text,bg=color_bg,highlightthickness=0)
 		Scale_G.place(x=30,y=360)							#Define a Scale and put it in position
 
-		var_B = tk.StringVar()
-		var_B.set(80)
+	var_B = tk.StringVar()
+	var_B.set(80)
 
-		Scale_B = tk.Scale(root,label=None,
-		from_=0,to=255,orient=tk.HORIZONTAL,length=238,
-		showvalue=1,tickinterval=None,resolution=1,variable=var_B,troughcolor='#448AFF',command=B_send,fg=color_text,bg=color_bg,highlightthickness=0)
-		Scale_B.place(x=30,y=390)							#Define a Scale and put it in position
-  
-		canvas_cover=tk.Canvas(root,bg=color_bg,height=30,width=510,highlightthickness=0)
-		canvas_cover.place(x=30,y=330+90)
-		canvas_show=tk.Canvas(root,bg=RGB_to_Hex(int(var_R.get()), int(var_G.get()), int(var_B.get())),height=35,width=170,highlightthickness=0)
-		canvas_show.place(x=238+30+21,y=330+15)
+	Scale_B = tk.Scale(root,label=None,
+	from_=0,to=255,orient=tk.HORIZONTAL,length=238,
+	showvalue=1,tickinterval=None,resolution=1,variable=var_B,troughcolor='#448AFF',command=B_send,fg=color_text,bg=color_bg,highlightthickness=0)
+	Scale_B.place(x=30,y=390)							#Define a Scale and put it in position
 
-
-		Btn_WB = tk.Button(root, width=23, text='Color Set',fg=color_text,bg='#212121',relief='ridge')
-		Btn_WB.place(x=30+238+21,y=330+60)
-		Btn_WB.bind('<ButtonPress-1>', call_SET)
-  
-		var_ec = tk.StringVar() #Z start
-		var_ec.set(0)			
+	canvas_cover=tk.Canvas(root,bg=color_bg,height=30,width=510,highlightthickness=0)
+	canvas_cover.place(x=30,y=330+90)
+	canvas_show=tk.Canvas(root,bg=RGB_to_Hex(int(var_R.get()), int(var_G.get()), int(var_B.get())),height=35,width=170,highlightthickness=0)
+	canvas_show.place(x=238+30+21,y=330+15)
 
 
-		Btn_Steady = tk.Button(root, width=10, text='Steady [Z]',fg=color_text,bg=color_btn,relief='ridge')
-		Btn_Steady.place(x=30,y=445)
-		root.bind('<KeyPress-z>', call_steady)
-		Btn_Steady.bind('<ButtonPress-1>', call_steady)
+	Btn_WB = tk.Button(root, width=23, text='Color Set',fg=color_text,bg='#212121',relief='ridge')
+	Btn_WB.place(x=30+238+21,y=330+60)
+	Btn_WB.bind('<ButtonPress-1>', call_SET)
 
-		Btn_FindColor = tk.Button(root, width=10, text='FindColor [X]',fg=color_text,bg=color_btn,relief='ridge')
-		Btn_FindColor.place(x=115,y=445)
-		root.bind('<KeyPress-x>', call_FindColor)
-		Btn_FindColor.bind('<ButtonPress-1>', call_FindColor)
+	var_ec = tk.StringVar() #Z start
+	var_ec.set(0)
 
-		Btn_WatchDog = tk.Button(root, width=10, text='WatchDog [C]',fg=color_text,bg=color_btn,relief='ridge')
-		Btn_WatchDog.place(x=200,y=445)
-		root.bind('<KeyPress-c>', call_WatchDog)
-		Btn_WatchDog.bind('<ButtonPress-1>', call_WatchDog)
 
-		Btn_Smooth = tk.Button(root, width=10, text='Slow [V]',fg=color_text,bg=color_btn,relief='ridge')
-		Btn_Smooth.place(x=285,y=445)
-		root.bind('<KeyPress-v>', call_Smooth)
-		Btn_Smooth.bind('<ButtonPress-1>', call_Smooth)
+	Btn_Steady = tk.Button(root, width=10, text='Steady [Z]',fg=color_text,bg=color_btn,relief='ridge')
+	Btn_Steady.place(x=30,y=445)
+	root.bind('<KeyPress-z>', call_steady)
+	Btn_Steady.bind('<ButtonPress-1>', call_steady)
 
-		Btn_Police = tk.Button(root, width=10, text='Police [B]',fg=color_text,bg=color_btn,relief='ridge')
-		Btn_Police.place(x=370,y=445)
-		root.bind('<KeyPress-b>', call_Police)
-		Btn_Police.bind('<ButtonPress-1>', call_Police)
+	Btn_FindColor = tk.Button(root, width=10, text='FindColor [X]',fg=color_text,bg=color_btn,relief='ridge')
+	Btn_FindColor.place(x=115,y=445)
+	root.bind('<KeyPress-x>', call_FindColor)
+	Btn_FindColor.bind('<ButtonPress-1>', call_FindColor)
 
-		# Second row - SmoothCam button
-		Btn_SmoothCam = tk.Button(root, width=10, text='Smooth-Cam [N]',fg=color_text,bg=color_btn,relief='ridge')
-		Btn_SmoothCam.place(x=455,y=445)
-		root.bind('<KeyPress-n>', call_SmoothCam)
-		Btn_SmoothCam.bind('<ButtonPress-1>', call_SmoothCam)
+	Btn_WatchDog = tk.Button(root, width=10, text='WatchDog [C]',fg=color_text,bg=color_btn,relief='ridge')
+	Btn_WatchDog.place(x=200,y=445)
+	root.bind('<KeyPress-c>', call_WatchDog)
+	Btn_WatchDog.bind('<ButtonPress-1>', call_WatchDog)
 
-		scale_FL(30,490,315)#1
+	# Note: Slow/Fast button removed - movement is always smooth now
+	# Speed adjustment will be implemented via speed parameter in the future
 
-		global stat
-		if stat==0:			  # Ensure the mainloop runs only once
-			root.mainloop()  # Run the mainloop()
-			stat=1		   # Change the value to '1' so the mainloop() would not run again.
+	Btn_Police = tk.Button(root, width=10, text='Police [B]',fg=color_text,bg=color_btn,relief='ridge')
+	Btn_Police.place(x=285,y=445)  # Moved left to fill gap
+	root.bind('<KeyPress-b>', call_Police)
+	Btn_Police.bind('<ButtonPress-1>', call_Police)
+
+	# Second row - SmoothCam button
+	Btn_SmoothCam = tk.Button(root, width=10, text='Smooth-Cam [N]',fg=color_text,bg=color_btn,relief='ridge')
+	Btn_SmoothCam.place(x=455,y=445)
+	root.bind('<KeyPress-n>', call_SmoothCam)
+	Btn_SmoothCam.bind('<ButtonPress-1>', call_SmoothCam)
+
+	scale_FL(30,490,315)#1
+
+	global stat
+	if stat==0:			  # Ensure the mainloop runs only once
+		root.mainloop()  # Run the mainloop()
+		stat=1		   # Change the value to '1' so the mainloop() would not run again.
 
 
 if __name__ == '__main__':

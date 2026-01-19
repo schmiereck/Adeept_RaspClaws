@@ -1364,24 +1364,18 @@ def increment_step():
 
 def execute_movement_step(speed, turn='no'):
 	"""
-	Execute a single movement step with smooth or normal mode
+	Execute a single movement step using smooth sine-curve movement.
 
 	Args:
 		speed: Movement speed (positive for forward, negative for backward)
 		turn: Turn command ('left', 'right', or 'no')
-	"""
-	global step_set
 
-	if SmoothMode:
-		# NEW: Use continuous smooth movement with sine curves
-		move_smooth(abs(speed), turn, cycle_steps=30)
-		# Note: move_smooth handles the full cycle internally
-	else:
-		move(step_set, speed, turn)
-		# move() now has interpolation with sleeps (~100ms total)
-		# Just a small additional sleep for stability
-		time.sleep(0.02)  # Small additional delay
-		increment_step()
+	Note: Always uses smooth movement with sine curves (old normal mode removed).
+	      Speed parameter can be adjusted in the future for variable speeds.
+	"""
+	# Always use smooth movement with sine curves
+	# Old step-based move() function is deprecated
+	move_smooth(abs(speed), turn, cycle_steps=30)
 
 
 
@@ -1534,21 +1528,28 @@ def handle_movement_command(command):
 
 
 def handle_mode_command(command):
-	"""Handle mode commands (smooth, camera, steady)"""
+	"""
+	Handle mode commands (camera, steady).
+
+	Note: slow/fast removed - movement is always smooth now.
+	"""
 	global SmoothMode, SmoothCamMode, steadyMode
 
+	# Legacy slow/fast support (does nothing, just sets flag for backwards compat)
 	if command == 'slow':
-		SmoothMode = 1
+		SmoothMode = 1  # Keep for backwards compatibility
 		return True
 	elif command == 'fast':
-		SmoothMode = 0
+		SmoothMode = 0  # Keep for backwards compatibility
 		return True
+	# Camera smooth mode (independent from movement)
 	elif command == 'smoothCam':
 		SmoothCamMode = 1
 		return True
 	elif command == 'smoothCamOff':
 		SmoothCamMode = 0
 		return True
+	# Steady camera mode
 	elif command == 'steadyCamera':
 		steadyMode = 1
 		rm.resume()

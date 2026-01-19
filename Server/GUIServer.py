@@ -328,16 +328,19 @@ def handle_computer_vision_command(data):
 
 
 def handle_speed_command(data):
-	"""Handle speed control commands (fast, slow)"""
-	if data == 'fast':
-		move.commandInput(data)
-		tcpCliSock.send('fast'.encode())
-	elif data == 'slow':
-		move.commandInput(data)
-		tcpCliSock.send('slow'.encode())
-	else:
-		return False  # Command not handled
-	return True  # Command was handled
+	"""
+	Handle speed control commands.
+
+	Note: fast/slow modes removed - always uses smooth movement now.
+	      This function kept for backwards compatibility but does nothing.
+	      Speed adjustment will be implemented in the future via speed parameter.
+	"""
+	if data == 'fast' or data == 'slow':
+		# Deprecated: Movement is always smooth now
+		# Just acknowledge the command for backwards compatibility
+		tcpCliSock.send(data.encode())
+		return True
+	return False  # Command not handled
 
 
 def handle_led_command(data):
