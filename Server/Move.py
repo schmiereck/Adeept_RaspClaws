@@ -515,6 +515,27 @@ def move(step_input, speed, command):
 		time.sleep(0.02)  # 20ms between steps = 100ms total for 5 steps
 
 
+def move_smooth(speed, command, cycle_steps=30):
+	"""
+	Smooth continuous movement using sine/cosine curves.
+
+	Args:
+		speed: Movement amplitude
+		command: Movement command ('no', 'left', 'right')
+		cycle_steps: Number of steps per full walking cycle (default 30)
+
+	This replaces the 4-step logic with a continuous phase-based movement.
+	"""
+	# One full walking cycle: phase goes from 0.0 to 1.0
+	for i in range(cycle_steps):
+		if not move_stu:
+			break
+
+		phase = i / cycle_steps  # 0.0 to 1.0
+		dove_smooth(phase, speed, 0.05, command)  # 0.05s timeLast
+		time.sleep(1.5 / cycle_steps)  # Total 1.5s per cycle
+
+
 def stand():
 	pwm.set_pwm(0,0,300)
 	pwm.set_pwm(1,0,300)
@@ -628,6 +649,128 @@ def dove_Right_III(horizontal, vertical):
 	else:
 		target_v = pwm11 - vertical
 	set_servo_smooth(11, target_v, steps=0)
+
+
+def dove_smooth(phase, speed, timeLast, command):
+	"""
+	Smooth continuous leg movement using sine/cosine curves.
+
+	Args:
+		phase: Current phase (0.0 to 1.0) of the walking cycle
+		speed: Movement amplitude (horizontal range)
+		timeLast: Time per cycle
+		command: Movement command ('no', 'left', 'right')
+
+	Phase mapping:
+		0.0 - 0.5: Group 1 (L1, R2, L3) in air, Group 2 (R1, L2, R3) on ground
+		0.5 - 1.0: Group 2 in air, Group 1 on ground
+	"""
+	import math
+
+	# Calculate positions using sine/cosine for smooth transitions
+	# Phase 0.0-0.5: Group 1 moves
+	# Phase 0.5-1.0: Group 2 moves
+
+	if command == 'no':
+		# Forward/backward movement
+		if phase < 0.5:
+			# Group 1 (L1, R2, L3) in air, moving from +speed to -speed
+			t = phase * 2  # 0.0 to 1.0
+
+			# Horizontal: smooth transition from +speed to -speed using cosine
+			h1 = int(speed * math.cos(t * math.pi))  # +speed → -speed
+
+			# Vertical: smooth arc using sine (lift up and down)
+			v1 = int(3 * speed * math.sin(t * math.pi))  # 0 → 3*speed → 0
+
+			# Group 2 (R1, L2, R3) on ground, moving from -speed to +speed
+			h2 = -h1  # Opposite horizontal position
+			v2 = -10  # Stay on ground
+
+			# Apply positions
+			dove_Left_I(h1, v1)
+			dove_Right_II(h1, v1)
+			dove_Left_III(h1, v1)
+
+			dove_Right_I(h2, v2)
+			dove_Left_II(h2, v2)
+			dove_Right_III(h2, v2)
+		else:
+			# Group 2 (R1, L2, R3) in air, moving from +speed to -speed
+			t = (phase - 0.5) * 2  # 0.0 to 1.0
+
+			# Horizontal: smooth transition
+			h2 = int(speed * math.cos(t * math.pi))  # +speed → -speed
+
+			# Vertical: smooth arc
+			v2 = int(3 * speed * math.sin(t * math.pi))  # 0 → 3*speed → 0
+
+			# Group 1 on ground
+			h1 = -h2  # Opposite horizontal position
+			v1 = -10  # Stay on ground
+
+			# Apply positions
+			dove_Left_I(h1, v1)
+			dove_Right_II(h1, v1)
+			dove_Left_III(h1, v1)
+
+			dove_Right_I(h2, v2)
+			dove_Left_II(h2, v2)
+			dove_Right_III(h2, v2)
+
+	elif command == 'left':
+		# Turn left: left legs move backward, right legs move forward
+		if phase < 0.5:
+			t = phase * 2
+			h = int(speed * math.cos(t * math.pi))
+			v = int(3 * speed * math.sin(t * math.pi))
+
+			dove_Left_I(-h, v)      # Left legs backward
+			dove_Right_II(h, v)     # Right legs forward
+			dove_Left_III(-h, v)
+
+			dove_Right_I(h, -10)
+			dove_Left_II(-h, -10)
+			dove_Right_III(h, -10)
+		else:
+			t = (phase - 0.5) * 2
+			h = int(speed * math.cos(t * math.pi))
+			v = int(3 * speed * math.sin(t * math.pi))
+
+			dove_Left_I(-h, -10)
+			dove_Right_II(h, -10)
+			dove_Left_III(-h, -10)
+
+			dove_Right_I(h, v)
+			dove_Left_II(-h, v)
+			dove_Right_III(h, v)
+
+	elif command == 'right':
+		# Turn right: left legs move forward, right legs move backward
+		if phase < 0.5:
+			t = phase * 2
+			h = int(speed * math.cos(t * math.pi))
+			v = int(3 * speed * math.sin(t * math.pi))
+
+			dove_Left_I(h, v)       # Left legs forward
+			dove_Right_II(-h, v)    # Right legs backward
+			dove_Left_III(h, v)
+
+			dove_Right_I(-h, -10)
+			dove_Left_II(h, -10)
+			dove_Right_III(-h, -10)
+		else:
+			t = (phase - 0.5) * 2
+			h = int(speed * math.cos(t * math.pi))
+			v = int(3 * speed * math.sin(t * math.pi))
+
+			dove_Left_I(h, -10)
+			dove_Right_II(-h, -10)
+			dove_Left_III(h, -10)
+
+			dove_Right_I(-h, v)
+			dove_Left_II(h, v)
+			dove_Right_III(-h, v)
 
 
 def dove(step_input, speed, timeLast, dpi, command):
@@ -1207,15 +1350,16 @@ def execute_movement_step(speed, turn='no'):
 	global step_set
 
 	if SmoothMode:
-		dove(step_set, speed, 0.001, DPI, turn)
-		increment_step()
-		time.sleep(0.05)  # Servos need time to move!
+		# NEW: Use continuous smooth movement with sine curves
+		move_smooth(abs(speed), turn, cycle_steps=30)
+		# Note: move_smooth handles the full cycle internally
 	else:
 		move(step_set, speed, turn)
 		# move() now has interpolation with sleeps (~100ms total)
 		# Just a small additional sleep for stability
 		time.sleep(0.02)  # Small additional delay
 		increment_step()
+
 
 
 def handle_direction_movement():
