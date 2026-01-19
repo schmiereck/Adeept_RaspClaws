@@ -647,70 +647,69 @@ def calculate_target_positions(phase, speed, command):
 			positions['R3'] = {'h': h2, 'v': v2}
 
 	elif command == 'left':
-		# Turn left: left legs backward (-h), right legs forward (+h)
-		# Based on original dove_smooth logic
+		# Turn left: Right side moves forward, left side stays still
+		# This creates rotation like a tank
 		if phase < 0.5:
 			# Group 1 (L1, R2, L3) in air
 			t = phase * 2
 			h = int(abs(speed) * math.cos(t * math.pi))
 			v = int(3 * abs(speed) * math.sin(t * math.pi))
 
-			# Left legs get NEGATIVE h, Right legs get POSITIVE h
-			positions['L1'] = {'h': -h, 'v': v}      # Left: -h
-			positions['R2'] = {'h': h, 'v': v}       # Right: +h
-			positions['L3'] = {'h': -h, 'v': v}      # Left: -h
+			# Left legs stay at 0, Right leg moves
+			positions['L1'] = {'h': 0, 'v': v}       # Left: stationary
+			positions['R2'] = {'h': -h, 'v': v}      # Right: moves forward
+			positions['L3'] = {'h': 0, 'v': v}       # Left: stationary
 
 			# Group 2 on ground
-			positions['R1'] = {'h': h, 'v': -10}     # Right: +h
-			positions['L2'] = {'h': -h, 'v': -10}    # Left: -h
-			positions['R3'] = {'h': h, 'v': -10}     # Right: +h
+			positions['R1'] = {'h': -h, 'v': -10}    # Right: forward
+			positions['L2'] = {'h': 0, 'v': -10}     # Left: stationary
+			positions['R3'] = {'h': -h, 'v': -10}    # Right: forward
 		else:
 			# Group 2 (R1, L2, R3) in air
 			t = (phase - 0.5) * 2
 			h = int(abs(speed) * math.cos(t * math.pi))
 			v = int(3 * abs(speed) * math.sin(t * math.pi))
 
-			positions['R1'] = {'h': h, 'v': v}       # Right: +h
-			positions['L2'] = {'h': -h, 'v': v}      # Left: -h
-			positions['R3'] = {'h': h, 'v': v}       # Right: +h
+			positions['R1'] = {'h': -h, 'v': v}      # Right: forward
+			positions['L2'] = {'h': 0, 'v': v}       # Left: stationary
+			positions['R3'] = {'h': -h, 'v': v}      # Right: forward
 
 			# Group 1 on ground
-			positions['L1'] = {'h': -h, 'v': -10}    # Left: -h
-			positions['R2'] = {'h': h, 'v': -10}     # Right: +h
-			positions['L3'] = {'h': -h, 'v': -10}    # Left: -h
+			positions['L1'] = {'h': 0, 'v': -10}     # Left: stationary
+			positions['R2'] = {'h': -h, 'v': -10}    # Right: forward
+			positions['L3'] = {'h': 0, 'v': -10}     # Left: stationary
 
 	elif command == 'right':
-		# Turn right: left legs forward (+h), right legs backward (-h)
-		# Opposite of turn left
+		# Turn right: Left side moves forward, right side stays still
 		if phase < 0.5:
 			# Group 1 (L1, R2, L3) in air
 			t = phase * 2
 			h = int(abs(speed) * math.cos(t * math.pi))
 			v = int(3 * abs(speed) * math.sin(t * math.pi))
 
-			# Left legs get POSITIVE h, Right legs get NEGATIVE h
-			positions['L1'] = {'h': h, 'v': v}       # Left: +h
-			positions['R2'] = {'h': -h, 'v': v}      # Right: -h
-			positions['L3'] = {'h': h, 'v': v}       # Left: +h
+			# Left legs move, Right leg stays at 0
+			positions['L1'] = {'h': -h, 'v': v}      # Left: moves forward
+			positions['R2'] = {'h': 0, 'v': v}       # Right: stationary
+			positions['L3'] = {'h': -h, 'v': v}      # Left: moves forward
 
 			# Group 2 on ground
-			positions['R1'] = {'h': -h, 'v': -10}    # Right: -h
-			positions['L2'] = {'h': h, 'v': -10}     # Left: +h
-			positions['R3'] = {'h': -h, 'v': -10}    # Right: -h
+			positions['R1'] = {'h': 0, 'v': -10}     # Right: stationary
+			positions['L2'] = {'h': -h, 'v': -10}    # Left: forward
+			positions['R3'] = {'h': 0, 'v': -10}     # Right: stationary
 		else:
 			# Group 2 (R1, L2, R3) in air
 			t = (phase - 0.5) * 2
 			h = int(abs(speed) * math.cos(t * math.pi))
 			v = int(3 * abs(speed) * math.sin(t * math.pi))
 
-			positions['R1'] = {'h': -h, 'v': v}      # Right: -h
-			positions['L2'] = {'h': h, 'v': v}       # Left: +h
-			positions['R3'] = {'h': -h, 'v': v}      # Right: -h
+			positions['R1'] = {'h': 0, 'v': v}       # Right: stationary
+			positions['L2'] = {'h': -h, 'v': v}      # Left: forward
+			positions['R3'] = {'h': 0, 'v': v}       # Right: stationary
 
 			# Group 1 on ground
-			positions['L1'] = {'h': h, 'v': -10}     # Left: +h
-			positions['R2'] = {'h': -h, 'v': -10}    # Right: -h
-			positions['L3'] = {'h': h, 'v': -10}     # Left: +h
+			positions['L1'] = {'h': -h, 'v': -10}    # Left: forward
+			positions['R2'] = {'h': 0, 'v': -10}     # Right: stationary
+			positions['L3'] = {'h': -h, 'v': -10}    # Left: forward
 
 	return positions
 
