@@ -213,7 +213,11 @@ def info_send_client():
         try:
             battery_voltage = get_battery_voltage()
             servo_positions = move.get_servo_positions_info()
-            info_data = 'INFO:' + get_cpu_tempfunc() + ' ' + get_cpu_use() + ' ' + get_ram_info() + ' ' + battery_voltage + ' | ' + servo_positions + '\n'
+
+            # Get MPU6050 data (gyro/accelerometer)
+            mpu_data = move.get_mpu6050_data()
+
+            info_data = 'INFO:' + get_cpu_tempfunc() + ' ' + get_cpu_use() + ' ' + get_ram_info() + ' ' + battery_voltage + ' | ' + servo_positions + ' | ' + mpu_data + '\n'
             tcpCliSock.send(info_data.encode())
             time.sleep(0.2)  # 200ms update interval for better servo analysis
         except Exception as e:

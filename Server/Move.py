@@ -253,6 +253,39 @@ def get_servo_positions_info():
 	        f"R3:{servo_current_pos[10]},{servo_current_pos[11]}")
 
 
+def get_mpu6050_data():
+	"""
+	Get formatted string of MPU6050 sensor data (gyro + accelerometer).
+
+	Returns:
+		String with MPU data (e.g., "G:1.2,0.5,0.1 A:0.15,0.08,9.81")
+		Or "MPU:N/A" if sensor not connected
+	"""
+	global mpu6050_connection
+
+	if not mpu6050_connection:
+		return "MPU:N/A"
+
+	try:
+		# Get accelerometer data (in m/s²)
+		accel_data = sensor.get_accel_data()
+		accel_x = accel_data['x']
+		accel_y = accel_data['y']
+		accel_z = accel_data['z']
+
+		# Get gyroscope data (in degrees/sec)
+		gyro_data = sensor.get_gyro_data()
+		gyro_x = gyro_data['x']
+		gyro_y = gyro_data['y']
+		gyro_z = gyro_data['z']
+
+		# Format: "G:x,y,z A:x,y,z"
+		return f"G:{gyro_x:.2f},{gyro_y:.2f},{gyro_z:.2f} A:{accel_x:.2f},{accel_y:.2f},{accel_z:.2f}"
+	except Exception as e:
+		print(f"⚠ Error reading MPU6050: {e}")
+		return "MPU:ERROR"
+
+
 # ==================== End of Position Tracking ====================
 
 
@@ -1615,7 +1648,7 @@ def execute_movement_step(speed, turn='no'):
 		speed: Movement speed (negative for forward, positive for backward)
 		turn: Turn command ('left', 'right', or 'no')
 
-	Note: Always uses smooth movement with sine curves (old normal mode removed).
+	Note: Always uses smooth movement with sine curves
 	      Speed parameter can be adjusted in the future for variable speeds.
 	"""
 	# Always use smooth movement with sine curves
@@ -1860,7 +1893,7 @@ def standby():
 
 	# Stop PWM signals on all channels
 	for i in range(16):
-		pwm.set_pwm(i, 0, 0)  # Setting pulse to 0 stops the signal
+		pwm.set_pwm(i, 0)  # Setting pulse to 0 stops the signal
 
 	print("✓ All servos in STANDBY - legs are soft, low power consumption")
 

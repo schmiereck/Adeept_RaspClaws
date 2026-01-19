@@ -58,8 +58,12 @@ Switch_2 = 0
 Switch_1 = 0
 SmoothMode = 0
 SmoothCamMode = 0
-FV_Line = 0
-FV_Start = 0
+
+# MPU6050 sensor data
+GYRO_X, GYRO_Y, GYRO_Z = 0.0, 0.0, 0.0
+ACCEL_X, ACCEL_Y, ACCEL_Z = 0.0, 0.0, 0.0
+MPU_AVAILABLE = False
+
 video_thread_started = False  # Track if video thread was started (global)
 
 ########>>>>>VIDEO<<<<<########
@@ -271,39 +275,6 @@ def call_steady(event):
 		steadyMode = 0
 
 
-def call_FindColor(event):
-	"""Toggle find color mode"""
-	global funcMode
-	if funcMode == 0:
-		send_command('findColor')
-		funcMode = 1
-	else:
-		send_command('stopCV')
-		funcMode = 0
-
-
-def call_WatchDog(event):
-	"""Toggle watchdog/motion detection mode"""
-	global funcMode
-	if funcMode == 0:
-		send_command('motionGet')
-		funcMode = 1
-	else:
-		send_command('stopCV')
-		funcMode = 0
-
-
-def call_Smooth(event):
-	"""Toggle smooth movement mode"""
-	global SmoothMode
-	if SmoothMode == 0:
-		send_command('slow')
-		SmoothMode = 1
-	else:
-		send_command('fast')
-		SmoothMode = 0
-
-
 def call_SmoothCam(event):
 	"""Toggle smooth camera movement mode"""
 	global SmoothCamMode
@@ -314,16 +285,6 @@ def call_SmoothCam(event):
 		send_command('smoothCamOff')
 		SmoothCamMode = 0
 
-
-def call_Police(event):
-	"""Toggle police LED mode"""
-	global funcMode
-	if funcMode == 0:
-		send_command('police')
-		funcMode = 1
-	else:
-		send_command('policeOff')
-		funcMode = 0
 
 
 def call_Switch_1(event):
@@ -407,10 +368,146 @@ def call_camera_pause(event):
 # ==================== End Power Management ====================
 
 
+# ==================== MPU6050 Parsing and Visualization ====================
+
+def parse_mpu_data(mpu_string):
+	"""
+	Parse MPU6050 data string and update global variables + canvas display.
+
+	Format: "G:x,y,z A:x,y,z" or "MPU:N/A" or "MPU:ERROR"
+
+	Args:
+		mpu_string: String from server with MPU data
+	"""
+	global GYRO_X, GYRO_Y, GYRO_Z, ACCEL_X, ACCEL_Y, ACCEL_Z, MPU_AVAILABLE
+
+	if 'MPU:N/A' in mpu_string or 'MPU:ERROR' in mpu_string:
+		MPU_AVAILABLE = False
+		return
+
+	try:
+		# Split "G:x,y,z A:x,y,z"
+		parts = mpu_string.split()
+
+		# Parse Gyro: "G:x,y,z"
+		if len(parts) >= 1 and parts[0].startswith('G:'):
+			gyro_str = parts[0][2:]  # Remove "G:"
+			gyro_vals = gyro_str.split(',')
+			if len(gyro_vals) == 3:
+				GYRO_X, GYRO_Y, GYRO_Z = float(gyro_vals[0]), float(gyro_vals[1]), float(gyro_vals[2])
+
+		# Parse Accel: "A:x,y,z"
+		if len(parts) >= 2 and parts[1].startswith('A:'):
+			accel_str = parts[1][2:]  # Remove "A:"
+			accel_vals = accel_str.split(',')
+			if len(accel_vals) == 3:
+				ACCEL_X, ACCEL_Y, ACCEL_Z = float(accel_vals[0]), float(accel_vals[1]), float(accel_vals[2])
+
+		MPU_AVAILABLE = True
+
+		# Update canvas display
+		update_mpu_canvas()
+
+	except Exception as e:
+		print(f"⚠ Error parsing MPU data: {e}")
+		MPU_AVAILABLE = False
+
+
+def update_mpu_canvas():
+	"""Update the 2D cross display with current gyro/accel data"""
+	global canvas_mpu, GYRO_X, GYRO_Y, ACCEL_X, ACCEL_Y, ACCEL_Z
+
+	try:
+		# Clear canvas
+		canvas_mpu.delete("all")
+
+		# Canvas dimensions
+		width = 160
+		height = 160
+		center_x = width // 2
+		center_y = height // 2
+
+		# Draw cross (X and Y axes)
+		canvas_mpu.create_line(0, center_y, width, center_y, fill='#424242', width=1)  # X-axis
+		canvas_mpu.create_line(center_x, 0, center_x, height, fill='#424242', width=1)  # Y-axis
+
+		# Draw concentric circles for scale (every 25% of max range)
+		max_range = 70  # Maximum pixel distance from center
+		for r in [25, 50, 75]:
+			radius = (r / 100) * max_range
+			canvas_mpu.create_oval(center_x - radius, center_y - radius,
+			                       center_x + radius, center_y + radius,
+			                       outline='#212121', width=1)
+
+		if not MPU_AVAILABLE:
+			# Display "N/A" if sensor not available
+			canvas_mpu.create_text(center_x, center_y, text="MPU: N/A",
+			                       fill='#757575', font=('Arial', 10))
+			return
+
+		# Scale gyro values to canvas coordinates
+		# Gyro range: typically ±250°/s, we map to ±max_range pixels
+		gyro_scale = max_range / 250.0
+		gyro_x_pos = int(GYRO_Y * gyro_scale)  # Gyro Y → Canvas X (pitch)
+		gyro_y_pos = int(-GYRO_X * gyro_scale)  # Gyro X → Canvas Y (roll, inverted)
+
+		# Clamp to canvas bounds
+		gyro_x_pos = max(-max_range, min(max_range, gyro_x_pos))
+		gyro_y_pos = max(-max_range, min(max_range, gyro_y_pos))
+
+		# Draw gyro point (BLUE)
+		gyro_dot_x = center_x + gyro_x_pos
+		gyro_dot_y = center_y + gyro_y_pos
+		canvas_mpu.create_oval(gyro_dot_x - 6, gyro_dot_y - 6,
+		                       gyro_dot_x + 6, gyro_dot_y + 6,
+		                       fill='#2196F3', outline='#1976D2', width=2)
+
+		# Scale accel values to canvas coordinates
+		# Accel range: typically ±2g (±19.6 m/s²), we map to ±max_range pixels
+		accel_scale = max_range / 19.6
+		accel_x_pos = int(ACCEL_Y * accel_scale)  # Accel Y → Canvas X
+		accel_y_pos = int(-ACCEL_X * accel_scale)  # Accel X → Canvas Y (inverted)
+
+		# Clamp to canvas bounds
+		accel_x_pos = max(-max_range, min(max_range, accel_x_pos))
+		accel_y_pos = max(-max_range, min(max_range, accel_y_pos))
+
+		# Draw accel point (ORANGE) with size based on Z-accel
+		accel_dot_x = center_x + accel_x_pos
+		accel_dot_y = center_y + accel_y_pos
+
+		# Z-acceleration affects dot size (9.81 m/s² = normal gravity)
+		# Larger Z = larger dot (more vertical acceleration)
+		z_factor = abs(ACCEL_Z) / 9.81  # Normalize to 1.0 at 1g
+		dot_radius = int(4 + 4 * z_factor)  # 4-8 pixels radius
+		dot_radius = max(3, min(10, dot_radius))  # Clamp to 3-10
+
+		canvas_mpu.create_oval(accel_dot_x - dot_radius, accel_dot_y - dot_radius,
+		                       accel_dot_x + dot_radius, accel_dot_y + dot_radius,
+		                       fill='#FF9800', outline='#F57C00', width=2)
+
+		# Draw labels
+		canvas_mpu.create_text(10, 10, text="Gyro", fill='#2196F3', anchor='nw', font=('Arial', 8, 'bold'))
+		canvas_mpu.create_text(10, 25, text="Accel", fill='#FF9800', anchor='nw', font=('Arial', 8, 'bold'))
+
+		# Draw axis labels
+		canvas_mpu.create_text(width - 5, center_y - 5, text="Y+", fill='#616161', anchor='se', font=('Arial', 7))
+		canvas_mpu.create_text(5, center_y - 5, text="Y-", fill='#616161', anchor='sw', font=('Arial', 7))
+		canvas_mpu.create_text(center_x + 5, 5, text="X+", fill='#616161', anchor='nw', font=('Arial', 7))
+		canvas_mpu.create_text(center_x + 5, height - 5, text="X-", fill='#616161', anchor='sw', font=('Arial', 7))
+
+	except Exception as e:
+		print(f"⚠ Error updating MPU canvas: {e}")
+
+
+# ==================== End MPU6050 ====================
+
+
 # ==================== Connection Thread ====================
 def connection_thread():
 	global funcMode, Switch_3, Switch_2, Switch_1, SmoothMode, SmoothCamMode, steadyMode
 	global CPU_TEP, CPU_USE, RAM_USE, BATTERY_VOLTAGE
+	global GYRO_X, GYRO_Y, GYRO_Z, ACCEL_X, ACCEL_Y, ACCEL_Z  # MPU6050 data
 	global video_thread_started  # Use the global flag
 
 	while 1:
@@ -437,10 +534,11 @@ def connection_thread():
 			try:
 				info_data = car_info[5:].strip()  # Remove 'INFO:' prefix
 
-				# Split by '|' to separate system info from servo positions
+				# Split by '|' to separate system info, servo positions, and MPU data
 				parts = info_data.split('|')
 				system_info = parts[0].strip()
 				servo_info = parts[1].strip() if len(parts) > 1 else None
+				mpu_info = parts[2].strip() if len(parts) > 2 else None
 
 				info_get = system_info.split()
 				if len(info_get) >= 4:
@@ -481,6 +579,10 @@ def connection_thread():
 					RAM_lab.config(text='RAM Usage: %s'%RAM_USE)
 					BATTERY_lab.config(text='Battery: N/A', bg='#757575', fg=color_text)
 
+				# Parse MPU6050 data (format: "G:x,y,z A:x,y,z" or "MPU:N/A")
+				if mpu_info:
+					parse_mpu_data(mpu_info)
+
 				# Log servo positions to terminal with timestamp (only once, at the end)
 				if servo_info:
 					timestamp = int(time.time() * 1000)  # Milliseconds since epoch
@@ -489,10 +591,6 @@ def connection_thread():
 			except Exception as e:
 				print(f"⚠ Error processing INFO: {e}")
 				pass
-		elif 'findColor' in car_info:
-			funcMode = 1
-			SmoothMode = 1
-			Btn_FindColor.config(bg='#FF6D00', fg='#000000')
 
 		elif 'steadyCamera' == car_info:
 			steadyMode = 1
@@ -504,12 +602,6 @@ def connection_thread():
 			SmoothMode = 0
 			Btn_Steady.config(bg=color_btn, fg=color_text)
 
-		elif 'motionGet' in car_info:
-			funcMode = 1
-			SmoothMode = 1
-			Btn_WatchDog.config(bg='#FF6D00', fg='#000000')
-
-		# Note: slow/fast messages removed - movement is always smooth now
 
 		elif 'smoothCam' in car_info:
 			SmoothCamMode = 1
@@ -519,15 +611,6 @@ def connection_thread():
 			SmoothCamMode = 0
 			Btn_SmoothCam.config(bg=color_btn, fg=color_text)
 
-		elif 'police' == car_info:
-			funcMode = 1
-			SmoothMode = 1
-			Btn_Police.config(bg='#FF6D00', fg='#000000')
-
-		elif 'policeOff' == car_info:
-			funcMode = 0
-			SmoothMode = 0
-			Btn_Police.config(bg=color_btn, fg=color_text)
 
 		elif 'Switch_3_on' in car_info:
 			Switch_3 = 1
@@ -553,15 +636,6 @@ def connection_thread():
 			Switch_1 = 0
 			Btn_Switch_1.config(bg=color_btn)
 
-		elif 'CVFL' in car_info:
-			FV_Start = 1
-
-
-		elif 'stopCV' in car_info:
-			SmoothMode = 0
-			funcMode = 0
-			Btn_FindColor.config(bg=color_btn, fg=color_text)
-			Btn_WatchDog.config(bg=color_btn, fg=color_text)
 
 		# Note: Removed generic print(car_info) here - it caused duplicate log output
 		# Specific messages are already handled by their respective elif blocks
@@ -669,82 +743,8 @@ def connect_click():	   #Call this function to connect with the server
 
 
 
-def EC_send(event):#z
-		tcpClicSock.send(('setEC %s'%var_ec.get()).encode())
-		time.sleep(0.03)
-
-
-def EC_default(event):#z
-	var_ec.set(0)
-	tcpClicSock.send(('defEC').encode())
-
-
-def scale_FL(x,y,w):#1
-	global Btn_CVFL,FV_Line,FV_Start
-	def lip1_send(event):
-		time.sleep(0.03)
-		tcpClicSock.send(('CVFLL1 %s'%var_lip1.get()).encode())
-
-	def lip2_send(event):
-		time.sleep(0.03)
-		tcpClicSock.send(('CVFLL2 %s'%var_lip2.get()).encode())
-
-	def err_send(event):
-		time.sleep(0.03)
-		tcpClicSock.send(('err %s'%var_err.get()).encode())
-
-
-
-	def call_CVFL(event):
-		global FV_Start
-		if not FV_Start:
-			tcpClicSock.send(('CVFL').encode())
-			FV_Start = 1
-		else:
-			tcpClicSock.send(('stopCV').encode())
-			FV_Start = 0
-    
-
-	def call_WB(event):
-		global FV_Line
-		if not FV_Line:
-			tcpClicSock.send(('CVFLColorSet 0').encode())
-			FV_Line = 1
-		else:
-			tcpClicSock.send(('CVFLColorSet 255').encode())
-			FV_Line = 0
-
-	Scale_lip1 = tk.Scale(root,label=None,
-	from_=0,to=480,orient=tk.HORIZONTAL,length=w,
-	showvalue=1,tickinterval=None,resolution=1,variable=var_lip1,troughcolor='#212121',command=lip1_send,fg=color_text,bg=color_bg,highlightthickness=0)
-	Scale_lip1.place(x=x,y=y)							#Define a Scale and put it in position
-
-	Scale_lip2 = tk.Scale(root,label=None,
-	from_=0,to=480,orient=tk.HORIZONTAL,length=w,
-	showvalue=1,tickinterval=None,resolution=1,variable=var_lip2,troughcolor='#212121',command=lip2_send,fg=color_text,bg=color_bg,highlightthickness=0)
-	Scale_lip2.place(x=x,y=y+30)						#Define a Scale and put it in position
-
-	Scale_err = tk.Scale(root,label=None,
-	from_=0,to=200,orient=tk.HORIZONTAL,length=w,
-	showvalue=1,tickinterval=None,resolution=1,variable=var_err,troughcolor='#212121',command=err_send,fg=color_text,bg=color_bg,highlightthickness=0)
-	Scale_err.place(x=x,y=y+60)							#Define a Scale and put it in position
-
-	canvas_cover=tk.Canvas(root,bg=color_bg,height=30,width=510,highlightthickness=0)
-	canvas_cover.place(x=x,y=y+90)
-
-
-
-	Btn_CVFL = tk.Button(root, width=23, text='CV FL',fg=color_text,bg='#212121',relief='ridge')
-	Btn_CVFL.place(x=x+w+21,y=y+20)
-	Btn_CVFL.bind('<ButtonPress-1>', call_CVFL)
-
-	Btn_WB = tk.Button(root, width=23, text='LineColorSwitch',fg=color_text,bg='#212121',relief='ridge')
-	Btn_WB.place(x=x+w+21,y=y+60)
-	Btn_WB.bind('<ButtonPress-1>', call_WB)
-
-
 def loop():					  #GUI
-	global tcpClicSock,root,E1,connect,l_ip_4,l_ip_5,color_btn,color_text,Btn14,CPU_TEP_lab,CPU_USE_lab,RAM_lab,BATTERY_lab,canvas_ultra,color_text,var_lip1,var_lip2,var_err,var_R,var_B,var_G,var_ec,Btn_Police,Btn_Steady,Btn_FindColor,Btn_WatchDog,Btn_Fun5,Btn_Fun6,Btn_Switch_1,Btn_Switch_2,Btn_Switch_3,Btn_SmoothCam,color_bg   #1 The value of tcpClicSock changes in the function loop(),would also changes in global so the other functions could use it.
+	global tcpClicSock,root,E1,connect,l_ip_4,l_ip_5,color_btn,color_text,Btn14,CPU_TEP_lab,CPU_USE_lab,RAM_lab,BATTERY_lab,color_text,Btn_Steady,Btn_Switch_1,Btn_Switch_2,Btn_Switch_3,Btn_SmoothCam,canvas_mpu,color_bg   #1 The value of tcpClicSock changes in the function loop(),would also changes in global so the other functions could use it.
 	while True:
 		color_bg='#000000'		#Set background color
 		color_text='#E1F5FE'	  #Set text color
@@ -885,99 +885,16 @@ def loop():					  #GUI
 
 		root.bind('<Return>', connect)
 
-		var_lip1 = tk.StringVar()#1
-		var_lip1.set(440)
-		var_lip2 = tk.StringVar()
-		var_lip2.set(380)
-		var_err = tk.StringVar()
-		var_err.set(20)
-  
-		global canvas_show
-		def R_send(event):
-			canvas_show.config(bg = RGB_to_Hex(int(var_R.get()), int(var_G.get()), int(var_B.get())))
-			time.sleep(0.03)
-
-
-		def G_send(event):
-			canvas_show.config(bg = RGB_to_Hex(int(var_R.get()), int(var_G.get()), int(var_B.get())))
-			time.sleep(0.03)
-
-		def B_send(event):
-			canvas_show.config(bg = RGB_to_Hex(int(var_R.get()), int(var_G.get()), int(var_B.get())))
-			time.sleep(0.03)  
-
-		def call_SET(event):
-			r = int(var_R.get())
-			g = int(var_G.get())
-			b = int(var_B.get())
-
-			data_str = f"{r}, {g}, {b}"
-			message = f"{{'title': 'findColorSet', 'data': [{data_str}]}}"
-			tcpClicSock.send(message.encode())
-		var_R = tk.StringVar()
-		var_R.set(80)
-
-		Scale_R = tk.Scale(root,label=None,
-		from_=0,to=255,orient=tk.HORIZONTAL,length=238,
-		showvalue=1,tickinterval=None,resolution=1,variable=var_R,troughcolor='#F44336',command=R_send,fg=color_text,bg=color_bg,highlightthickness=0)
-		Scale_R.place(x=30,y=330)							#Define a Scale and put it in position
-
-		var_G = tk.StringVar()
-		var_G.set(80)
-
-		Scale_G = tk.Scale(root,label=None,
-		from_=0,to=255,orient=tk.HORIZONTAL,length=238,
-		showvalue=1,tickinterval=None,resolution=1,variable=var_G,troughcolor='#00E676',command=G_send,fg=color_text,bg=color_bg,highlightthickness=0)
-		Scale_G.place(x=30,y=360)							#Define a Scale and put it in position
-
-		var_B = tk.StringVar()
-		var_B.set(80)
-
-		Scale_B = tk.Scale(root,label=None,
-		from_=0,to=255,orient=tk.HORIZONTAL,length=238,
-		showvalue=1,tickinterval=None,resolution=1,variable=var_B,troughcolor='#448AFF',command=B_send,fg=color_text,bg=color_bg,highlightthickness=0)
-		Scale_B.place(x=30,y=390)							#Define a Scale and put it in position
-
-		canvas_cover=tk.Canvas(root,bg=color_bg,height=30,width=510,highlightthickness=0)
-		canvas_cover.place(x=30,y=330+90)
-		canvas_show=tk.Canvas(root,bg=RGB_to_Hex(int(var_R.get()), int(var_G.get()), int(var_B.get())),height=35,width=170,highlightthickness=0)
-		canvas_show.place(x=238+30+21,y=330+15)
-
-
-		Btn_WB = tk.Button(root, width=23, text='Color Set',fg=color_text,bg='#212121',relief='ridge')
-		Btn_WB.place(x=30+238+21,y=330+60)
-		Btn_WB.bind('<ButtonPress-1>', call_SET)
-
-		var_ec = tk.StringVar() #Z start
-		var_ec.set(0)
-
+		# Note: RGB sliders, CV FL, Color Set, and Line Following removed - not needed
 
 		Btn_Steady = tk.Button(root, width=10, text='Steady [Z]',fg=color_text,bg=color_btn,relief='ridge')
-		Btn_Steady.place(x=30,y=445)
+		Btn_Steady.place(x=30,y=330)
 		root.bind('<KeyPress-z>', call_steady)
 		Btn_Steady.bind('<ButtonPress-1>', call_steady)
 
-		Btn_FindColor = tk.Button(root, width=10, text='FindColor [X]',fg=color_text,bg=color_btn,relief='ridge')
-		Btn_FindColor.place(x=115,y=445)
-		root.bind('<KeyPress-x>', call_FindColor)
-		Btn_FindColor.bind('<ButtonPress-1>', call_FindColor)
-
-		Btn_WatchDog = tk.Button(root, width=10, text='WatchDog [C]',fg=color_text,bg=color_btn,relief='ridge')
-		Btn_WatchDog.place(x=200,y=445)
-		root.bind('<KeyPress-c>', call_WatchDog)
-		Btn_WatchDog.bind('<ButtonPress-1>', call_WatchDog)
-
-		# Note: Slow/Fast button removed - movement is always smooth now
-		# Speed adjustment will be implemented via speed parameter in the future
-
-		Btn_Police = tk.Button(root, width=10, text='Police [B]',fg=color_text,bg=color_btn,relief='ridge')
-		Btn_Police.place(x=285,y=445)  # Moved left to fill gap
-		root.bind('<KeyPress-b>', call_Police)
-		Btn_Police.bind('<ButtonPress-1>', call_Police)
-
 		# Second row - SmoothCam button
 		Btn_SmoothCam = tk.Button(root, width=10, text='Smooth-Cam [N]',fg=color_text,bg=color_btn,relief='ridge')
-		Btn_SmoothCam.place(x=455,y=445)
+		Btn_SmoothCam.place(x=115,y=330)
 		root.bind('<KeyPress-n>', call_SmoothCam)
 		Btn_SmoothCam.bind('<ButtonPress-1>', call_SmoothCam)
 
@@ -994,7 +911,14 @@ def loop():					  #GUI
 		root.bind('<KeyPress-comma>', call_camera_pause)
 		Btn_CameraPause.bind('<ButtonPress-1>', call_camera_pause)
 
-		scale_FL(30,520,315)#1
+		# MPU6050 Gyro/Accel Visualization (2D Cross Display)
+		global canvas_mpu
+		canvas_mpu = tk.Canvas(root, bg='#1a1a1a', width=160, height=160, highlightthickness=1, highlightbackground='#424242')
+		canvas_mpu.place(x=385, y=480)
+
+		# Initial display (will show "N/A" until data arrives)
+		update_mpu_canvas()
+
 
 		global stat
 		if stat==0:			  # Ensure the mainloop runs only once
