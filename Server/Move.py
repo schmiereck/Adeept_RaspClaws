@@ -647,25 +647,26 @@ def calculate_target_positions(phase, speed, command):
 			positions['R3'] = {'h': h2, 'v': v2}
 
 	elif command == 'left':
-		# Turn left: Right side walks forward (like normal forward), left side stays at center
-		# This creates rotation like a tank
+		# Turn left: Right side walks forward (normal forward movement)
+		#            Left side lifts/lowers synchronously but stays at h=0
+		# This prevents left side from blocking the turn!
 		if phase < 0.5:
 			# Group 1 (L1, R2, L3) in air
 			t = phase * 2
-			h = int(abs(speed) * math.cos(t * math.pi))  # +speed → -speed
+			h = int(abs(speed) * math.cos(t * math.pi))  # Full speed like forward!
 			v = int(3 * abs(speed) * math.sin(t * math.pi))
 
-			# Left legs (L1, L3) stay at center position (0)
-			positions['L1'] = {'h': 0, 'v': -10}     # Left: stationary on ground
-			positions['L3'] = {'h': 0, 'v': -10}     # Left: stationary on ground
+			# Left legs (L1, L3) lift synchronously with right leg BUT stay at h=0
+			positions['L1'] = {'h': 0, 'v': v}       # Left: lifts but doesn't move horizontally
+			positions['L3'] = {'h': 0, 'v': v}       # Left: lifts but doesn't move horizontally
 
-			# Right leg (R2) moves like forward movement
-			positions['R2'] = {'h': -h, 'v': v}      # Right: forward movement in air
+			# Right leg (R2) moves forward like normal
+			positions['R2'] = {'h': h, 'v': v}       # Right: forward movement in air
 
-			# Group 2 (R1, L2, R3) - right legs move forward on ground, left stays still
-			positions['R1'] = {'h': -h, 'v': -10}    # Right: forward on ground
-			positions['L2'] = {'h': 0, 'v': -10}     # Left: stationary on ground
-			positions['R3'] = {'h': -h, 'v': -10}    # Right: forward on ground
+			# Group 2 (R1, L2, R3) on ground
+			positions['R1'] = {'h': h, 'v': -10}     # Right: pushes forward on ground
+			positions['L2'] = {'h': 0, 'v': -10}     # Left: on ground at center
+			positions['R3'] = {'h': h, 'v': -10}     # Right: pushes forward on ground
 		else:
 			# Group 2 (R1, L2, R3) in air
 			t = (phase - 0.5) * 2
@@ -673,19 +674,19 @@ def calculate_target_positions(phase, speed, command):
 			v = int(3 * abs(speed) * math.sin(t * math.pi))
 
 			# Right legs (R1, R3) move forward in air
-			positions['R1'] = {'h': -h, 'v': v}      # Right: forward in air
-			positions['R3'] = {'h': -h, 'v': v}      # Right: forward in air
+			positions['R1'] = {'h': h, 'v': v}       # Right: forward in air
+			positions['R3'] = {'h': h, 'v': v}       # Right: forward in air
 
-			# Left leg (L2) stays stationary
-			positions['L2'] = {'h': 0, 'v': -10}     # Left: stationary on ground
+			# Left leg (L2) lifts synchronously BUT stays at h=0
+			positions['L2'] = {'h': 0, 'v': v}       # Left: lifts but doesn't move horizontally
 
-			# Group 1 (L1, R2, L3) - left stays still, right moves on ground
-			positions['L1'] = {'h': 0, 'v': -10}     # Left: stationary
-			positions['R2'] = {'h': -h, 'v': -10}    # Right: forward on ground
-			positions['L3'] = {'h': 0, 'v': -10}     # Left: stationary
+			# Group 1 (L1, R2, L3) on ground
+			positions['L1'] = {'h': 0, 'v': -10}     # Left: on ground at center
+			positions['R2'] = {'h': h, 'v': -10}     # Right: pushes forward on ground
+			positions['L3'] = {'h': 0, 'v': -10}     # Left: on ground at center
 
 	elif command == 'right':
-		# Turn right: Left side walks forward, right side stays at center
+		# Turn right: Left side walks forward, right side lifts/lowers synchronously
 		if phase < 0.5:
 			# Group 1 (L1, R2, L3) in air
 			t = phase * 2
@@ -693,16 +694,16 @@ def calculate_target_positions(phase, speed, command):
 			v = int(3 * abs(speed) * math.sin(t * math.pi))
 
 			# Left legs (L1, L3) move forward
-			positions['L1'] = {'h': -h, 'v': v}      # Left: forward in air
-			positions['L3'] = {'h': -h, 'v': v}      # Left: forward in air
+			positions['L1'] = {'h': h, 'v': v}       # Left: forward in air
+			positions['L3'] = {'h': h, 'v': v}       # Left: forward in air
 
-			# Right leg (R2) stays stationary
-			positions['R2'] = {'h': 0, 'v': -10}     # Right: stationary on ground
+			# Right leg (R2) lifts synchronously BUT stays at h=0
+			positions['R2'] = {'h': 0, 'v': v}       # Right: lifts but doesn't move horizontally
 
-			# Group 2 - left moves forward on ground, right stays still
-			positions['R1'] = {'h': 0, 'v': -10}     # Right: stationary
-			positions['L2'] = {'h': -h, 'v': -10}    # Left: forward on ground
-			positions['R3'] = {'h': 0, 'v': -10}     # Right: stationary
+			# Group 2 on ground
+			positions['R1'] = {'h': 0, 'v': -10}     # Right: on ground at center
+			positions['L2'] = {'h': h, 'v': -10}     # Left: pushes forward on ground
+			positions['R3'] = {'h': 0, 'v': -10}     # Right: on ground at center
 		else:
 			# Group 2 (R1, L2, R3) in air
 			t = (phase - 0.5) * 2
@@ -710,16 +711,16 @@ def calculate_target_positions(phase, speed, command):
 			v = int(3 * abs(speed) * math.sin(t * math.pi))
 
 			# Left leg (L2) moves forward in air
-			positions['L2'] = {'h': -h, 'v': v}      # Left: forward in air
+			positions['L2'] = {'h': h, 'v': v}       # Left: forward in air
 
-			# Right legs (R1, R3) stay stationary
-			positions['R1'] = {'h': 0, 'v': -10}     # Right: stationary on ground
-			positions['R3'] = {'h': 0, 'v': -10}     # Right: stationary on ground
+			# Right legs (R1, R3) lift synchronously BUT stay at h=0
+			positions['R1'] = {'h': 0, 'v': v}       # Right: lifts but doesn't move horizontally
+			positions['R3'] = {'h': 0, 'v': v}       # Right: lifts but doesn't move horizontally
 
-			# Group 1 - left moves forward on ground, right stays still
-			positions['L1'] = {'h': -h, 'v': -10}    # Left: forward on ground
-			positions['R2'] = {'h': 0, 'v': -10}     # Right: stationary
-			positions['L3'] = {'h': -h, 'v': -10}    # Left: forward on ground
+			# Group 1 on ground
+			positions['L1'] = {'h': h, 'v': -10}     # Left: pushes forward on ground
+			positions['R2'] = {'h': 0, 'v': -10}     # Right: on ground at center
+			positions['L3'] = {'h': h, 'v': -10}     # Left: pushes forward on ground
 
 	return positions
 

@@ -20,28 +20,54 @@ Der Roboter hat nur **2 Freiheitsgrade pro Bein** (horizontal + vertikal). Die B
 
 ## Lösung
 
-**Panzer-Lenkung:** Eine Seite läuft **normal vorwärts** (wie Forward), die andere Seite **steht still**.
+**Panzer-Lenkung mit synchronem Heben/Senken:**
+
+Eine Seite läuft **normal vorwärts** (wie Forward), die andere Seite **hebt/senkt synchron aber bleibt horizontal bei 0**.
+
+### Das Problem der ersten Versuche:
+
+1. **Zu kleine Ausschläge:** Bewegungs-Seite bekam kleinere h-Werte als Forward
+2. **Blockierung:** Stillstehende Seite hatte alle 3 Beine am Boden → blockierte die Drehung!
+
+### Die Lösung:
+
+**Stillstehende Seite muss synchron heben/senken:**
+- Wenn Bewegungs-Seite 2 Beine am Boden hat zum Schieben → Gegenseite muss diese 2 Beine **HOCHHEBEN** (sonst blockieren sie)
+- Wenn Bewegungs-Seite 2 Beine hochhebt → Gegenseite muss diese 2 Beine **RUNTER** (für Stabilität)
+- **ABER:** Horizontal bleibt die stillstehende Seite bei h=0 (bewegt sich nicht vor/zurück)
 
 ### Turn Left (gegen den Uhrzeigersinn)
 
-- **Linke Seite (L1, L2, L3):** Steht STILL (h = 0)
-- **Rechte Seite (R1, R2, R3):** Läuft VORWÄRTS (wie Forward)
-- → Roboter dreht sich um die linke Seite ↺
+**Phase 0-0.5:** Gruppe 1 (L1, R2, L3) in der Luft
+```python
+# Bewegungs-Seite (rechts):
+R2: h = +35 → -35, v = 0 → 100  # Rechts: bewegt vorwärts in Luft
+R1: h = +35,        v = -10      # Rechts: schiebt am Boden
+R3: h = +35,        v = -10      # Rechts: schiebt am Boden
 
-### Turn Right (im Uhrzeigersinn)
+# Still-Seite (links) - HEBT SYNCHRON:
+L1: h = 0, v = 0 → 100  # Links: hebt, aber h=0!
+L3: h = 0, v = 0 → 100  # Links: hebt, aber h=0!
+L2: h = 0, v = -10      # Links: am Boden, h=0
+```
 
-- **Rechte Seite (R1, R2, R3):** Steht STILL (h = 0)
-- **Linke Seite (L1, L2, L3):** Läuft VORWÄRTS (wie Forward)
-- → Roboter dreht sich um die rechte Seite ↻
+**Phase 0.5-1.0:** Gruppe 2 (R1, L2, R3) in der Luft
+```python
+# Bewegungs-Seite (rechts):
+R1: h = +35 → -35, v = 0 → 100  # Rechts: bewegt vorwärts
+R3: h = +35 → -35, v = 0 → 100  # Rechts: bewegt vorwärts
+R2: h = +35,        v = -10      # Rechts: schiebt am Boden
 
-### Wichtig: Diagonale Gruppierung beibehalten!
+# Still-Seite (links) - HEBT SYNCHRON:
+L2: h = 0, v = 0 → 100  # Links: hebt, aber h=0!
+L1: h = 0, v = -10      # Links: am Boden, h=0
+L3: h = 0, v = -10      # Links: am Boden, h=0
+```
 
-Die bewegende Seite muss die **normale diagonale Gruppierung** verwenden:
-
-**Phase 0-0.5:** Ein Bein der bewegenden Seite hebt (z.B. R2)
-**Phase 0.5-1.0:** Die anderen zwei Beine der bewegenden Seite heben (R1, R3)
-
-Die stillstehende Seite bleibt **immer am Boden** (v = -10).
+**Ergebnis:** 
+- Rechte Seite schiebt mit **vollen Ausschlägen** vorwärts
+- Linke Seite blockiert nicht, weil die Beine **synchron heben**
+- → Roboter dreht sich um die linke Seite! ↺
 
 ## Implementierung
 
