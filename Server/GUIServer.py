@@ -433,9 +433,40 @@ def process_client_command(data):
 		return
 	if handle_line_tracking_command(data):
 		return
+	if handle_power_management_command(data):
+		return
 
 	# Command not recognized - this is OK, just ignore
 	pass
+
+
+# ==================== Power Management Commands ====================
+
+def handle_power_management_command(data):
+	"""Handle servo standby/wakeup and camera pause/resume commands"""
+	global fps_threading
+
+	if data == 'servo_standby':
+		print("🔋 SERVO STANDBY - Stopping PWM signals")
+		move.standby()  # Call standby in Move module
+		return True
+
+	elif data == 'servo_wakeup':
+		print("⚡ SERVO WAKEUP - Restoring servo positions")
+		move.wakeup()  # Call wakeup in Move module
+		return True
+
+	elif data == 'camera_pause':
+		print("📷 CAMERA PAUSE - Stopping video stream")
+		FPV.pause_stream()
+		return True
+
+	elif data == 'camera_resume':
+		print("📷 CAMERA RESUME - Restarting video stream")
+		FPV.resume_stream()
+		return True
+
+	return False
 
 
 # ==================== Main Server Loop ====================

@@ -1193,18 +1193,18 @@ def dove(step_input, speed, timeLast, dpi, command):
 					dove_Right_III(horizontal_pos, vertical_pos)
 					time.sleep(timeLast/dpi)
 				elif command == 'right':
-					t = i / num_steps
-					horizontal_pos = int(-speed + (2 * speed * t))
-					vertical_pos = int(3 * speed * (1 - t))
+				 t = i / num_steps
+				 horizontal_pos = int(-speed + (2 * speed * t))
+				 vertical_pos = int(3 * speed * (1 - t))
 
-					dove_Left_I(-horizontal_pos, -10)
-					dove_Right_II(horizontal_pos, -10)
-					dove_Left_III(-horizontal_pos, -10)
+				 dove_Left_I(-horizontal_pos, -10)
+				 dove_Right_II(horizontal_pos, -10)
+				 dove_Left_III(-horizontal_pos, -10)
 
-					dove_Right_I(-horizontal_pos, vertical_pos)
-					dove_Left_II(horizontal_pos, vertical_pos)
-					dove_Right_III(-horizontal_pos, vertical_pos)
-					time.sleep(timeLast/dpi)
+				 dove_Right_I(-horizontal_pos, vertical_pos)
+				 dove_Left_II(horizontal_pos, vertical_pos)
+				 dove_Right_III(-horizontal_pos, vertical_pos)
+				 time.sleep(timeLast/dpi)
 				else:
 					pass
 
@@ -1797,3 +1797,33 @@ if __name__ == '__main__':
 	except KeyboardInterrupt:
 		pwm.set_all_pwm(0, 300)
 		time.sleep(1)
+
+def standby():
+	"""
+	Put all servos into standby mode - stops PWM signals.
+	Servos become 'soft' and can be moved by hand.
+	Saves power while keeping the Pi running.
+	"""
+	print("🔋 Moving servos to STANDBY mode")
+	global move_stu
+	move_stu = 0  # Stop any ongoing movement
+
+	# Stop PWM signals on all channels
+	for i in range(16):
+		pwm.set_pwm(i, 0, 0)  # Setting pulse to 0 stops the signal
+
+	print("✓ All servos in STANDBY - legs are soft, low power consumption")
+
+
+def wakeup():
+	"""
+	Wake up servos from standby - restores last known positions.
+	"""
+	print("⚡ WAKEUP - Restoring servo positions")
+	global servo_current_pos
+
+	# Restore all servos to their last known positions
+	for i in range(16):
+		pwm.set_pwm(i, 0, servo_current_pos[i])
+
+	print("✓ All servos restored - robot ready")

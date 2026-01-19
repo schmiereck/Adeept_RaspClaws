@@ -28,6 +28,27 @@ import Switch as switch
 import numpy as np
 import RPIservo
 
+# ==================== Power Management ====================
+# Global flag for camera stream pause/resume
+camera_paused = False
+
+
+def pause_stream():
+	"""Pause the camera video stream to save power"""
+	global camera_paused
+	camera_paused = True
+	print("📷 Camera stream PAUSED - saving power")
+
+
+def resume_stream():
+	"""Resume the camera video stream"""
+	global camera_paused
+	camera_paused = False
+	print("📷 Camera stream RESUMED")
+
+
+# ==================== End Power Management ====================
+
 pid = PID.PID()
 pid.SetKp(0.5)
 pid.SetKd(0)
@@ -400,4 +421,3 @@ if __name__ == '__main__':
 	while 1:
 		fpv.capture_thread('192.168.3.199')
 		pass
-

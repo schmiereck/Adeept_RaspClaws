@@ -362,6 +362,51 @@ def all_btn_normal():
 		btn.config(bg=color_btn, fg=color_text)
 
 
+# ==================== Power Management Callbacks ====================
+
+servo_standby_state = False
+camera_pause_state = False
+
+
+def call_servo_standby(event):
+	"""Toggle servo standby mode"""
+	global servo_standby_state
+	try:
+		if not servo_standby_state:
+			tcpClicSock.send('servo_standby'.encode())
+			Btn_ServoStandby.config(bg='#FF6D00', fg='#000000', text='Servo Wake [M]')
+			servo_standby_state = True
+			print("🔋 Servos in STANDBY mode - low power")
+		else:
+			tcpClicSock.send('servo_wakeup'.encode())
+			Btn_ServoStandby.config(bg=color_btn, fg=color_text, text='Servo Standby [M]')
+			servo_standby_state = False
+			print("⚡ Servos AWAKE - ready to move")
+	except Exception as e:
+		print(f"Error: {e}")
+
+
+def call_camera_pause(event):
+	"""Toggle camera pause mode"""
+	global camera_pause_state
+	try:
+		if not camera_pause_state:
+			tcpClicSock.send('camera_pause'.encode())
+			Btn_CameraPause.config(bg='#FF6D00', fg='#000000', text='Camera Resume [,]')
+			camera_pause_state = True
+			print("📷 Camera PAUSED - saving power")
+		else:
+			tcpClicSock.send('camera_resume'.encode())
+			Btn_CameraPause.config(bg=color_btn, fg=color_text, text='Camera Pause [,]')
+			camera_pause_state = False
+			print("📷 Camera RESUMED")
+	except Exception as e:
+		print(f"Error: {e}")
+
+
+# ==================== End Power Management ====================
+
+
 # ==================== Connection Thread ====================
 def connection_thread():
 	global funcMode, Switch_3, Switch_2, Switch_1, SmoothMode, SmoothCamMode, steadyMode
@@ -936,7 +981,20 @@ def loop():					  #GUI
 		root.bind('<KeyPress-n>', call_SmoothCam)
 		Btn_SmoothCam.bind('<ButtonPress-1>', call_SmoothCam)
 
-		scale_FL(30,490,315)#1
+		# Third row - Power Management buttons
+		global Btn_ServoStandby, Btn_CameraPause
+
+		Btn_ServoStandby = tk.Button(root, width=21, text='Servo Standby [M]',fg=color_text,bg=color_btn,relief='ridge')
+		Btn_ServoStandby.place(x=30,y=480)
+		root.bind('<KeyPress-m>', call_servo_standby)
+		Btn_ServoStandby.bind('<ButtonPress-1>', call_servo_standby)
+
+		Btn_CameraPause = tk.Button(root, width=21, text='Camera Pause [,]',fg=color_text,bg=color_btn,relief='ridge')
+		Btn_CameraPause.place(x=200,y=480)
+		root.bind('<KeyPress-comma>', call_camera_pause)
+		Btn_CameraPause.bind('<ButtonPress-1>', call_camera_pause)
+
+		scale_FL(30,520,315)#1
 
 		global stat
 		if stat==0:			  # Ensure the mainloop runs only once
