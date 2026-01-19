@@ -701,7 +701,8 @@ def dove_smooth(phase, speed, timeLast, command):
 			h1 = int(speed * math.cos(t * math.pi))  # +speed → -speed
 
 			# Vertical: smooth arc using sine (lift up and down)
-			v1 = int(3 * speed * math.sin(t * math.pi))  # 0 → 3*speed → 0
+			# Always use positive amplitude for vertical movement
+			v1 = int(3 * abs(speed) * math.sin(t * math.pi))  # 0 → 3*speed → 0
 
 			# Group 2 (R1, L2, R3) on ground, moving from -speed to +speed
 			h2 = -h1  # Opposite horizontal position
@@ -723,7 +724,8 @@ def dove_smooth(phase, speed, timeLast, command):
 			h2 = int(speed * math.cos(t * math.pi))  # +speed → -speed
 
 			# Vertical: smooth arc
-			v2 = int(3 * speed * math.sin(t * math.pi))  # 0 → 3*speed → 0
+			# Always use positive amplitude for vertical movement
+			v2 = int(3 * abs(speed) * math.sin(t * math.pi))  # 0 → 3*speed → 0
 
 			# Group 1 on ground
 			h1 = -h2  # Opposite horizontal position
