@@ -515,7 +515,7 @@ def move(step_input, speed, command):
 		time.sleep(0.02)  # 20ms between steps = 100ms total for 5 steps
 
 
-# Global phase tracker for continuous movement without jumps
+# Global phase tracker for continuous movement without jumps between calls
 _movement_phase = 0.0
 
 def move_smooth(speed, command, cycle_steps=30):
@@ -527,23 +527,30 @@ def move_smooth(speed, command, cycle_steps=30):
 		command: Movement command ('no', 'left', 'right')
 		cycle_steps: Number of steps per full walking cycle (default 30)
 
-	This function performs ONE increment of the walking cycle and returns.
-	It uses a global phase tracker to maintain continuity across calls.
+	Performs ONE COMPLETE walking cycle and returns.
+	Uses global phase tracker to ensure smooth transitions between cycles.
 	The movement thread will call this repeatedly for continuous motion.
 	"""
 	global _movement_phase
 
-	# Perform one step of the walking cycle
-	dove_smooth(_movement_phase, speed, 0.05, command)
-	time.sleep(1.5 / cycle_steps)  # ~50ms per step
+	# Perform one complete walking cycle
+	for i in range(cycle_steps):
+		# Check if movement should stop
+		if not move_stu:
+			break
 
-	# Increment phase for next call
-	_movement_phase += 1.0 / cycle_steps  # e.g., +0.033 for 30 steps
+		# Use global phase for continuity between cycles
+		dove_smooth(_movement_phase, speed, 0.05, command)
+		time.sleep(1.5 / cycle_steps)  # ~50ms per step = 1.5s per cycle
 
-	# Wrap phase back to 0 after completing a full cycle
-	# This is smooth because sin(0) = sin(2π) and cos(0) = cos(2π)
-	if _movement_phase >= 1.0:
-		_movement_phase = 0.0
+		# Increment phase for next step
+		_movement_phase += 1.0 / cycle_steps  # e.g., +0.033 for 30 steps
+
+		# Wrap phase back to 0 after completing a full cycle
+		# This is smooth because sin(0) = sin(2π) and cos(0) = cos(2π)
+		if _movement_phase >= 1.0:
+			_movement_phase = 0.0
+
 
 
 

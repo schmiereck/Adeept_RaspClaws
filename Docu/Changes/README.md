@@ -58,6 +58,12 @@ Dieses Verzeichnis enthält alle dokumentierten Änderungen (Feature-Tickets, Bu
 - **FT33** - Battery Monitor - Akku-Überwachung in GUI
 - **FT34** - Final Changes - Finale Anpassungen und Dokumentation
 
+### Dokumentation & Final Fixes (FT35-36)
+- **FT35** - Documentation Organization - Alle Dokumentationen organisiert mit FT-Nummerierung
+- **FT36** - Bugfix Smooth Movement Performance - **Kritischer Performance-Fix!** Smooth-Modus korrigiert
+
+---
+
 ## Wichtigste Meilensteine
 
 ### 🎉 Smooth Movement System (FT20-30)
@@ -85,10 +91,10 @@ Jede FT-Datei enthält:
 
 ## Statistik
 
-- **Gesamt:** 34 Feature-Tickets
-- **Bugfixes:** ~15
+- **Gesamt:** 36 Feature-Tickets
+- **Bugfixes:** ~16
 - **Refactorings:** ~8
-- **Enhancements:** ~7
+- **Enhancements:** ~8
 - **Infrastruktur:** ~4
 
 ## Autoren
