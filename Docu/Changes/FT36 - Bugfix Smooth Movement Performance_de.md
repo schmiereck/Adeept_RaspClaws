@@ -74,6 +74,9 @@ def move_smooth(speed, command, cycle_steps=30):
     for i in range(cycle_steps):
         # CHECK move_stu every step!
         if not move_stu:
+            # IMPORTANT: Reset phase to 0 when movement stops
+            # This prevents jumps when movement starts again
+            _movement_phase = 0.0
             break
         
         # Use global phase for smooth transitions between cycles
@@ -94,8 +97,42 @@ def move_smooth(speed, command, cycle_steps=30):
 
 1. **Ein vollständiger Zyklus** (30 Steps) pro Aufruf = 1.5s
 2. **move_stu wird in der Schleife geprüft** - kann jeden Step abbrechen (50ms Reaktionszeit)
-3. **Globaler Phase-Tracker** bleibt für smooth Übergänge zwischen Zyklen
-4. **CPU-freundlich** - 1.5s Arbeit, dann kehrt zurück
+3. **Phase-Reset bei Stop** - verhindert Sprünge beim Neustart ← **WICHTIG!**
+4. **Globaler Phase-Tracker** bleibt für smooth Übergänge zwischen Zyklen
+5. **CPU-freundlich** - 1.5s Arbeit, dann kehrt zurück
+
+### Phase-Reset Problem (Update)
+
+**Problem entdeckt:**
+Wenn Bewegung gestoppt wird (Button losgelassen), bleibt `_movement_phase` bei letztem Wert stehen.
+Beim Neustart (Button erneut drücken) startet Phase **nicht bei 0.0**, sondern bei letztem Wert → **Sprung!**
+
+**Beispiel:**
+```
+1. Button drücken: phase 0.0 → 0.3 → 0.6 → 0.8
+2. Button loslassen: phase bleibt bei 0.8
+3. Button erneut drücken: phase startet bei 0.8 ← SPRUNG von 0.0 zu 0.8!
+   
+Servo-Position:
+phase 0.8: L1:328 (Bein hinten)
+phase 0.0: L1:290 (Bein Mitte)
+→ Δ: -38 PWM SPRUNG! ❌
+```
+
+**Lösung:**
+```python
+if not move_stu:
+    _movement_phase = 0.0  # ← Reset auf 0!
+    break
+```
+
+**Jetzt:**
+```
+1. Button drücken: phase 0.0 → 0.3 → 0.6 → 0.8
+2. Button loslassen: phase wird auf 0.0 zurückgesetzt ✓
+3. Button erneut drücken: phase startet bei 0.0 ✓
+→ Kein Sprung! ✓
+```
 
 ### Warum das funktioniert
 
@@ -145,12 +182,13 @@ def move_smooth(...):
     # Kehrt nach 50ms zurück → CPU-Loop!
 ```
 
-**Nachher (FT36 - KORREKT):**
+**Nachher (FT36 - KORREKT mit Phase-Reset):**
 ```python
 def move_smooth(...):
     # Macht EINEN GANZEN Zyklus (30 Steps)
     for i in range(cycle_steps):
         if not move_stu:  # Abbruch möglich!
+            _movement_phase = 0.0  # ← RESET Phase!
             break
         
         dove_smooth(_movement_phase, ...)

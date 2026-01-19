@@ -537,6 +537,9 @@ def move_smooth(speed, command, cycle_steps=30):
 	for i in range(cycle_steps):
 		# Check if movement should stop
 		if not move_stu:
+			# Reset phase to 0 when movement stops
+			# This ensures smooth start when movement begins again
+			_movement_phase = 0.0
 			break
 
 		# Use global phase for continuity between cycles
