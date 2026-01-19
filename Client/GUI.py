@@ -311,17 +311,6 @@ def call_Switch_3(event):
 		send_command('Switch_3_off')
 
 
-def all_btn_red():
-	"""Set all mode buttons to active (red) color"""
-	for btn in [Btn_Steady, Btn_FindColor, Btn_WatchDog, Btn_Police]:
-		btn.config(bg='#FF6D00', fg='#000000')
-
-
-def all_btn_normal():
-	"""Set all mode buttons to normal color"""
-	for btn in [Btn_Steady, Btn_FindColor, Btn_WatchDog, Btn_Police]:
-		btn.config(bg=color_btn, fg=color_text)
-
 
 # ==================== Power Management Callbacks ====================
 
