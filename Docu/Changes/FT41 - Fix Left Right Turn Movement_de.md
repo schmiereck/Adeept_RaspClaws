@@ -29,23 +29,35 @@ if command == 'left':
 
 ## Lösung
 
-**Gruppierung nach Seite statt diagonal:**
+**Diagonale Gruppierung wie Forward/Backward, aber mit seitenabhängigen Bewegungen:**
+
+Für eine Drehung muss man:
+1. **Diagonale Gruppierung** verwenden (wie Forward), damit nicht alle Beine gleichzeitig heben
+2. **Aber:** Jedes Bein bekommt eine **seitenabhängige Richtung**
+   - Linke Beine (L1, L2, L3) bewegen sich **rückwärts** (+h)
+   - Rechte Beine (R1, R2, R3) bewegen sich **vorwärts** (-h)
 
 ### Turn Left (gegen den Uhrzeigersinn)
 
 ```python
 if phase < 0.5:
-    # Linke Beine (L1, L2, L3) in der Luft, bewegen sich RÜCKWÄRTS
-    h_left = +speed → -speed  # Von vorne nach hinten
-    v_left = hoch
+    # Gruppe 1 (L1, R2, L3) in der Luft
+    # ABER: Nicht gleiche Bewegung, sondern seitenabhängig!
     
-    # Rechte Beine (R1, R2, R3) am Boden, bewegen sich VORWÄRTS
-    h_right = -speed → +speed  # Von hinten nach vorne
-    v_right = unten
+    L1: h = +h, v = hoch   # Links: rückwärts
+    R2: h = -h, v = hoch   # Rechts: vorwärts (ENTGEGENGESETZT!)
+    L3: h = +h, v = hoch   # Links: rückwärts
+    
+    # Gruppe 2 (R1, L2, R3) am Boden
+    R1: h = -h, v = unten  # Rechts: vorwärts
+    L2: h = +h, v = unten  # Links: rückwärts
+    R3: h = -h, v = unten  # Rechts: vorwärts
 else:
-    # Rechte Beine in der Luft, VORWÄRTS
-    # Linke Beine am Boden, RÜCKWÄRTS
+    # Gruppe 2 in der Luft, Gruppe 1 am Boden
+    # Gleiche seitenabhängige Logik
 ```
+
+**Schlüssel:** Diagonale Gruppierung (abwechselnd heben) + Seitenabhängige Richtung (links/rechts entgegengesetzt)
 
 ### Turn Right (im Uhrzeigersinn)
 

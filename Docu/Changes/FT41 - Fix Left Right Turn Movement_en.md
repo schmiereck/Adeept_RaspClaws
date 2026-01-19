@@ -29,23 +29,35 @@ if command == 'left':
 
 ## Solution
 
-**Group by side instead of diagonal:**
+**Diagonal grouping like Forward/Backward, but with side-specific movements:**
+
+For a turn, you need:
+1. **Diagonal grouping** (like Forward), so not all legs lift at once
+2. **But:** Each leg gets a **side-specific direction**
+   - Left legs (L1, L2, L3) move **backward** (+h)
+   - Right legs (R1, R2, R3) move **forward** (-h)
 
 ### Turn Left (counter-clockwise)
 
 ```python
 if phase < 0.5:
-    # Left legs (L1, L2, L3) in air, moving BACKWARD
-    h_left = +speed → -speed  # From front to back
-    v_left = up
+    # Group 1 (L1, R2, L3) in air
+    # BUT: Not same movement, side-specific instead!
     
-    # Right legs (R1, R2, R3) on ground, moving FORWARD
-    h_right = -speed → +speed  # From back to front
-    v_right = down
+    L1: h = +h, v = up    # Left: backward
+    R2: h = -h, v = up    # Right: forward (OPPOSITE!)
+    L3: h = +h, v = up    # Left: backward
+    
+    # Group 2 (R1, L2, R3) on ground
+    R1: h = -h, v = down  # Right: forward
+    L2: h = +h, v = down  # Left: backward
+    R3: h = -h, v = down  # Right: forward
 else:
-    # Right legs in air, FORWARD
-    # Left legs on ground, BACKWARD
+    # Group 2 in air, Group 1 on ground
+    # Same side-specific logic
 ```
+
+**Key:** Diagonal grouping (alternating lift) + Side-specific direction (left/right opposite)
 
 ### Turn Right (clockwise)
 
