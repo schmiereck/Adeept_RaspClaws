@@ -268,7 +268,8 @@ def leg_control(leg_name, pos, wiggle, heightAdjust=0):
 				else:
 					pwm.set_pwm(v_channel, 0, base_v + height_change)
 			elif pos == 3:
-				pwm.set_pwm(h_channel, 0, base_h + int(wiggle/2))  # Halfway to avoid jerk
+				# Position 3: Continue backward motion (75% of range: halfway between pos 2 and pos 4)
+				pwm.set_pwm(h_channel, 0, base_h)  # Neutral position
 				if height_flag:
 					pwm.set_pwm(v_channel, 0, base_v - height_change)
 				else:
@@ -294,7 +295,8 @@ def leg_control(leg_name, pos, wiggle, heightAdjust=0):
 				else:
 					pwm.set_pwm(v_channel, 0, base_v + wiggle)
 			elif pos == 3:
-				pwm.set_pwm(h_channel, 0, base_h - int(wiggle/2))  # Halfway to avoid jerk
+				# Position 3: Continue forward motion (neutral position)
+				pwm.set_pwm(h_channel, 0, base_h)  # Neutral position
 				if height_flag:
 					pwm.set_pwm(v_channel, 0, base_v - wiggle)
 				else:
