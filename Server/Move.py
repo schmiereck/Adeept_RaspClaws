@@ -518,12 +518,16 @@ def move(step_input, speed, command):
 # Global phase tracker for continuous movement without jumps between calls
 _movement_phase = 0.0
 
+# Track last movement direction to detect direction changes
+# Helps prevent jumps when switching from forward to backward
+_last_speed_sign = 0  # -1 = forward, +1 = backward, 0 = not moving
+
 def move_smooth(speed, command, cycle_steps=30):
 	"""
 	Smooth continuous movement using sine/cosine curves.
 
 	Args:
-		speed: Movement amplitude
+		speed: Movement amplitude (negative = forward, positive = backward)
 		command: Movement command ('no', 'left', 'right')
 		cycle_steps: Number of steps per full walking cycle (default 30)
 
@@ -531,15 +535,30 @@ def move_smooth(speed, command, cycle_steps=30):
 	Uses global phase tracker to ensure smooth transitions between cycles.
 	The movement thread will call this repeatedly for continuous motion.
 	"""
-	global _movement_phase
+	global _movement_phase, _last_speed_sign
+
+	# Detect direction change (forward ↔ backward)
+	current_speed_sign = 1 if speed > 0 else -1 if speed < 0 else 0
+
+	if current_speed_sign != 0 and _last_speed_sign != 0:
+		# Check if direction changed (forward to backward or vice versa)
+		if current_speed_sign != _last_speed_sign:
+			# Direction changed! Reset phase to avoid jump
+			# This ensures smooth start in the new direction
+			_movement_phase = 0.0
+			print(f"Direction change detected: {_last_speed_sign} → {current_speed_sign}, phase reset to 0.0")
+
+	# Update last direction
+	_last_speed_sign = current_speed_sign
 
 	# Perform one complete walking cycle
 	for i in range(cycle_steps):
 		# Check if movement should stop
 		if not move_stu:
-			# Reset phase to 0 when movement stops
+			# Reset phase and direction tracker when movement stops
 			# This ensures smooth start when movement begins again
 			_movement_phase = 0.0
+			_last_speed_sign = 0
 			break
 
 		# Execute step with current phase (use modulo to keep in 0.0-1.0 range)
