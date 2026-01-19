@@ -647,54 +647,80 @@ def calculate_target_positions(phase, speed, command):
 			positions['R3'] = {'h': h2, 'v': v2}
 
 	elif command == 'left':
-		# Turn left
+		# Turn left: Rotate counter-clockwise on the spot
+		# Left side moves backward, right side moves forward
 		if phase < 0.5:
+			# Left legs (L1, L2, L3) in air, moving backward
 			t = phase * 2
-			h = int(speed * math.cos(t * math.pi))
-			v = int(3 * abs(speed) * math.sin(t * math.pi))
+			h_left = int(abs(speed) * math.cos(t * math.pi))  # +speed → -speed (backward)
+			v_left = int(3 * abs(speed) * math.sin(t * math.pi))
 
-			positions['L1'] = {'h': -h, 'v': v}
-			positions['R2'] = {'h': h, 'v': v}
-			positions['L3'] = {'h': -h, 'v': v}
-			positions['R1'] = {'h': h, 'v': -10}
-			positions['L2'] = {'h': -h, 'v': -10}
-			positions['R3'] = {'h': h, 'v': -10}
+			# Right legs (R1, R2, R3) on ground, moving forward
+			h_right = -h_left  # Opposite: -speed → +speed (forward)
+			v_right = -10
+
+			positions['L1'] = {'h': h_left, 'v': v_left}
+			positions['L2'] = {'h': h_left, 'v': v_left}
+			positions['L3'] = {'h': h_left, 'v': v_left}
+			positions['R1'] = {'h': h_right, 'v': v_right}
+			positions['R2'] = {'h': h_right, 'v': v_right}
+			positions['R3'] = {'h': h_right, 'v': v_right}
 		else:
+			# Right legs (R1, R2, R3) in air, moving forward
 			t = (phase - 0.5) * 2
-			h = int(speed * math.cos(t * math.pi))
-			v = int(3 * abs(speed) * math.sin(t * math.pi))
+			h_right = int(abs(speed) * math.cos(t * math.pi))  # +speed → -speed
+			# But we want forward, so negate it
+			h_right = -h_right  # Now: -speed → +speed (forward)
+			v_right = int(3 * abs(speed) * math.sin(t * math.pi))
 
-			positions['L1'] = {'h': -h, 'v': -10}
-			positions['R2'] = {'h': h, 'v': -10}
-			positions['L3'] = {'h': -h, 'v': -10}
-			positions['R1'] = {'h': h, 'v': v}
-			positions['L2'] = {'h': -h, 'v': v}
-			positions['R3'] = {'h': h, 'v': v}
+			# Left legs (L1, L2, L3) on ground, moving backward
+			h_left = -h_right  # Opposite: +speed → -speed (backward)
+			v_left = -10
+
+			positions['L1'] = {'h': h_left, 'v': v_left}
+			positions['L2'] = {'h': h_left, 'v': v_left}
+			positions['L3'] = {'h': h_left, 'v': v_left}
+			positions['R1'] = {'h': h_right, 'v': v_right}
+			positions['R2'] = {'h': h_right, 'v': v_right}
+			positions['R3'] = {'h': h_right, 'v': v_right}
 
 	elif command == 'right':
-		# Turn right
+		# Turn right: Rotate clockwise on the spot
+		# Right side moves backward, left side moves forward
 		if phase < 0.5:
+			# Right legs (R1, R2, R3) in air, moving backward
 			t = phase * 2
-			h = int(speed * math.cos(t * math.pi))
-			v = int(3 * abs(speed) * math.sin(t * math.pi))
+			h_right = int(abs(speed) * math.cos(t * math.pi))  # +speed → -speed (backward)
+			v_right = int(3 * abs(speed) * math.sin(t * math.pi))
 
-			positions['L1'] = {'h': h, 'v': v}
-			positions['R2'] = {'h': -h, 'v': v}
-			positions['L3'] = {'h': h, 'v': v}
-			positions['R1'] = {'h': -h, 'v': -10}
-			positions['L2'] = {'h': h, 'v': -10}
-			positions['R3'] = {'h': -h, 'v': -10}
+			# Left legs (L1, L2, L3) on ground, moving forward
+			h_left = -h_right  # Opposite: -speed → +speed (forward)
+			v_left = -10
+
+			positions['L1'] = {'h': h_left, 'v': v_left}
+			positions['L2'] = {'h': h_left, 'v': v_left}
+			positions['L3'] = {'h': h_left, 'v': v_left}
+			positions['R1'] = {'h': h_right, 'v': v_right}
+			positions['R2'] = {'h': h_right, 'v': v_right}
+			positions['R3'] = {'h': h_right, 'v': v_right}
 		else:
+			# Left legs (L1, L2, L3) in air, moving forward
 			t = (phase - 0.5) * 2
-			h = int(speed * math.cos(t * math.pi))
-			v = int(3 * abs(speed) * math.sin(t * math.pi))
+			h_left = int(abs(speed) * math.cos(t * math.pi))  # +speed → -speed
+			# But we want forward, so negate it
+			h_left = -h_left  # Now: -speed → +speed (forward)
+			v_left = int(3 * abs(speed) * math.sin(t * math.pi))
 
-			positions['L1'] = {'h': h, 'v': -10}
-			positions['R2'] = {'h': -h, 'v': -10}
-			positions['L3'] = {'h': h, 'v': -10}
-			positions['R1'] = {'h': -h, 'v': v}
-			positions['L2'] = {'h': h, 'v': v}
-			positions['R3'] = {'h': -h, 'v': v}
+			# Right legs (R1, R2, R3) on ground, moving backward
+			h_right = -h_left  # Opposite: +speed → -speed (backward)
+			v_right = -10
+
+			positions['L1'] = {'h': h_left, 'v': v_left}
+			positions['L2'] = {'h': h_left, 'v': v_left}
+			positions['L3'] = {'h': h_left, 'v': v_left}
+			positions['R1'] = {'h': h_right, 'v': v_right}
+			positions['R2'] = {'h': h_right, 'v': v_right}
+			positions['R3'] = {'h': h_right, 'v': v_right}
 
 	return positions
 
