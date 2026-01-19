@@ -296,6 +296,52 @@ Zyklus 2 startet: _movement_phase = 0.0 (automatisch wrapped)
 - ✅ Normale CPU-Last (~8-12%)
 - ✅ Responsive Button-Reaktion (50ms)
 - ✅ Keine Zuckbewegungen mehr
+- ✅ **Update:** Phase-Inkrementierung vor dove_smooth() verhindert Doppel-Steps beim Wrap
+
+### Final Fix: Phase-Inkrementierung-Reihenfolge (2. Update)
+
+**Problem entdeckt:**
+Es gab noch ein Zucken **einmal pro Zyklus** beim Übergang von einem Zyklus zum nächsten.
+
+**Servo-Logs zeigten:**
+```
+[...488202] L1:277,222 ...  (phase ~0.967)
+[...488230] L1:269,258 ...  (nur 28ms später statt 200ms!) ← PROBLEM!
+```
+
+**Root Cause:**
+Die Reihenfolge in der Schleife war falsch:
+
+```python
+# FALSCH (Alt):
+dove_smooth(_movement_phase, ...)  # 1. Step ausführen
+time.sleep(50ms)                    # 2. Warten
+_movement_phase += 0.033            # 3. Inkrementieren
+if _movement_phase >= 1.0:          # 4. Wrap
+    _movement_phase = 0.0
+
+# Nächste Iteration:
+dove_smooth(0.0, ...)  # ← SOFORT ohne vorheriges Sleep!
+```
+
+**Problem:** Nach dem Wrap wurde **sofort** der nächste Step ausgeführt, ohne das `time.sleep()` vorher!
+
+**Lösung:** Phase **VOR** dove_smooth() inkrementieren:
+
+```python
+# RICHTIG (Neu):
+_movement_phase += 0.033            # 1. Inkrementieren
+if _movement_phase >= 1.0:          # 2. Wrap
+    _movement_phase = 0.0
+dove_smooth(_movement_phase, ...)  # 3. Step ausführen
+time.sleep(50ms)                    # 4. Warten (IMMER vor nächstem Step!)
+
+# Nächste Iteration:
+_movement_phase += 0.033            # 1. Inkrementieren
+dove_smooth(...)                    # 3. Step - 50ms nach letztem! ✓
+```
+
+**Jetzt:** Zwischen **jedem** Step ist immer genau 50ms Pause - auch beim Wrap! ✓
 
 ---
 
