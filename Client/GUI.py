@@ -526,7 +526,8 @@ def connection_thread():
 			Btn_FindColor.config(bg=color_btn, fg=color_text)
 			Btn_WatchDog.config(bg=color_btn, fg=color_text)
 
-		print(car_info)
+		# Note: Removed generic print(car_info) here - it caused duplicate log output
+		# Specific messages are already handled by their respective elif blocks
 
 
 # ==================== Connection Functions ====================
