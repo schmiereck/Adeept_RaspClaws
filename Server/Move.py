@@ -4,6 +4,7 @@
 # Author      : Adeept
 # Date        : 2025/04/16
 import time
+import math
 import Adafruit_PCA9685
 from mpu6050 import mpu6050
 import Kalman_Filter as Kalman_filter
@@ -515,61 +516,211 @@ def move(step_input, speed, command):
 		time.sleep(0.02)  # 20ms between steps = 100ms total for 5 steps
 
 
-# Global phase tracker for continuous movement without jumps between calls
-_movement_phase = 0.0
+# Global position tracker for smooth continuous movement
+# Store actual leg positions (horizontal offsets) instead of just phase
+# This allows smooth interpolation when direction changes
+_leg_positions = {
+	'L1': 0,  # Left front horizontal position
+	'L2': 0,  # Left middle horizontal position
+	'L3': 0,  # Left rear horizontal position
+	'R1': 0,  # Right front horizontal position
+	'R2': 0,  # Right middle horizontal position
+	'R3': 0   # Right rear horizontal position
+}
 
-# Track last movement direction to detect direction changes
-# Helps prevent jumps when switching from forward to backward
-_last_speed_sign = 0  # -1 = forward, +1 = backward, 0 = not moving
+# Track last movement command to detect changes
+_last_command = None
+_last_speed_sign = 0
 
 def move_smooth(speed, command, cycle_steps=30):
 	"""
-	Smooth continuous movement using sine/cosine curves.
+	Smooth continuous movement using sine/cosine curves with position tracking.
 
 	Args:
 		speed: Movement amplitude (negative = forward, positive = backward)
 		command: Movement command ('no', 'left', 'right')
 		cycle_steps: Number of steps per full walking cycle (default 30)
 
-	Performs ONE COMPLETE walking cycle and returns.
-	Uses global phase tracker to ensure smooth transitions between cycles.
-	The movement thread will call this repeatedly for continuous motion.
+	Uses actual leg position tracking to ensure smooth transitions even when
+	direction changes. Interpolates from current position to target position.
 	"""
-	global _movement_phase, _last_speed_sign
+	global _leg_positions, _last_command, _last_speed_sign
 
-	# Detect direction change (forward ↔ backward)
+	# Detect command or direction change
 	current_speed_sign = 1 if speed > 0 else -1 if speed < 0 else 0
+	command_changed = (command != _last_command) or (current_speed_sign != _last_speed_sign and current_speed_sign != 0 and _last_speed_sign != 0)
 
-	if current_speed_sign != 0 and _last_speed_sign != 0:
-		# Check if direction changed (forward to backward or vice versa)
-		if current_speed_sign != _last_speed_sign:
-			# Direction changed! Reset phase to avoid jump
-			# This ensures smooth start in the new direction
-			_movement_phase = 0.0
-			print(f"Direction change detected: {_last_speed_sign} → {current_speed_sign}, phase reset to 0.0")
+	if command_changed:
+		print(f"Movement change detected: cmd={_last_command}→{command}, dir={_last_speed_sign}→{current_speed_sign}")
 
-	# Update last direction
+	_last_command = command
 	_last_speed_sign = current_speed_sign
 
 	# Perform one complete walking cycle
-	for i in range(cycle_steps):
+	for step in range(cycle_steps):
 		# Check if movement should stop
 		if not move_stu:
-			# Reset phase and direction tracker when movement stops
-			# This ensures smooth start when movement begins again
-			_movement_phase = 0.0
+			# Keep current positions when stopped (don't reset!)
+			# This allows smooth continuation when movement resumes
+			_last_command = None
 			_last_speed_sign = 0
 			break
 
-		# Execute step with current phase (use modulo to keep in 0.0-1.0 range)
-		# Modulo ensures smooth wrap: 1.0 % 1.0 = 0.0, and cos/sin are periodic
-		current_phase = _movement_phase % 1.0
-		dove_smooth(current_phase, speed, 0.05, command)
+		# Calculate current phase for this step (0.0 to 1.0)
+		phase = step / cycle_steps
+
+		# Calculate target positions for this phase
+		target_positions = calculate_target_positions(phase, speed, command)
+
+		# Interpolate from current to target (smooth transition)
+		# Use stronger interpolation at the beginning of a cycle
+		if command_changed and step < 5:
+			# Stronger interpolation for first few steps after direction change
+			alpha = 0.3 + (step / 5) * 0.7  # 0.3 → 1.0 over first 5 steps
+		else:
+			# Normal: move directly to target
+			alpha = 1.0
+
+		# Update and apply positions for each leg
+		for leg in ['L1', 'L2', 'L3', 'R1', 'R2', 'R3']:
+			current = _leg_positions[leg]
+			target = target_positions[leg]['h']
+			vertical = target_positions[leg]['v']
+
+			# Interpolate: new = current + alpha * (target - current)
+			new_horizontal = int(current + alpha * (target - current))
+			_leg_positions[leg] = new_horizontal
+
+			# Apply to servos
+			apply_leg_position(leg, new_horizontal, vertical)
+
 		time.sleep(1.5 / cycle_steps)  # ~50ms per step = 1.5s per cycle
 
-		# Increment phase AFTER executing step
-		# No explicit wrap needed - modulo handles it smoothly
-		_movement_phase += 1.0 / cycle_steps  # e.g., +0.033 for 30 steps
+
+def calculate_target_positions(phase, speed, command):
+	"""
+	Calculate target horizontal and vertical positions for all legs at given phase.
+
+	Args:
+		phase: Current phase in cycle (0.0 to 1.0)
+		speed: Movement amplitude (negative = forward, positive = backward)
+		command: Movement command ('no', 'left', 'right')
+
+	Returns:
+		Dictionary with target positions for each leg: {'L1': {'h': ..., 'v': ...}, ...}
+	"""
+	positions = {}
+
+	if command == 'no':
+		# Forward/backward movement
+		if phase < 0.5:
+			# Group 1 (L1, R2, L3) in air
+			t = phase * 2  # 0.0 to 1.0
+			h1 = int(speed * math.cos(t * math.pi))
+			v1 = int(3 * abs(speed) * math.sin(t * math.pi))
+
+			# Group 2 (R1, L2, R3) on ground
+			h2 = -h1
+			v2 = -10
+
+			positions['L1'] = {'h': h1, 'v': v1}
+			positions['R2'] = {'h': h1, 'v': v1}
+			positions['L3'] = {'h': h1, 'v': v1}
+			positions['R1'] = {'h': h2, 'v': v2}
+			positions['L2'] = {'h': h2, 'v': v2}
+			positions['R3'] = {'h': h2, 'v': v2}
+		else:
+			# Group 2 (R1, L2, R3) in air
+			t = (phase - 0.5) * 2  # 0.0 to 1.0
+			h2 = int(speed * math.cos(t * math.pi))
+			v2 = int(3 * abs(speed) * math.sin(t * math.pi))
+
+			# Group 1 (L1, R2, L3) on ground
+			h1 = -h2
+			v1 = -10
+
+			positions['L1'] = {'h': h1, 'v': v1}
+			positions['R2'] = {'h': h1, 'v': v1}
+			positions['L3'] = {'h': h1, 'v': v1}
+			positions['R1'] = {'h': h2, 'v': v2}
+			positions['L2'] = {'h': h2, 'v': v2}
+			positions['R3'] = {'h': h2, 'v': v2}
+
+	elif command == 'left':
+		# Turn left
+		if phase < 0.5:
+			t = phase * 2
+			h = int(speed * math.cos(t * math.pi))
+			v = int(3 * abs(speed) * math.sin(t * math.pi))
+
+			positions['L1'] = {'h': -h, 'v': v}
+			positions['R2'] = {'h': h, 'v': v}
+			positions['L3'] = {'h': -h, 'v': v}
+			positions['R1'] = {'h': h, 'v': -10}
+			positions['L2'] = {'h': -h, 'v': -10}
+			positions['R3'] = {'h': h, 'v': -10}
+		else:
+			t = (phase - 0.5) * 2
+			h = int(speed * math.cos(t * math.pi))
+			v = int(3 * abs(speed) * math.sin(t * math.pi))
+
+			positions['L1'] = {'h': -h, 'v': -10}
+			positions['R2'] = {'h': h, 'v': -10}
+			positions['L3'] = {'h': -h, 'v': -10}
+			positions['R1'] = {'h': h, 'v': v}
+			positions['L2'] = {'h': -h, 'v': v}
+			positions['R3'] = {'h': h, 'v': v}
+
+	elif command == 'right':
+		# Turn right
+		if phase < 0.5:
+			t = phase * 2
+			h = int(speed * math.cos(t * math.pi))
+			v = int(3 * abs(speed) * math.sin(t * math.pi))
+
+			positions['L1'] = {'h': h, 'v': v}
+			positions['R2'] = {'h': -h, 'v': v}
+			positions['L3'] = {'h': h, 'v': v}
+			positions['R1'] = {'h': -h, 'v': -10}
+			positions['L2'] = {'h': h, 'v': -10}
+			positions['R3'] = {'h': -h, 'v': -10}
+		else:
+			t = (phase - 0.5) * 2
+			h = int(speed * math.cos(t * math.pi))
+			v = int(3 * abs(speed) * math.sin(t * math.pi))
+
+			positions['L1'] = {'h': h, 'v': -10}
+			positions['R2'] = {'h': -h, 'v': -10}
+			positions['L3'] = {'h': h, 'v': -10}
+			positions['R1'] = {'h': -h, 'v': v}
+			positions['L2'] = {'h': h, 'v': v}
+			positions['R3'] = {'h': -h, 'v': v}
+
+	return positions
+
+
+def apply_leg_position(leg, horizontal, vertical):
+	"""
+	Apply horizontal and vertical position to a specific leg.
+
+	Args:
+		leg: Leg identifier ('L1', 'L2', 'L3', 'R1', 'R2', 'R3')
+		horizontal: Horizontal offset (-speed to +speed)
+		vertical: Vertical offset (positive = up, negative = down)
+	"""
+	if leg == 'L1':
+		dove_Left_I(horizontal, vertical)
+	elif leg == 'L2':
+		dove_Left_II(horizontal, vertical)
+	elif leg == 'L3':
+		dove_Left_III(horizontal, vertical)
+	elif leg == 'R1':
+		dove_Right_I(horizontal, vertical)
+	elif leg == 'R2':
+		dove_Right_II(horizontal, vertical)
+	elif leg == 'R3':
+		dove_Right_III(horizontal, vertical)
+
 
 
 
