@@ -538,11 +538,11 @@ def dove(step_input, speed, timeLast, dpi, command):
 					break
 
 		elif step_input == 2:
-			# Start from speed and go down to 0, so horizontal goes from -speed to +speed
-			for speed_I in range(speed, -int(speed/dpi), -int(speed/dpi)):
+			# Continue smoothly from step 1
+			for speed_I in range(0, (speed+int(speed/dpi)), int(speed/dpi)):
 				if move_stu and command == 'no':
 					# Continue from step 1: interpolate from -speed to +speed
-					# Horizontal: -speed at start, +speed at end
+					# Horizontal: -speed at start (end of step 1), +speed at end
 					# Vertical: 3*speed at start (high), 0 at end (ground)
 					horizontal_pos = -speed + (2 * speed_I)  # Goes from -speed to +speed
 					vertical_pos = 3 * (speed - speed_I)      # Goes from 3*speed to 0
@@ -628,8 +628,8 @@ def dove(step_input, speed, timeLast, dpi, command):
 				if move_stu == 0 and command == 'no':
 					break
 		elif step_input == 4:
-			# Start from speed and go down to 0
-			for speed_I in range(speed, -int(speed/dpi), -int(speed/dpi)):
+			# Continue smoothly from step 3
+			for speed_I in range(0, (speed+int(speed/dpi)), int(speed/dpi)):
 				if move_stu and command == 'no':
 					# Continue from step 3: interpolate from -speed to +speed
 					horizontal_pos = -speed + (2 * speed_I)
@@ -692,8 +692,8 @@ def dove(step_input, speed, timeLast, dpi, command):
 				else:
 					pass
 		elif step_input == 2:
-			# Start from speed and go down to 0 for backward movement
-			for speed_I in range(speed, -int(speed/dpi), -int(speed/dpi)):
+			# Continue smoothly from step 1 for backward movement
+			for speed_I in range(0, (speed+int(speed/dpi)), int(speed/dpi)):
 				if move_stu and command == 'no':
 					# Continue from step 1: interpolate from +speed to -speed (backward)
 					horizontal_pos = speed - (2 * speed_I)
@@ -724,8 +724,8 @@ def dove(step_input, speed, timeLast, dpi, command):
 				else:
 					pass
 		elif step_input == 4:
-			# Start from speed and go down to 0 for backward movement
-			for speed_I in range(speed, -int(speed/dpi), -int(speed/dpi)):
+			# Continue smoothly from step 3 for backward movement
+			for speed_I in range(0, (speed+int(speed/dpi)), int(speed/dpi)):
 				if move_stu and command == 'no':
 					# Continue from step 3: interpolate from +speed to -speed (backward)
 					horizontal_pos = speed - (2 * speed_I)
