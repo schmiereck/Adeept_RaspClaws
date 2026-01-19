@@ -515,6 +515,9 @@ def move(step_input, speed, command):
 		time.sleep(0.02)  # 20ms between steps = 100ms total for 5 steps
 
 
+# Global phase tracker for continuous movement without jumps
+_movement_phase = 0.0
+
 def move_smooth(speed, command, cycle_steps=30):
 	"""
 	Smooth continuous movement using sine/cosine curves.
@@ -524,23 +527,23 @@ def move_smooth(speed, command, cycle_steps=30):
 		command: Movement command ('no', 'left', 'right')
 		cycle_steps: Number of steps per full walking cycle (default 30)
 
-	This replaces the 4-step logic with a continuous phase-based movement.
-	Runs continuously until move_stu becomes False.
+	This function performs ONE increment of the walking cycle and returns.
+	It uses a global phase tracker to maintain continuity across calls.
+	The movement thread will call this repeatedly for continuous motion.
 	"""
-	# Continuous movement: run multiple cycles until stopped
-	while move_stu:
-		# One full walking cycle: phase goes from 0.0 to (almost) 1.0
-		for i in range(cycle_steps):
-			if not move_stu:
-				break
+	global _movement_phase
 
-			phase = i / cycle_steps  # 0.0 to ~0.967 (for 30 steps)
-			dove_smooth(phase, speed, 0.05, command)
-			time.sleep(1.5 / cycle_steps)  # Total 1.5s per cycle
+	# Perform one step of the walking cycle
+	dove_smooth(_movement_phase, speed, 0.05, command)
+	time.sleep(1.5 / cycle_steps)  # ~50ms per step
 
-		# After cycle completes, loop continues smoothly to next cycle
-		# No jump because phase 0.0 and phase 1.0 are mathematically identical
-		# (cosine(0) = cosine(2π), sine(0) = sine(2π))
+	# Increment phase for next call
+	_movement_phase += 1.0 / cycle_steps  # e.g., +0.033 for 30 steps
+
+	# Wrap phase back to 0 after completing a full cycle
+	# This is smooth because sin(0) = sin(2π) and cos(0) = cos(2π)
+	if _movement_phase >= 1.0:
+		_movement_phase = 0.0
 
 
 

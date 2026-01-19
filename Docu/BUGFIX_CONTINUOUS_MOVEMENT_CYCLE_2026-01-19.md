@@ -39,28 +39,44 @@ def move_smooth(...):
 
 ---
 
-## Lösung: Kontinuierliche Endlos-Schleife
+## Lösung: Globaler Phase-Tracker
 
-**NEU:** move_smooth() läuft **kontinuierlich** bis move_stu == False:
+**Problem mit while-Schleife:**
+Die ursprüngliche Lösung mit `while move_stu:` blockierte die Ausführung komplett - keine anderen Kommandos wurden mehr erkannt!
+
+**FINALE Lösung:** Globaler Phase-Tracker + Ein Step pro Aufruf:
 
 ```python
-# NEU:
+# Global phase tracker for continuous movement
+_movement_phase = 0.0
+
 def move_smooth(...):
-    while move_stu:  # Endlos-Schleife!
-        for i in range(cycle_steps):
-            phase = i / cycle_steps
-            dove_smooth(phase, ...)
-        # Schleife läuft weiter → nächster Zyklus!
-        # phase 0.0 und phase 1.0 sind mathematisch identisch:
-        # cos(0) = cos(2π), sin(0) = sin(2π)
-        # → Kein Sprung!
+    global _movement_phase
+    
+    # Perform ONE step of the walking cycle
+    dove_smooth(_movement_phase, speed, 0.05, command)
+    time.sleep(1.5 / cycle_steps)  # ~50ms per step
+    
+    # Increment phase for next call
+    _movement_phase += 1.0 / cycle_steps  # e.g., +0.033 for 30 steps
+    
+    # Wrap phase back to 0 after completing a full cycle
+    if _movement_phase >= 1.0:
+        _movement_phase = 0.0
 ```
 
+**Wie es funktioniert:**
+1. **move_smooth() macht EINEN Step** und gibt Kontrolle zurück
+2. **Movement Thread ruft es wiederholt auf** (solange move_stu == True)
+3. **Phase wird gespeichert** zwischen Aufrufen → keine Sprünge
+4. **Phase wrap bei 1.0 → 0.0** ist smooth (sin(0) = sin(2π))
+
 **Vorteile:**
-- ✅ **Keine Sprünge** zwischen Zyklen
-- ✅ **Kontinuierliche Bewegung** solange Button gedrückt
-- ✅ **Sauberer Stop** wenn Button losgelassen (move_stu = False)
-- ✅ **Mathematisch perfekt** - cos(0) = cos(2π)
+- ✅ **Keine Blockierung** - Kontrolle kehrt nach jedem Step zurück
+- ✅ **Button loslassen funktioniert** - move_stu wird sofort erkannt
+- ✅ **Neue Befehle möglich** - keine festgefahrene Schleife
+- ✅ **Kontinuierliche Bewegung** - Phase wird zwischen Aufrufen gespeichert
+- ✅ **Keine Sprünge** - Phase wrap bei 1.0 ist mathematisch smooth
 
 ### Mathematischer Beweis
 
@@ -151,21 +167,28 @@ def move_smooth(speed, command, cycle_steps=30):
 
 **Nachher:**
 ```python
+# Global phase tracker for continuous movement
+_movement_phase = 0.0
+
 def move_smooth(speed, command, cycle_steps=30):
-    # Continuous movement: run multiple cycles until stopped
-    while move_stu:
-        # One full walking cycle: phase goes from 0.0 to (almost) 1.0
-        for i in range(cycle_steps):
-            if not move_stu:
-                break
-            
-            phase = i / cycle_steps  # 0.0 to ~0.967 (for 30 steps)
-            dove_smooth(phase, speed, 0.05, command)
-            time.sleep(1.5 / cycle_steps)
-        
-        # After cycle completes, loop continues smoothly to next cycle
-        # No jump because phase 0.0 and phase 1.0 are mathematically identical
+    global _movement_phase
+    
+    # Perform ONE step of the walking cycle
+    dove_smooth(_movement_phase, speed, 0.05, command)
+    time.sleep(1.5 / cycle_steps)  # ~50ms per step
+    
+    # Increment phase for next call
+    _movement_phase += 1.0 / cycle_steps  # e.g., +0.033 for 30 steps
+    
+    # Wrap phase back to 0 after completing a full cycle
+    if _movement_phase >= 1.0:
+        _movement_phase = 0.0
 ```
+
+**Key Point:** 
+- move_smooth() macht **einen Step** und gibt Kontrolle zurück
+- Movement Thread ruft es **wiederholt** auf
+- Phase wird **zwischen Aufrufen gespeichert** → keine Sprünge!
 
 ### 2. Client/GUI.py - Servo-Logs
 
