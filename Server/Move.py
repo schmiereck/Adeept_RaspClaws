@@ -500,10 +500,14 @@ def dove(step_input, speed, timeLast, dpi, command):
 				if move_stu and command == 'no':
 					# Gradual lift and forward motion for first group
 					# First group (left_I, right_II, left_III) lifts and moves forward
+					# Start from +speed (end of step 4) and move to -speed
 					# Second group (right_I, left_II, right_III) stays on ground at +speed
-					dove_Left_I(-speed_I, 3*speed_I)  # Lift and move forward (0 to -speed)
-					dove_Right_II(-speed_I, 3*speed_I)
-					dove_Left_III(-speed_I, 3*speed_I)
+					horizontal_pos = speed - (2 * speed_I)  # Goes from +speed to -speed
+					vertical_pos = 3 * speed_I               # Goes from 0 to 3*speed
+
+					dove_Left_I(horizontal_pos, vertical_pos)
+					dove_Right_II(horizontal_pos, vertical_pos)
+					dove_Left_III(horizontal_pos, vertical_pos)
 
 					dove_Right_I(speed, -10)  # Stay at +speed (end position from step 4)
 					dove_Left_II(speed, -10)
@@ -513,19 +517,25 @@ def dove(step_input, speed, timeLast, dpi, command):
 					pass
 
 				if command == 'left':
-					# Same logic for left turn
-					dove_Left_I(speed_I, 3*speed_I)
-					dove_Right_II(-speed_I, 3*speed_I)
-					dove_Left_III(speed_I, 3*speed_I)
+					# Same logic for left turn: start from +speed, move to -speed
+					horizontal_pos = speed - (2 * speed_I)
+					vertical_pos = 3 * speed_I
+
+					dove_Left_I(-horizontal_pos, vertical_pos)
+					dove_Right_II(horizontal_pos, vertical_pos)
+					dove_Left_III(-horizontal_pos, vertical_pos)
 
 					dove_Right_I(speed, -10)
 					dove_Left_II(-speed, -10)
 					dove_Right_III(speed, -10)
 					time.sleep(timeLast/dpi)
 				elif command == 'right':
-					dove_Left_I(-speed_I, 3*speed_I)
-					dove_Right_II(speed_I, 3*speed_I)
-					dove_Left_III(-speed_I, 3*speed_I)
+					horizontal_pos = speed - (2 * speed_I)
+					vertical_pos = 3 * speed_I
+
+					dove_Left_I(horizontal_pos, vertical_pos)
+					dove_Right_II(-horizontal_pos, vertical_pos)
+					dove_Left_III(horizontal_pos, vertical_pos)
 
 					dove_Right_I(-speed, -10)
 					dove_Left_II(speed, -10)
@@ -592,35 +602,44 @@ def dove(step_input, speed, timeLast, dpi, command):
 				if move_stu and command == 'no':
 					# Gradual lift and forward motion for second group
 					# First group (left_I, right_II, left_III) stays on ground at +speed position
-					# Second group (right_I, left_II, right_III) lifts and moves forward
+					# Second group (right_I, left_II, right_III) starts from +speed and moves to -speed
 					dove_Left_I(speed, -10)  # Stay at +speed (end position from step 2)
 					dove_Right_II(speed, -10)
 					dove_Left_III(speed, -10)
 
-					dove_Right_I(-speed_I, 3*speed_I)  # Lift and move forward (0 to -speed)
-					dove_Left_II(-speed_I, 3*speed_I)
-					dove_Right_III(-speed_I, 3*speed_I)
+					horizontal_pos = speed - (2 * speed_I)  # Goes from +speed to -speed
+					vertical_pos = 3 * speed_I               # Goes from 0 to 3*speed
+
+					dove_Right_I(horizontal_pos, vertical_pos)
+					dove_Left_II(horizontal_pos, vertical_pos)
+					dove_Right_III(horizontal_pos, vertical_pos)
 					time.sleep(timeLast/dpi)
 				else:
 					pass
 
 				if command == 'left':
+					horizontal_pos = speed - (2 * speed_I)
+					vertical_pos = 3 * speed_I
+
 					dove_Left_I(-speed, -10)  # Opposite for left turn
 					dove_Right_II(speed, -10)
 					dove_Left_III(-speed, -10)
 
-					dove_Right_I(-speed_I, 3*speed_I)
-					dove_Left_II(speed_I, 3*speed_I)
-					dove_Right_III(-speed_I, 3*speed_I)
+					dove_Right_I(horizontal_pos, vertical_pos)
+					dove_Left_II(-horizontal_pos, vertical_pos)
+					dove_Right_III(horizontal_pos, vertical_pos)
 					time.sleep(timeLast/dpi)
 				elif command == 'right':
+					horizontal_pos = speed - (2 * speed_I)
+					vertical_pos = 3 * speed_I
+
 					dove_Left_I(speed, -10)
 					dove_Right_II(-speed, -10)
 					dove_Left_III(speed, -10)
 
-					dove_Right_I(speed_I, 3*speed_I)
-					dove_Left_II(-speed_I, 3*speed_I)
-					dove_Right_III(speed_I, 3*speed_I)
+					dove_Right_I(-horizontal_pos, vertical_pos)
+					dove_Left_II(horizontal_pos, vertical_pos)
+					dove_Right_III(-horizontal_pos, vertical_pos)
 					time.sleep(timeLast/dpi)
 				else:
 					pass
@@ -681,11 +700,14 @@ def dove(step_input, speed, timeLast, dpi, command):
 			for speed_I in range(0, (speed+int(speed/dpi)), int(speed/dpi)):
 				if move_stu and command == 'no':
 					# Gradual backward movement
-					# First group lifts and moves backward (0 to +speed)
+					# First group lifts and moves backward from -speed to +speed
 					# Second group stays at -speed
-					dove_Left_I(speed_I, 3*speed_I)
-					dove_Right_II(speed_I, 3*speed_I)
-					dove_Left_III(speed_I, 3*speed_I)
+					horizontal_pos = -speed + (2 * speed_I)  # Goes from -speed to +speed
+					vertical_pos = 3 * speed_I                # Goes from 0 to 3*speed
+
+					dove_Left_I(horizontal_pos, vertical_pos)
+					dove_Right_II(horizontal_pos, vertical_pos)
+					dove_Left_III(horizontal_pos, vertical_pos)
 
 					dove_Right_I(-speed, -10)  # Stay at -speed
 					dove_Left_II(-speed, -10)
@@ -716,14 +738,17 @@ def dove(step_input, speed, timeLast, dpi, command):
 				if move_stu and command == 'no':
 					# Gradual backward movement for second group
 					# First group stays at -speed
-					# Second group lifts and moves backward
+					# Second group lifts and moves backward from -speed to +speed
 					dove_Left_I(-speed, -10)  # Stay at -speed
 					dove_Right_II(-speed, -10)
 					dove_Left_III(-speed, -10)
 
-					dove_Right_I(speed_I, 3*speed_I)  # Lift and move backward
-					dove_Left_II(speed_I, 3*speed_I)
-					dove_Right_III(speed_I, 3*speed_I)
+					horizontal_pos = -speed + (2 * speed_I)  # Goes from -speed to +speed
+					vertical_pos = 3 * speed_I                # Goes from 0 to 3*speed
+
+					dove_Right_I(horizontal_pos, vertical_pos)
+					dove_Left_II(horizontal_pos, vertical_pos)
+					dove_Right_III(horizontal_pos, vertical_pos)
 					time.sleep(timeLast/dpi)
 				else:
 					pass
