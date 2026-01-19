@@ -268,8 +268,7 @@ def leg_control(leg_name, pos, wiggle, heightAdjust=0):
 				else:
 					pwm.set_pwm(v_channel, 0, base_v + height_change)
 			elif pos == 3:
-				# Position 3: Continue backward motion (75% of range: halfway between pos 2 and pos 4)
-				pwm.set_pwm(h_channel, 0, base_h)  # Neutral position
+				pwm.set_pwm(h_channel, 0, base_h + int(wiggle/2))  # Halfway to avoid jerk
 				if height_flag:
 					pwm.set_pwm(v_channel, 0, base_v - height_change)
 				else:
@@ -295,8 +294,7 @@ def leg_control(leg_name, pos, wiggle, heightAdjust=0):
 				else:
 					pwm.set_pwm(v_channel, 0, base_v + wiggle)
 			elif pos == 3:
-				# Position 3: Continue forward motion (neutral position)
-				pwm.set_pwm(h_channel, 0, base_h)  # Neutral position
+				pwm.set_pwm(h_channel, 0, base_h - int(wiggle/2))  # Halfway to avoid jerk
 				if height_flag:
 					pwm.set_pwm(v_channel, 0, base_v - wiggle)
 				else:
@@ -500,11 +498,11 @@ def dove(step_input, speed, timeLast, dpi, command):
 		if step_input == 1:
 			for speed_I in range(0, (speed+int(speed/dpi)), int(speed/dpi)):
 				if move_stu and command == 'no':
-					# Linear interpolation: speed_I goes from 0 to speed
-					# Vertical position: gradually increase (lift leg)
-					dove_Left_I(-speed_I, 3*speed_I)
-					dove_Right_II(-speed_I, 3*speed_I)
-					dove_Left_III(-speed_I, 3*speed_I)
+					speed_II = speed_I
+					speed_I = speed - speed_I
+					dove_Left_I(-speed_I, 3*speed_II)
+					dove_Right_II(-speed_I, 3*speed_II)
+					dove_Left_III(-speed_I, 3*speed_II)
 
 					dove_Right_I(speed_I, -10)
 					dove_Left_II(speed_I, -10)
@@ -514,18 +512,22 @@ def dove(step_input, speed, timeLast, dpi, command):
 					pass
 
 				if command == 'left':
-					dove_Left_I(speed_I, 3*speed_I)
-					dove_Right_II(-speed_I, 3*speed_I)
-					dove_Left_III(speed_I, 3*speed_I)
+					speed_II = speed_I
+					speed_I = speed - speed_I
+					dove_Left_I(speed_I, 3*speed_II)
+					dove_Right_II(-speed_I, 3*speed_II)
+					dove_Left_III(speed_I, 3*speed_II)
 
 					dove_Right_I(speed_I, -10)
 					dove_Left_II(-speed_I, -10)
 					dove_Right_III(speed_I, -10)
 					time.sleep(timeLast/dpi)
 				elif command == 'right':
-					dove_Left_I(-speed_I, 3*speed_I)
-					dove_Right_II(speed_I, 3*speed_I)
-					dove_Left_III(-speed_I, 3*speed_I)
+					speed_II = speed_I
+					speed_I = speed - speed_I
+					dove_Left_I(-speed_I, 3*speed_II)
+					dove_Right_II(speed_I, 3*speed_II)
+					dove_Left_III(-speed_I, 3*speed_II)
 
 					dove_Right_I(-speed_I, -10)
 					dove_Left_II(speed_I, -10)
@@ -540,36 +542,40 @@ def dove(step_input, speed, timeLast, dpi, command):
 		elif step_input == 2:
 			for speed_I in range(0, (speed+int(speed/dpi)), int(speed/dpi)):
 				if move_stu and command == 'no':
-					# Linear interpolation: gradually lower legs while moving backward
-					# Horizontal: move from max forward (speed) to neutral (0)
-					dove_Left_I(speed - speed_I, 3*(speed - speed_I))
-					dove_Right_II(speed - speed_I, 3*(speed - speed_I))
-					dove_Left_III(speed - speed_I, 3*(speed - speed_I))
+					speed_II = speed_I
+					speed_I = speed - speed_I
+					dove_Left_I(speed_II, 3*(speed-speed_II))
+					dove_Right_II(speed_II, 3*(speed-speed_II))
+					dove_Left_III(speed_II, 3*(speed-speed_II))
 
-					dove_Right_I(-(speed - speed_I), -10)
-					dove_Left_II(-(speed - speed_I), -10)
-					dove_Right_III(-(speed - speed_I), -10)
+					dove_Right_I(-speed_II, -10)
+					dove_Left_II(-speed_II, -10)
+					dove_Right_III(-speed_II, -10)
 					time.sleep(timeLast/dpi)
 				else:
 					pass
 
 				if command == 'left':
-					dove_Left_I(-(speed - speed_I), 3*(speed - speed_I))
-					dove_Right_II(speed - speed_I, 3*(speed - speed_I))
-					dove_Left_III(-(speed - speed_I), 3*(speed - speed_I))
+					speed_II = speed_I
+					speed_I = speed - speed_I
+					dove_Left_I(-speed_II, 3*(speed-speed_II))
+					dove_Right_II(speed_II, 3*(speed-speed_II))
+					dove_Left_III(-speed_II, 3*(speed-speed_II))
 
-					dove_Right_I(-(speed - speed_I), -10)
-					dove_Left_II(speed - speed_I, -10)
-					dove_Right_III(-(speed - speed_I), -10)
+					dove_Right_I(-speed_II, -10)
+					dove_Left_II(speed_II, -10)
+					dove_Right_III(-speed_II, -10)
 					time.sleep(timeLast/dpi)
 				elif command == 'right':
-					dove_Left_I(speed - speed_I, 3*(speed - speed_I))
-					dove_Right_II(-(speed - speed_I), 3*(speed - speed_I))
-					dove_Left_III(speed - speed_I, 3*(speed - speed_I))
+					speed_II = speed_I
+					speed_I = speed - speed_I
+					dove_Left_I(speed_II, 3*(speed-speed_II))
+					dove_Right_II(-speed_II, 3*(speed-speed_II))
+					dove_Left_III(speed_II, 3*(speed-speed_II))
 
-					dove_Right_I(speed - speed_I, -10)
-					dove_Left_II(-(speed - speed_I), -10)
-					dove_Right_III(speed - speed_I, -10)
+					dove_Right_I(speed_II, -10)
+					dove_Left_II(-speed_II, -10)
+					dove_Right_III(speed_II, -10)
 					time.sleep(timeLast/dpi)
 				else:
 					pass
@@ -579,35 +585,40 @@ def dove(step_input, speed, timeLast, dpi, command):
 		elif step_input == 3:
 			for speed_I in range(0, (speed+int(speed/dpi)), int(speed/dpi)):
 				if move_stu and command == 'no':
-					# Linear interpolation: lift opposite group
+					speed_II = speed_I
+					speed_I = speed - speed_I
 					dove_Left_I(speed_I, -10)
 					dove_Right_II(speed_I, -10)
 					dove_Left_III(speed_I, -10)
 
-					dove_Right_I(-speed_I, 3*speed_I)
-					dove_Left_II(-speed_I, 3*speed_I)
-					dove_Right_III(-speed_I, 3*speed_I)
+					dove_Right_I(-speed_I, 3*speed_II)
+					dove_Left_II(-speed_I, 3*speed_II)
+					dove_Right_III(-speed_I, 3*speed_II)
 					time.sleep(timeLast/dpi)
 				else:
 					pass
 
 				if command == 'left':
+					speed_II = speed_I
+					speed_I = speed - speed_I
 					dove_Left_I(-speed_I, -10)
 					dove_Right_II(speed_I, -10)
 					dove_Left_III(-speed_I, -10)
 
-					dove_Right_I(-speed_I, 3*speed_I)
-					dove_Left_II(speed_I, 3*speed_I)
-					dove_Right_III(-speed_I, 3*speed_I)
+					dove_Right_I(-speed_I, 3*speed_II)
+					dove_Left_II(speed_I, 3*speed_II)
+					dove_Right_III(-speed_I, 3*speed_II)
 					time.sleep(timeLast/dpi)
 				elif command == 'right':
+					speed_II = speed_I
+					speed_I = speed - speed_I
 					dove_Left_I(speed_I, -10)
 					dove_Right_II(-speed_I, -10)
 					dove_Left_III(speed_I, -10)
 
-					dove_Right_I(speed_I, 3*speed_I)
-					dove_Left_II(-speed_I, 3*speed_I)
-					dove_Right_III(speed_I, 3*speed_I)
+					dove_Right_I(speed_I, 3*speed_II)
+					dove_Left_II(-speed_I, 3*speed_II)
+					dove_Right_III(speed_I, 3*speed_II)
 					time.sleep(timeLast/dpi)
 				else:
 					pass
@@ -617,35 +628,40 @@ def dove(step_input, speed, timeLast, dpi, command):
 		elif step_input == 4:
 			for speed_I in range(0, (speed+int(speed/dpi)), int(speed/dpi)):
 				if move_stu and command == 'no':
-					# Linear interpolation: gradually lower while moving
-					dove_Left_I(-(speed - speed_I), -10)
-					dove_Right_II(-(speed - speed_I), -10)
-					dove_Left_III(-(speed - speed_I), -10)
+					speed_II = speed_I
+					speed_I = speed - speed_I
+					dove_Left_I(-speed_II, -10)
+					dove_Right_II(-speed_II, -10)
+					dove_Left_III(-speed_II, -10)
 
-					dove_Right_I(speed - speed_I, 3*(speed - speed_I))
-					dove_Left_II(speed - speed_I, 3*(speed - speed_I))
-					dove_Right_III(speed - speed_I, 3*(speed - speed_I))
+					dove_Right_I(speed_II, 3*(speed-speed_II))
+					dove_Left_II(speed_II, 3*(speed-speed_II))
+					dove_Right_III(speed_II, 3*(speed-speed_II))
 					time.sleep(timeLast/dpi)
 				else:
 					pass
 
 				if command == 'left':
-					dove_Left_I(speed - speed_I, -10)
-					dove_Right_II(-(speed - speed_I), -10)
-					dove_Left_III(speed - speed_I, -10)
+					speed_II = speed_I
+					speed_I = speed - speed_I
+					dove_Left_I(speed_II, -10)
+					dove_Right_II(-speed_II, -10)
+					dove_Left_III(speed_II, -10)
 
-					dove_Right_I(speed - speed_I, 3*(speed - speed_I))
-					dove_Left_II(-(speed - speed_I), 3*(speed - speed_I))
-					dove_Right_III(speed - speed_I, 3*(speed - speed_I))
+					dove_Right_I(speed_II, 3*(speed-speed_II))
+					dove_Left_II(-speed_II, 3*(speed-speed_II))
+					dove_Right_III(speed_II, 3*(speed-speed_II))
 					time.sleep(timeLast/dpi)
 				elif command == 'right':
-					dove_Left_I(-(speed - speed_I), -10)
-					dove_Right_II(speed - speed_I, -10)
-					dove_Left_III(-(speed - speed_I), -10)
+					speed_II = speed_I
+					speed_I = speed - speed_I
+					dove_Left_I(-speed_II, -10)
+					dove_Right_II(speed_II, -10)
+					dove_Left_III(-speed_II, -10)
 
-					dove_Right_I(-(speed - speed_I), 3*(speed - speed_I))
-					dove_Left_II(speed - speed_I, 3*(speed - speed_I))
-					dove_Right_III(-(speed - speed_I), 3*(speed - speed_I))
+					dove_Right_I(-speed_II, 3*(speed-speed_II))
+					dove_Left_II(speed_II, 3*(speed-speed_II))
+					dove_Right_III(-speed_II, 3*(speed-speed_II))
 					time.sleep(timeLast/dpi)
 				else:
 					pass
@@ -657,10 +673,11 @@ def dove(step_input, speed, timeLast, dpi, command):
 		if step_input == 1:
 			for speed_I in range(0, (speed+int(speed/dpi)), int(speed/dpi)):
 				if move_stu and command == 'no':
-					# Linear interpolation for backward movement
-					dove_Left_I(speed_I, 3*speed_I)
-					dove_Right_II(speed_I, 3*speed_I)
-					dove_Left_III(speed_I, 3*speed_I)
+					speed_II = speed_I
+					speed_I = speed - speed_I
+					dove_Left_I(speed_I, 3*speed_II)
+					dove_Right_II(speed_I, 3*speed_II)
+					dove_Left_III(speed_I, 3*speed_II)
 
 					dove_Right_I(-speed_I, -10)
 					dove_Left_II(-speed_I, -10)
@@ -671,42 +688,45 @@ def dove(step_input, speed, timeLast, dpi, command):
 		elif step_input == 2:
 			for speed_I in range(0, (speed+int(speed/dpi)), int(speed/dpi)):
 				if move_stu and command == 'no':
-					# Linear interpolation
-					dove_Left_I(-(speed - speed_I), 3*(speed - speed_I))
-					dove_Right_II(-(speed - speed_I), 3*(speed - speed_I))
-					dove_Left_III(-(speed - speed_I), 3*(speed - speed_I))
+					speed_II = speed_I
+					speed_I = speed - speed_I
+					dove_Left_I(-speed_II, 3*(speed-speed_II))
+					dove_Right_II(-speed_II, 3*(speed-speed_II))
+					dove_Left_III(-speed_II, 3*(speed-speed_II))
 
-					dove_Right_I(speed - speed_I, -10)
-					dove_Left_II(speed - speed_I, -10)
-					dove_Right_III(speed - speed_I, -10)
+					dove_Right_I(speed_II, -10)
+					dove_Left_II(speed_II, -10)
+					dove_Right_III(speed_II, -10)
 					time.sleep(timeLast/dpi)
 				else:
 					pass
 		elif step_input == 3:
 			for speed_I in range(0, (speed+int(speed/dpi)), int(speed/dpi)):
 				if move_stu and command == 'no':
-					# Linear interpolation
+					speed_II = speed_I
+					speed_I = speed - speed_I
 					dove_Left_I(-speed_I, -10)
 					dove_Right_II(-speed_I, -10)
 					dove_Left_III(-speed_I, -10)
 
-					dove_Right_I(speed_I, 3*speed_I)
-					dove_Left_II(speed_I, 3*speed_I)
-					dove_Right_III(speed_I, 3*speed_I)
+					dove_Right_I(speed_I, 3*speed_II)
+					dove_Left_II(speed_I, 3*speed_II)
+					dove_Right_III(speed_I, 3*speed_II)
 					time.sleep(timeLast/dpi)
 				else:
 					pass
 		elif step_input == 4:
 			for speed_I in range(0, (speed+int(speed/dpi)), int(speed/dpi)):
 				if move_stu and command == 'no':
-					# Linear interpolation
-					dove_Left_I(speed - speed_I, -10)
-					dove_Right_II(speed - speed_I, -10)
-					dove_Left_III(speed - speed_I, -10)
+					speed_II = speed_I
+					speed_I = speed - speed_I
+					dove_Left_I(speed_II, -10)
+					dove_Right_II(speed_II, -10)
+					dove_Left_III(speed_II, -10)
 
-					dove_Right_I(-(speed - speed_I), 3*(speed - speed_I))
-					dove_Left_II(-(speed - speed_I), 3*(speed - speed_I))
-					dove_Right_III(-(speed - speed_I), 3*(speed - speed_I))
+					dove_Right_I(-speed_II, 3*(speed-speed_II))
+					dove_Left_II(-speed_II, 3*(speed-speed_II))
+					dove_Right_III(-speed_II, 3*(speed-speed_II))
 					time.sleep(timeLast/dpi)
 				else:
 					pass
