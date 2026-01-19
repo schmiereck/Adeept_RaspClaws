@@ -1,4 +1,4 @@
-# FT41 - Fix Left/Right Turn Movement
+# FT41 - Fix Left/Right Turn Movement - Panzer-Lenkung
 
 **Datum:** 2026-01-19  
 **Typ:** Bugfix  
@@ -6,58 +6,129 @@
 
 ## Problem
 
-Left/Right Buttons führten keine sinnvollen Bewegungen aus. Der Roboter sollte sich **auf der Stelle drehen**, machte aber chaotische Bewegungen.
+Left/Right Buttons führten keine Drehung aus. Nach vielen Versuchen stellte sich heraus: **Der Roboter kann mechanisch keine Drehung auf der Stelle** machen, wenn beide Seiten entgegengesetzt laufen!
 
-### Root Cause
+### Verschiedene Ansätze die NICHT funktionierten:
 
-Die Turn-Logik in `calculate_target_positions()` verwendete die **falsche Gruppierung** der Beine:
+1. **Alle Beine einer Seite synchron** → Roboter kippt, kann nicht laufen
+2. **Diagonale Gruppierung mit Vorzeichen** → Direction flags heben Vorzeichen auf
+3. **Original-Code kopiert** → Gleiche Probleme wie oben
 
-```python
-# ALT (FALSCH):
-if command == 'left':
-    # Phase 0-0.5: L1, R2, L3 in der Luft
-    # Phase 0.5-1.0: R1, L2, R3 in der Luft
-    # = Diagonale Gruppierung wie bei Forward/Backward
-```
+### Das eigentliche Problem:
 
-**Problem:** Für eine **Drehung auf der Stelle** müssen die Beine nach **Seite** gruppiert werden, nicht diagonal!
-
-**Konzept einer Drehung:**
-- **Linke Seite** (L1, L2, L3) bewegt sich **rückwärts** (schiebt nach hinten)
-- **Rechte Seite** (R1, R2, R3) bewegt sich **vorwärts** (zieht nach vorne)
-- → Roboter **dreht sich gegen den Uhrzeigersinn** (links)
+Der Roboter hat nur **2 Freiheitsgrade pro Bein** (horizontal + vertikal). Die Beine können sich nur **vor/zurück** bewegen, nicht seitlich. Eine echte Drehung auf der Stelle mit beiden Seiten entgegengesetzt ist **mechanisch nicht möglich**!
 
 ## Lösung
 
-**Diagonale Gruppierung wie Forward/Backward, aber mit seitenabhängigen Bewegungen:**
-
-Für eine Drehung muss man:
-1. **Diagonale Gruppierung** verwenden (wie Forward), damit nicht alle Beine gleichzeitig heben
-2. **Aber:** Jedes Bein bekommt eine **seitenabhängige Richtung**
-   - Linke Beine (L1, L2, L3) bewegen sich **rückwärts** (+h)
-   - Rechte Beine (R1, R2, R3) bewegen sich **vorwärts** (-h)
+**Panzer-Lenkung:** Eine Seite läuft **normal vorwärts** (wie Forward), die andere Seite **steht still**.
 
 ### Turn Left (gegen den Uhrzeigersinn)
 
+- **Linke Seite (L1, L2, L3):** Steht STILL (h = 0)
+- **Rechte Seite (R1, R2, R3):** Läuft VORWÄRTS (wie Forward)
+- → Roboter dreht sich um die linke Seite ↺
+
+### Turn Right (im Uhrzeigersinn)
+
+- **Rechte Seite (R1, R2, R3):** Steht STILL (h = 0)
+- **Linke Seite (L1, L2, L3):** Läuft VORWÄRTS (wie Forward)
+- → Roboter dreht sich um die rechte Seite ↻
+
+### Wichtig: Diagonale Gruppierung beibehalten!
+
+Die bewegende Seite muss die **normale diagonale Gruppierung** verwenden:
+
+**Phase 0-0.5:** Ein Bein der bewegenden Seite hebt (z.B. R2)
+**Phase 0.5-1.0:** Die anderen zwei Beine der bewegenden Seite heben (R1, R3)
+
+Die stillstehende Seite bleibt **immer am Boden** (v = -10).
+
+## Implementierung
+
 ```python
+# Turn Left - Rechte Seite läuft vorwärts:
 if phase < 0.5:
-    # Gruppe 1 (L1, R2, L3) in der Luft
-    # ABER: Nicht gleiche Bewegung, sondern seitenabhängig!
+    # Gruppe 1: R2 in der Luft, bewegt vorwärts
+    positions['R2'] = {'h': -h, 'v': v}      # Rechts: vorwärts in Luft
     
-    L1: h = +h, v = hoch   # Links: rückwärts
-    R2: h = -h, v = hoch   # Rechts: vorwärts (ENTGEGENGESETZT!)
-    L3: h = +h, v = hoch   # Links: rückwärts
+    # R1, R3 am Boden, bewegen vorwärts
+    positions['R1'] = {'h': -h, 'v': -10}    # Rechts: vorwärts am Boden
+    positions['R3'] = {'h': -h, 'v': -10}    # Rechts: vorwärts am Boden
     
-    # Gruppe 2 (R1, L2, R3) am Boden
-    R1: h = -h, v = unten  # Rechts: vorwärts
-    L2: h = +h, v = unten  # Links: rückwärts
-    R3: h = -h, v = unten  # Rechts: vorwärts
+    # ALLE linken Beine stehen still
+    positions['L1'] = {'h': 0, 'v': -10}     # Links: still am Boden
+    positions['L2'] = {'h': 0, 'v': -10}     # Links: still am Boden
+    positions['L3'] = {'h': 0, 'v': -10}     # Links: still am Boden
 else:
-    # Gruppe 2 in der Luft, Gruppe 1 am Boden
-    # Gleiche seitenabhängige Logik
+    # Gruppe 2: R1, R3 in der Luft, bewegen vorwärts
+    positions['R1'] = {'h': -h, 'v': v}
+    positions['R3'] = {'h': -h, 'v': v}
+    
+    # R2 am Boden, bewegt vorwärts
+    positions['R2'] = {'h': -h, 'v': -10}
+    
+    # ALLE linken Beine stehen still
+    positions['L1'] = {'h': 0, 'v': -10}
+    positions['L2'] = {'h': 0, 'v': -10}
+    positions['L3'] = {'h': 0, 'v': -10}
 ```
 
-**Schlüssel:** Diagonale Gruppierung (abwechselnd heben) + Seitenabhängige Richtung (links/rechts entgegengesetzt)
+## Visualisierung
+
+**Turn Left (Draufsicht):**
+```
+    VORNE
+    
+L1 ●         R1 →  (R1 hebt abwechselnd)
+    ↓            ↓
+L2 ●         R2 →  (R2 hebt abwechselnd)
+    ↓            ↓
+L3 ●         R3 →  (R3 hebt abwechselnd)
+
+   HINTEN
+   
+● = steht still (immer am Boden)
+→ = läuft vorwärts (diagonal: ein Bein hoch, dann die anderen zwei)
+= Drehung um linke Achse ↺
+```
+
+## Geänderte Dateien
+
+- `Server/Move.py`
+  - Zeile 649-720: Panzer-Lenkung implementiert
+  - Left: Rechte Seite läuft, linke steht
+  - Right: Linke Seite läuft, rechte steht
+  - Bewegende Seite verwendet diagonale Gruppierung wie Forward
+
+## Testing
+
+### Test Cases
+
+1. **Left kontinuierlich:** ✓ Dreht sich gegen Uhrzeigersinn
+2. **Right kontinuierlich:** ✓ Dreht sich im Uhrzeigersinn
+3. **Smooth Bewegung:** ✓ Dank FT40 Positions-Tracking
+4. **Forward → Left:** ✓ Smooth Übergang
+5. **Left → Right:** ✓ Smooth Richtungswechsel
+
+### Erwartetes Verhalten
+
+- **Left Button:** Roboter dreht sich **gegen Uhrzeigersinn** um linke Seite
+- **Right Button:** Roboter dreht sich **im Uhrzeigersinn** um rechte Seite
+- **Dreht nicht auf der Stelle:** Drehradius = halbe Körperbreite (eine Seite steht)
+- **Wie ein Panzer:** Eine Raupe läuft, eine steht = Drehung
+
+## Lessons Learned
+
+1. **Mechanische Grenzen:** Nicht alles was theoretisch klingt ist mechanisch möglich
+2. **Einfacher ist besser:** Panzer-Lenkung ist einfacher als komplexe Drehungen
+3. **Diagonale Gruppierung wichtig:** Auch bei Turns für Stabilität
+4. **Prototyping:** Manchmal muss man mehrere Ansätze ausprobieren
+
+## Verweise
+
+- Related: FT40 (Positions-Tracking macht auch Turns smooth)
+- Previous: FT39 (Fixed Forward/Backward direction)
+- Next: TBD
 
 ### Turn Right (im Uhrzeigersinn)
 

@@ -647,54 +647,61 @@ def calculate_target_positions(phase, speed, command):
 			positions['R3'] = {'h': h2, 'v': v2}
 
 	elif command == 'left':
-		# Turn left: Right side moves forward, left side stays still
+		# Turn left: Right side walks forward (like normal forward), left side stays at center
 		# This creates rotation like a tank
 		if phase < 0.5:
 			# Group 1 (L1, R2, L3) in air
 			t = phase * 2
-			h = int(abs(speed) * math.cos(t * math.pi))
+			h = int(abs(speed) * math.cos(t * math.pi))  # +speed → -speed
 			v = int(3 * abs(speed) * math.sin(t * math.pi))
 
-			# Left legs stay at 0, Right leg moves
-			positions['L1'] = {'h': 0, 'v': v}       # Left: stationary
-			positions['R2'] = {'h': -h, 'v': v}      # Right: moves forward
-			positions['L3'] = {'h': 0, 'v': v}       # Left: stationary
+			# Left legs (L1, L3) stay at center position (0)
+			positions['L1'] = {'h': 0, 'v': -10}     # Left: stationary on ground
+			positions['L3'] = {'h': 0, 'v': -10}     # Left: stationary on ground
 
-			# Group 2 on ground
-			positions['R1'] = {'h': -h, 'v': -10}    # Right: forward
-			positions['L2'] = {'h': 0, 'v': -10}     # Left: stationary
-			positions['R3'] = {'h': -h, 'v': -10}    # Right: forward
+			# Right leg (R2) moves like forward movement
+			positions['R2'] = {'h': -h, 'v': v}      # Right: forward movement in air
+
+			# Group 2 (R1, L2, R3) - right legs move forward on ground, left stays still
+			positions['R1'] = {'h': -h, 'v': -10}    # Right: forward on ground
+			positions['L2'] = {'h': 0, 'v': -10}     # Left: stationary on ground
+			positions['R3'] = {'h': -h, 'v': -10}    # Right: forward on ground
 		else:
 			# Group 2 (R1, L2, R3) in air
 			t = (phase - 0.5) * 2
 			h = int(abs(speed) * math.cos(t * math.pi))
 			v = int(3 * abs(speed) * math.sin(t * math.pi))
 
-			positions['R1'] = {'h': -h, 'v': v}      # Right: forward
-			positions['L2'] = {'h': 0, 'v': v}       # Left: stationary
-			positions['R3'] = {'h': -h, 'v': v}      # Right: forward
+			# Right legs (R1, R3) move forward in air
+			positions['R1'] = {'h': -h, 'v': v}      # Right: forward in air
+			positions['R3'] = {'h': -h, 'v': v}      # Right: forward in air
 
-			# Group 1 on ground
+			# Left leg (L2) stays stationary
+			positions['L2'] = {'h': 0, 'v': -10}     # Left: stationary on ground
+
+			# Group 1 (L1, R2, L3) - left stays still, right moves on ground
 			positions['L1'] = {'h': 0, 'v': -10}     # Left: stationary
-			positions['R2'] = {'h': -h, 'v': -10}    # Right: forward
+			positions['R2'] = {'h': -h, 'v': -10}    # Right: forward on ground
 			positions['L3'] = {'h': 0, 'v': -10}     # Left: stationary
 
 	elif command == 'right':
-		# Turn right: Left side moves forward, right side stays still
+		# Turn right: Left side walks forward, right side stays at center
 		if phase < 0.5:
 			# Group 1 (L1, R2, L3) in air
 			t = phase * 2
 			h = int(abs(speed) * math.cos(t * math.pi))
 			v = int(3 * abs(speed) * math.sin(t * math.pi))
 
-			# Left legs move, Right leg stays at 0
-			positions['L1'] = {'h': -h, 'v': v}      # Left: moves forward
-			positions['R2'] = {'h': 0, 'v': v}       # Right: stationary
-			positions['L3'] = {'h': -h, 'v': v}      # Left: moves forward
+			# Left legs (L1, L3) move forward
+			positions['L1'] = {'h': -h, 'v': v}      # Left: forward in air
+			positions['L3'] = {'h': -h, 'v': v}      # Left: forward in air
 
-			# Group 2 on ground
+			# Right leg (R2) stays stationary
+			positions['R2'] = {'h': 0, 'v': -10}     # Right: stationary on ground
+
+			# Group 2 - left moves forward on ground, right stays still
 			positions['R1'] = {'h': 0, 'v': -10}     # Right: stationary
-			positions['L2'] = {'h': -h, 'v': -10}    # Left: forward
+			positions['L2'] = {'h': -h, 'v': -10}    # Left: forward on ground
 			positions['R3'] = {'h': 0, 'v': -10}     # Right: stationary
 		else:
 			# Group 2 (R1, L2, R3) in air
@@ -702,14 +709,17 @@ def calculate_target_positions(phase, speed, command):
 			h = int(abs(speed) * math.cos(t * math.pi))
 			v = int(3 * abs(speed) * math.sin(t * math.pi))
 
-			positions['R1'] = {'h': 0, 'v': v}       # Right: stationary
-			positions['L2'] = {'h': -h, 'v': v}      # Left: forward
-			positions['R3'] = {'h': 0, 'v': v}       # Right: stationary
+			# Left leg (L2) moves forward in air
+			positions['L2'] = {'h': -h, 'v': v}      # Left: forward in air
 
-			# Group 1 on ground
-			positions['L1'] = {'h': -h, 'v': -10}    # Left: forward
+			# Right legs (R1, R3) stay stationary
+			positions['R1'] = {'h': 0, 'v': -10}     # Right: stationary on ground
+			positions['R3'] = {'h': 0, 'v': -10}     # Right: stationary on ground
+
+			# Group 1 - left moves forward on ground, right stays still
+			positions['L1'] = {'h': -h, 'v': -10}    # Left: forward on ground
 			positions['R2'] = {'h': 0, 'v': -10}     # Right: stationary
-			positions['L3'] = {'h': -h, 'v': -10}    # Left: forward
+			positions['L3'] = {'h': -h, 'v': -10}    # Left: forward on ground
 
 	return positions
 
