@@ -542,18 +542,15 @@ def move_smooth(speed, command, cycle_steps=30):
 			_movement_phase = 0.0
 			break
 
-		# Increment phase FIRST (before executing step)
-		# This ensures smooth timing even at wrap point
-		_movement_phase += 1.0 / cycle_steps  # e.g., +0.033 for 30 steps
-
-		# Wrap phase back to 0 after completing a full cycle
-		# This is smooth because sin(0) = sin(2π) and cos(0) = cos(2π)
-		if _movement_phase >= 1.0:
-			_movement_phase = 0.0
-
-		# Execute step with current phase
-		dove_smooth(_movement_phase, speed, 0.05, command)
+		# Execute step with current phase (use modulo to keep in 0.0-1.0 range)
+		# Modulo ensures smooth wrap: 1.0 % 1.0 = 0.0, and cos/sin are periodic
+		current_phase = _movement_phase % 1.0
+		dove_smooth(current_phase, speed, 0.05, command)
 		time.sleep(1.5 / cycle_steps)  # ~50ms per step = 1.5s per cycle
+
+		# Increment phase AFTER executing step
+		# No explicit wrap needed - modulo handles it smoothly
+		_movement_phase += 1.0 / cycle_steps  # e.g., +0.033 for 30 steps
 
 
 
