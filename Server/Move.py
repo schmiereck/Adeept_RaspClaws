@@ -1364,7 +1364,7 @@ def execute_movement_step(speed, turn='no'):
 	Execute a single movement step using smooth sine-curve movement.
 
 	Args:
-		speed: Movement speed (positive for forward, negative for backward)
+		speed: Movement speed (negative for forward, positive for backward)
 		turn: Turn command ('left', 'right', or 'no')
 
 	Note: Always uses smooth movement with sine curves (old normal mode removed).
@@ -1372,7 +1372,8 @@ def execute_movement_step(speed, turn='no'):
 	"""
 	# Always use smooth movement with sine curves
 	# Old step-based move() function is deprecated
-	move_smooth(abs(speed), turn, cycle_steps=30)
+	# Pass speed with sign - negative = forward, positive = backward
+	move_smooth(speed, turn, cycle_steps=30)
 
 
 
@@ -1437,10 +1438,10 @@ def move_thread():
 		# Step 1: Handle directional movement (forward/backward)
 		# Only one of these will execute per cycle
 		if direction_command == 'forward' and turn_command == 'no':
-			execute_movement_step(-35, 'no')  # Negative speed = forward
+			execute_movement_step(-35, 'no')  # Negative = forward (legs pull forward)
 			movement_executed = True
 		elif direction_command == 'backward' and turn_command == 'no':
-			execute_movement_step(35, 'no')  # Positive speed = backward
+			execute_movement_step(35, 'no')  # Positive = backward (legs push back)
 			movement_executed = True
 
 		# Step 2: Handle turn movement (independent of directional movement)
