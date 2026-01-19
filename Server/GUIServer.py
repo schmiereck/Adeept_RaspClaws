@@ -212,7 +212,8 @@ def info_send_client():
     while 1:
         try:
             battery_voltage = get_battery_voltage()
-            info_data = 'INFO:' + get_cpu_tempfunc() + ' ' + get_cpu_use() + ' ' + get_ram_info() + ' ' + battery_voltage + '\n'
+            servo_positions = move.get_servo_positions_info()
+            info_data = 'INFO:' + get_cpu_tempfunc() + ' ' + get_cpu_use() + ' ' + get_ram_info() + ' ' + battery_voltage + ' | ' + servo_positions + '\n'
             tcpCliSock.send(info_data.encode())
             time.sleep(1)
         except Exception as e:

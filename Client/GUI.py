@@ -391,7 +391,13 @@ def connection_thread():
 			# Process CPU/RAM/Battery info from server
 			try:
 				info_data = car_info[5:].strip()  # Remove 'INFO:' prefix
-				info_get = info_data.split()
+
+				# Split by '|' to separate system info from servo positions
+				parts = info_data.split('|')
+				system_info = parts[0].strip()
+				servo_info = parts[1].strip() if len(parts) > 1 else None
+
+				info_get = system_info.split()
 				if len(info_get) >= 4:
 					# New format: CPU_TEMP CPU_USE RAM_USE BATTERY_VOLTAGE
 					CPU_TEP, CPU_USE, RAM_USE, BATTERY_VOLTAGE = info_get[0], info_get[1], info_get[2], info_get[3]
@@ -421,6 +427,11 @@ def connection_thread():
 
 						BATTERY_lab.config(text='Battery: %.1fV (%.0f%%)'%(battery_volt, battery_percent),
 						                   bg=bg_color, fg='#FFFFFF')
+
+					# Log servo positions to terminal
+					if servo_info:
+						print(f"[SERVOS] {servo_info}")
+
 				elif len(info_get) >= 3:
 					# Old format without battery (backwards compatibility)
 					CPU_TEP, CPU_USE, RAM_USE = info_get[0], info_get[1], info_get[2]
@@ -428,6 +439,11 @@ def connection_thread():
 					CPU_USE_lab.config(text='CPU Usage: %s'%CPU_USE)
 					RAM_lab.config(text='RAM Usage: %s'%RAM_USE)
 					BATTERY_lab.config(text='Battery: N/A', bg='#757575', fg=color_text)
+
+					# Log servo positions to terminal
+					if servo_info:
+						print(f"[SERVOS] {servo_info}")
+
 			except Exception as e:
 				print(f"⚠ Error processing INFO: {e}")
 				pass

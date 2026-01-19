@@ -225,6 +225,30 @@ def get_servo_pos(channel):
 	return servo_current_pos[channel]
 
 
+def get_servo_positions_info():
+	"""
+	Get formatted string of all servo positions for GUI display.
+	Shows positions for the 6 legs (12 servos).
+
+	Returns:
+		String with servo positions (e.g., "L1:300,305 L2:310,295 ...")
+	"""
+	# Leg servos:
+	# Left_I:   channels 0 (H), 1 (V)
+	# Left_II:  channels 2 (H), 3 (V)
+	# Left_III: channels 4 (H), 5 (V)
+	# Right_I:  channels 6 (H), 7 (V)
+	# Right_II: channels 8 (H), 9 (V)
+	# Right_III:channels 10 (H), 11 (V)
+
+	return (f"L1:{servo_current_pos[0]},{servo_current_pos[1]} "
+	        f"L2:{servo_current_pos[2]},{servo_current_pos[3]} "
+	        f"L3:{servo_current_pos[4]},{servo_current_pos[5]} "
+	        f"R1:{servo_current_pos[6]},{servo_current_pos[7]} "
+	        f"R2:{servo_current_pos[8]},{servo_current_pos[9]} "
+	        f"R3:{servo_current_pos[10]},{servo_current_pos[11]}")
+
+
 # ==================== End of Position Tracking ====================
 
 
