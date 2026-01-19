@@ -428,9 +428,10 @@ def connection_thread():
 						BATTERY_lab.config(text='Battery: %.1fV (%.0f%%)'%(battery_volt, battery_percent),
 						                   bg=bg_color, fg='#FFFFFF')
 
-					# Log servo positions to terminal
+					# Log servo positions to terminal with timestamp
 					if servo_info:
-						print(f"[SERVOS] {servo_info}")
+						timestamp = int(time.time() * 1000)  # Milliseconds since epoch
+						print(f"[{timestamp}] [SERVOS] {servo_info}")
 
 				elif len(info_get) >= 3:
 					# Old format without battery (backwards compatibility)

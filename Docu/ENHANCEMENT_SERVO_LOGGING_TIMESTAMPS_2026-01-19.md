@@ -179,10 +179,11 @@ time.sleep(1)  # Zurück auf 1 Sekunde
 
 ## Status
 
-✅ **Implementiert** - Bereit zum Testen
+✅ **Implementiert** - Bereit zum Testen  
+⚠️ **Bugfix:** Initial fehlten Timestamps in einem der beiden Code-Pfade (gefixt)
 
 **Geänderte Files:**
-- `Client/GUI.py` - Timestamp hinzugefügt
+- `Client/GUI.py` - Timestamp hinzugefügt (2 Stellen korrigiert)
 - `Server/GUIServer.py` - Update-Intervall auf 0.2s
 
 **Test auf Pi:**
