@@ -1076,30 +1076,40 @@ def dove(step_input, speed, timeLast, dpi, command):
 					pass
 
 				if command == 'left':
+					# LEFT TURN (CCW): Tripod-Gait Rotation
+					# Phase 2: Group A (L1, R2, L3) lifts and swings
+					# Group B (R1, L2, R3) stays on ground and pushes for rotation
 					t = i / num_steps
-					horizontal_pos = int(-speed + (2 * speed * t))
-					vertical_pos = int(3 * speed * (1 - t))
+					horizontal_pos = int(-speed + (2 * speed * t))  # -speed to +speed
+					vertical_pos = int(3 * speed * (1 - t))          # 3*speed to 0 (descending)
 
-					dove_Left_I(-horizontal_pos, vertical_pos)
-					dove_Right_II(horizontal_pos, vertical_pos)
-					dove_Left_III(-horizontal_pos, vertical_pos)
+					# Group A in air: L1/L3 swing BACK, R2 swings FORWARD
+					dove_Left_I(-horizontal_pos, vertical_pos)    # L1: back (negative)
+					dove_Right_II(horizontal_pos, vertical_pos)   # R2: forward (positive)
+					dove_Left_III(-horizontal_pos, vertical_pos)  # L3: back (negative)
 
-					dove_Right_I(-horizontal_pos, -10)
-					dove_Left_II(horizontal_pos, -10)
-					dove_Right_III(-horizontal_pos, -10)
+					# Group B on ground: R1/R3 push FORWARD, L2 pushes BACK
+					dove_Right_I(horizontal_pos, -10)   # R1: forward (pushes body CCW)
+					dove_Left_II(-horizontal_pos, -10)  # L2: back (pushes body CCW)
+					dove_Right_III(horizontal_pos, -10) # R3: forward (pushes body CCW)
 					time.sleep(timeLast/dpi)
 				elif command == 'right':
+					# RIGHT TURN (CW): Tripod-Gait Rotation
+					# Phase 2: Group A (L1, R2, L3) lifts and swings
+					# Group B (R1, L2, R3) stays on ground and pushes for rotation
 					t = i / num_steps
-					horizontal_pos = int(-speed + (2 * speed * t))
-					vertical_pos = int(3 * speed * (1 - t))
+					horizontal_pos = int(-speed + (2 * speed * t))  # -speed to +speed
+					vertical_pos = int(3 * speed * (1 - t))          # 3*speed to 0 (descending)
 
-					dove_Left_I(horizontal_pos, vertical_pos)
-					dove_Right_II(-horizontal_pos, vertical_pos)
-					dove_Left_III(horizontal_pos, vertical_pos)
+					# Group A in air: L1/L3 swing FORWARD, R2 swings BACK
+					dove_Left_I(horizontal_pos, vertical_pos)     # L1: forward (positive)
+					dove_Right_II(-horizontal_pos, vertical_pos)  # R2: back (negative)
+					dove_Left_III(horizontal_pos, vertical_pos)   # L3: forward (positive)
 
-					dove_Right_I(horizontal_pos, -10)
-					dove_Left_II(-horizontal_pos, -10)
-					dove_Right_III(horizontal_pos, -10)
+					# Group B on ground: R1/R3 push BACK, L2 pushes FORWARD
+					dove_Right_I(-horizontal_pos, -10)  # R1: back (pushes body CW)
+					dove_Left_II(horizontal_pos, -10)   # L2: forward (pushes body CW)
+					dove_Right_III(-horizontal_pos, -10) # R3: back (pushes body CW)
 					time.sleep(timeLast/dpi)
 				else:
 					pass
@@ -1129,30 +1139,40 @@ def dove(step_input, speed, timeLast, dpi, command):
 					pass
 
 				if command == 'left':
+					# LEFT TURN (CCW): Phase 3
+					# Group A (L1, R2, L3) on ground - preparing for push
+					# Group B (R1, L2, R3) lifts and repositions
 					t = i / num_steps
-					horizontal_pos = int(speed - (2 * speed * t))
-					vertical_pos = int(3 * speed * t)
+					horizontal_pos = int(speed - (2 * speed * t))  # +speed to -speed
+					vertical_pos = int(3 * speed * t)              # 0 to 3*speed (ascending)
 
-					dove_Left_I(-speed, -10)
-					dove_Right_II(speed, -10)
-					dove_Left_III(-speed, -10)
+					# Group A on ground: stays at -speed (L1/L3), +speed (R2)
+					dove_Left_I(-speed, -10)   # L1: back position
+					dove_Right_II(speed, -10)  # R2: forward position
+					dove_Left_III(-speed, -10) # L3: back position
 
-					dove_Right_I(horizontal_pos, vertical_pos)
-					dove_Left_II(-horizontal_pos, vertical_pos)
-					dove_Right_III(horizontal_pos, vertical_pos)
+					# Group B in air: R1/R3 swing BACK, L2 swings FORWARD
+					dove_Right_I(horizontal_pos, vertical_pos)   # R1: back (repositioning)
+					dove_Left_II(-horizontal_pos, vertical_pos)  # L2: forward (repositioning)
+					dove_Right_III(horizontal_pos, vertical_pos) # R3: back (repositioning)
 					time.sleep(timeLast/dpi)
 				elif command == 'right':
+					# RIGHT TURN (CW): Phase 3
+					# Group A (L1, R2, L3) on ground - preparing for push
+					# Group B (R1, L2, R3) lifts and repositions
 					t = i / num_steps
-					horizontal_pos = int(speed - (2 * speed * t))
-					vertical_pos = int(3 * speed * t)
+					horizontal_pos = int(speed - (2 * speed * t))  # +speed to -speed
+					vertical_pos = int(3 * speed * t)              # 0 to 3*speed (ascending)
 
-					dove_Left_I(speed, -10)
-					dove_Right_II(-speed, -10)
-					dove_Left_III(speed, -10)
+					# Group A on ground: stays at +speed (L1/L3), -speed (R2)
+					dove_Left_I(speed, -10)    # L1: forward position
+					dove_Right_II(-speed, -10) # R2: back position
+					dove_Left_III(speed, -10)  # L3: forward position
 
-					dove_Right_I(-horizontal_pos, vertical_pos)
-					dove_Left_II(horizontal_pos, vertical_pos)
-					dove_Right_III(-horizontal_pos, vertical_pos)
+					# Group B in air: R1/R3 swing FORWARD, L2 swings BACK
+					dove_Right_I(-horizontal_pos, vertical_pos)  # R1: forward (repositioning)
+					dove_Left_II(horizontal_pos, vertical_pos)   # L2: back (repositioning)
+					dove_Right_III(-horizontal_pos, vertical_pos) # R3: forward (repositioning)
 					time.sleep(timeLast/dpi)
 				else:
 					pass
@@ -1180,31 +1200,41 @@ def dove(step_input, speed, timeLast, dpi, command):
 					pass
 
 				if command == 'left':
+					# LEFT TURN (CCW): Phase 4
+					# Group B (R1, L2, R3) descends to ground
+					# Group A (L1, R2, L3) pushes on ground for rotation
 					t = i / num_steps
-					horizontal_pos = int(-speed + (2 * speed * t))
-					vertical_pos = int(3 * speed * (1 - t))
+					horizontal_pos = int(-speed + (2 * speed * t))  # -speed to +speed
+					vertical_pos = int(3 * speed * (1 - t))          # 3*speed to 0 (descending)
 
-					dove_Left_I(horizontal_pos, -10)
-					dove_Right_II(-horizontal_pos, -10)
-					dove_Left_III(horizontal_pos, -10)
+					# Group A on ground: L1/L3 push FORWARD, R2 pushes BACK
+					dove_Left_I(horizontal_pos, -10)   # L1: forward (pushes body CCW)
+					dove_Right_II(-horizontal_pos, -10) # R2: back (pushes body CCW)
+					dove_Left_III(horizontal_pos, -10)  # L3: forward (pushes body CCW)
 
-					dove_Right_I(horizontal_pos, vertical_pos)
-					dove_Left_II(-horizontal_pos, vertical_pos)
-					dove_Right_III(horizontal_pos, vertical_pos)
+					# Group B in air: descending to new position (R1/R3 back, L2 forward)
+					dove_Right_I(horizontal_pos, vertical_pos)   # R1: lands at back
+					dove_Left_II(-horizontal_pos, vertical_pos)  # L2: lands at forward
+					dove_Right_III(horizontal_pos, vertical_pos) # R3: lands at back
 					time.sleep(timeLast/dpi)
 				elif command == 'right':
-				 t = i / num_steps
-				 horizontal_pos = int(-speed + (2 * speed * t))
-				 vertical_pos = int(3 * speed * (1 - t))
+					# RIGHT TURN (CW): Phase 4
+					# Group B (R1, L2, R3) descends to ground
+					# Group A (L1, R2, L3) pushes on ground for rotation
+					t = i / num_steps
+					horizontal_pos = int(-speed + (2 * speed * t))  # -speed to +speed
+					vertical_pos = int(3 * speed * (1 - t))          # 3*speed to 0 (descending)
 
-				 dove_Left_I(-horizontal_pos, -10)
-				 dove_Right_II(horizontal_pos, -10)
-				 dove_Left_III(-horizontal_pos, -10)
+					# Group A on ground: L1/L3 push BACK, R2 pushes FORWARD
+					dove_Left_I(-horizontal_pos, -10)  # L1: back (pushes body CW)
+					dove_Right_II(horizontal_pos, -10) # R2: forward (pushes body CW)
+					dove_Left_III(-horizontal_pos, -10) # L3: back (pushes body CW)
 
-				 dove_Right_I(-horizontal_pos, vertical_pos)
-				 dove_Left_II(horizontal_pos, vertical_pos)
-				 dove_Right_III(-horizontal_pos, vertical_pos)
-				 time.sleep(timeLast/dpi)
+					# Group B in air: descending to new position (R1/R3 forward, L2 back)
+					dove_Right_I(-horizontal_pos, vertical_pos)  # R1: lands at forward
+					dove_Left_II(horizontal_pos, vertical_pos)   # L2: lands at back
+					dove_Right_III(-horizontal_pos, vertical_pos) # R3: lands at forward
+					time.sleep(timeLast/dpi)
 				else:
 					pass
 
