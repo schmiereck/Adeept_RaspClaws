@@ -1426,29 +1426,37 @@ def move_thread():
 	Original logic:
 	1. Check and execute directional movement (forward OR backward)
 	2. Check and execute turn movement (if turn_command set)
-	3. Always handle stand OR steady at the end
+	3. Handle stand OR steady only when NOT moving
 	"""
 	global step_set
 
 	if not steadyMode:
+		# Track if any movement was executed
+		movement_executed = False
+
 		# Step 1: Handle directional movement (forward/backward)
 		# Only one of these will execute per cycle
 		if direction_command == 'forward' and turn_command == 'no':
 			execute_movement_step(35, 'no')
+			movement_executed = True
 		elif direction_command == 'backward' and turn_command == 'no':
 			execute_movement_step(-35, 'no')
+			movement_executed = True
 
 		# Step 2: Handle turn movement (independent of directional movement)
 		if turn_command != 'no':
 			execute_movement_step(20, turn_command)
+			movement_executed = True
 
-		# Step 3: Always handle stand or steady at the end
-		if turn_command == 'no' and direction_command == 'stand':
-			stand()
-			step_set = 1
-		else:
-			steady_X()
-			steady()
+		# Step 3: ONLY apply stand/steady when NO movement is happening
+		# This prevents the jerky return to center position between cycles
+		if not movement_executed:
+			if turn_command == 'no' and direction_command == 'stand':
+				stand()
+				step_set = 1
+			else:
+				steady_X()
+				steady()
 
 class RobotM(threading.Thread):
 	def __init__(self, *args, **kwargs):
