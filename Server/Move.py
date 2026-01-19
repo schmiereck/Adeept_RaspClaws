@@ -525,15 +525,23 @@ def move_smooth(speed, command, cycle_steps=30):
 		cycle_steps: Number of steps per full walking cycle (default 30)
 
 	This replaces the 4-step logic with a continuous phase-based movement.
+	Runs continuously until move_stu becomes False.
 	"""
-	# One full walking cycle: phase goes from 0.0 to 1.0
-	for i in range(cycle_steps):
-		if not move_stu:
-			break
+	# Continuous movement: run multiple cycles until stopped
+	while move_stu:
+		# One full walking cycle: phase goes from 0.0 to (almost) 1.0
+		for i in range(cycle_steps):
+			if not move_stu:
+				break
 
-		phase = i / cycle_steps  # 0.0 to 1.0
-		dove_smooth(phase, speed, 0.05, command)  # 0.05s timeLast
-		time.sleep(1.5 / cycle_steps)  # Total 1.5s per cycle
+			phase = i / cycle_steps  # 0.0 to ~0.967 (for 30 steps)
+			dove_smooth(phase, speed, 0.05, command)
+			time.sleep(1.5 / cycle_steps)  # Total 1.5s per cycle
+
+		# After cycle completes, loop continues smoothly to next cycle
+		# No jump because phase 0.0 and phase 1.0 are mathematically identical
+		# (cosine(0) = cosine(2π), sine(0) = sine(2π))
+
 
 
 def stand():
