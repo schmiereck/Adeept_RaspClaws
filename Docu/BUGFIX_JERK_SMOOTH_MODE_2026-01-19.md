@@ -2,7 +2,163 @@
 
 **Datum:** 2026-01-19  
 **Problem:** Im Smooth-Modus (slow) zucken die Beine während der Luftphase zurück zur Mitte  
-**Ursache:** Position 3 im Bewegungszyklus war falsch implementiert
+**Ursache:** Fehlerhafte Interpolation in der `dove()` Funktion
+
+---
+
+## Problem-Beschreibung
+
+### Symptome
+- **Normal-Modus:** Bewegungen sehen gut aus ✓
+- **Smooth-Modus (slow):** Beine zucken während der Luftphase kurz in die Gegenrichtung (zur Mitte)
+
+### Beobachtung
+Wenn ein Bein nach vorne oder hinten bewegt wird (in der Luft), zuckt es mitten im langsamen Bewegungsablauf einmal kurz zur Mitte und macht dann mit der weichen Bewegung weiter.
+
+---
+
+## Ursachen-Analyse
+
+### Code-Pfade
+Der Roboter verwendet **zwei verschiedene Bewegungsfunktionen**:
+- **Normal-Modus:** `move()` → verwendet `left_I()`, `right_I()` usw. → verwendet `leg_control()`
+- **Smooth-Modus:** `execute_movement_step()` mit `SmoothMode=True` → verwendet `dove()` → verwendet `dove_Left_I()`, `dove_Right_I()` usw.
+
+### Das Problem in der `dove()` Funktion (Move.py, Zeile 490-720)
+
+**Falsche Interpolation (vorher):**
+```python
+for speed_I in range(0, (speed+int(speed/dpi)), int(speed/dpi)):
+    speed_II = speed_I          # Speichere Original
+    speed_I = speed - speed_I   # ← UMKEHRUNG! Überschreibt speed_I!
+    
+    dove_Left_I(-speed_I, 3*speed_II)  # Verwendet umgekehrten Wert
+```
+
+**Was passierte mit speed=35, dpi=10:**
+| Loop | Original speed_I | Nach Umkehrung | Position horizontal |
+|------|-----------------|----------------|---------------------|
+| 1    | 0               | 35             | -35 (maximal links) |
+| 2    | 10              | 25             | -25 (zur Mitte!)    |
+| 3    | 20              | 15             | -15 (noch mehr Mitte!) |
+| 4    | 30              | 5              | -5 (fast Mitte)     |
+
+Das Bein bewegte sich: **-35 → -25 → -15 → -5** (zur Mitte zurück!) ← **ZUCKEN!** ❌
+
+---
+
+## Lösung
+
+### Korrekte lineare Interpolation (jetzt)
+
+**Step Input 1 (Zeile 501-538):**
+```python
+for speed_I in range(0, (speed+int(speed/dpi)), int(speed/dpi)):
+    # Linear interpolation: speed_I goes from 0 to speed
+    # Vertical position: gradually increase (lift leg)
+    dove_Left_I(-speed_I, 3*speed_I)  # Direkt verwenden, keine Umkehrung!
+```
+
+**Was passiert jetzt mit speed=35, dpi=10:**
+| Loop | speed_I | Position horizontal | Bewegung |
+|------|---------|---------------------|----------|
+| 1    | 0       | 0                   | Neutral  |
+| 2    | 10      | -10                 | Nach links ✓ |
+| 3    | 20      | -20                 | Weiter links ✓ |
+| 4    | 30      | -30                 | Noch weiter ✓ |
+
+Das Bein bewegt sich jetzt: **0 → -10 → -20 → -30** (linear nach links!) ✓
+
+### Alle Schritte korrigiert
+
+**Step Input 1:** Linear von 0 zu speed  
+**Step Input 2:** Linear von speed zu 0 (absteigend)  
+**Step Input 3:** Linear von 0 zu speed  
+**Step Input 4:** Linear von speed zu 0 (absteigend)  
+
+**Rückwärtsbewegung (speed < 0):** Alle 4 Schritte ebenfalls korrigiert
+
+---
+
+## Geänderte Dateien
+
+### `Server/Move.py`
+
+**Zeile 501-538** (Step Input 1 - Forward):
+- Entfernt: `speed_II = speed_I; speed_I = speed - speed_I`
+- Neu: Direkte Verwendung von `speed_I` ohne Umkehrung
+
+**Zeile 539-573** (Step Input 2 - Forward):
+- Verwendet jetzt: `speed - speed_I` für absteigende Interpolation
+
+**Zeile 574-608** (Step Input 3 - Forward):
+- Direkte lineare Interpolation
+
+**Zeile 609-643** (Step Input 4 - Forward):
+- Absteigende Interpolation mit `speed - speed_I`
+
+**Zeile 653-711** (Step Input 1-4 - Backward):
+- Alle 4 Schritte korrigiert für Rückwärtsbewegung
+
+---
+
+## Test-Ergebnisse
+
+### Vor dem Fix
+- ✅ Normal-Modus: OK
+- ❌ Smooth-Modus: **Zucken** während der Bewegung (Bein zieht zur Mitte zurück)
+
+### Nach dem Fix
+- ✅ Normal-Modus: OK
+- ✅ Smooth-Modus: **Keine Zuckbewegung mehr**, fließende lineare Bewegungen
+
+---
+
+## Technische Details
+
+### Warum die Umkehrung falsch war
+
+Die ursprüngliche Logik versuchte:
+```python
+speed_II = speed_I         # Vertikale Position (Höhe)
+speed_I = speed - speed_I  # Horizontale Position (umgekehrt)
+```
+
+**Problem:** `speed - speed_I` ergibt eine **absteigende** Reihe:
+- 35, 25, 15, 5 (wenn speed=35, dpi=10)
+
+Aber das Bein sollte **aufsteigend** bewegt werden:
+- 0, 10, 20, 30
+
+### Die korrekte lineare Interpolation
+
+**Aufsteigend (0 → speed):**
+```python
+for speed_I in range(0, speed, int(speed/dpi)):
+    position = speed_I  # 0, 10, 20, 30...
+```
+
+**Absteigend (speed → 0):**
+```python
+for speed_I in range(0, speed, int(speed/dpi)):
+    position = speed - speed_I  # 35, 25, 15, 5...
+```
+
+Aber **nur wenn das gewünscht ist**! Nicht versehentlich!
+
+---
+
+## Verwandte Änderungen
+
+Siehe auch:
+- `ENHANCEMENT_SMOOTH_SERVOS_2026-01-19.md` - Smooth-Modus Implementierung
+- `REFACTORING_LEG_FUNCTIONS_2026-01-19.md` - Leg control refactoring
+
+---
+
+## Status
+
+✅ **Behoben** - Smooth-Modus funktioniert jetzt ohne Zuckbewegungen durch korrekte lineare Interpolation
 
 ---
 
