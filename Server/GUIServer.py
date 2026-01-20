@@ -250,7 +250,7 @@ def handle_movement_command(data):
 	"""Handle movement commands (forward, backward, left, right, etc.)"""
 	global direction_command, turn_command
 
-	# Map GUI commands to Move.py commands
+	# Map GUI commands to Move.py commands (exact matches only!)
 	command_mapping = {
 		'forward': 'forward',
 		'backward': 'backward',
@@ -262,16 +262,8 @@ def handle_movement_command(data):
 		'rightside': 'right',  # Strafe right -> turn right
 	}
 
-	# Find matching command
-	move_command = None
-	if data in command_mapping:
-		move_command = command_mapping[data]
-	else:
-		# Check for partial matches (e.g., 'DS' in data)
-		for key, value in command_mapping.items():
-			if key in data:
-				move_command = value
-				break
+	# EXACT match only - no partial matching to avoid conflicts with lookleft/lookright
+	move_command = command_mapping.get(data)
 
 	if move_command:
 		print(f"[GUIServer] Movement command: '{data}' -> '{move_command}'")
@@ -299,6 +291,10 @@ def handle_camera_command(data):
 		move.look_left()
 	elif data == 'lookright':
 		move.look_right()
+	elif data == 'LRstop':
+		pass  # Camera servos don't need explicit stop (they move to position and stay)
+	elif data == 'UDstop':
+		pass  # Camera servos don't need explicit stop (they move to position and stay)
 	elif data == 'steadyCamera':
 		move.commandInput(data)
 		tcpCliSock.send('steadyCamera'.encode())

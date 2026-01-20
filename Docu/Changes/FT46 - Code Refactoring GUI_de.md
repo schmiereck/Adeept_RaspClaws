@@ -270,6 +270,28 @@ def loop():
   - **Server/GUIServer.py**: `handle_movement_command()` komplett überarbeitet
   - **Client/GUI.py**: Debug-Ausgaben hinzugefügt und wieder entfernt
 
+**6. Camera Left/Right triggert Movement statt Head-Bewegung (KRITISCH)**
+- Problem:
+  - Kamera Left/Right Buttons lösten Movement Left/Right aus
+  - Endlosschleife bei Movement Commands
+  - Head- und Movement-Commands wurden verwechselt
+- Ursache:
+  - **Partial-Match-Logik in `handle_movement_command()`**
+  - `if key in data:` matcht `'left'` in `'lookleft'`
+  - `'lookleft'` wurde als `'left'` interpretiert → Movement statt Camera
+  - `handle_movement_command()` wurde VOR `handle_camera_command()` aufgerufen
+  - Commands wurden abgefangen, bevor sie zur Camera-Handler-Funktion kamen
+- Lösung:
+  - **Entfernung der Partial-Match-Logik** aus `handle_movement_command()`
+  - Nur noch exakte Matches mit `command_mapping.get(data)`
+  - `'lookleft'` und `'lookright'` werden nicht mehr als Movement interpretiert
+  - `'left'` und `'right'` sind jetzt nur für Movement (exakte Matches)
+  - Stop-Commands (`LRstop`, `UDstop`) in `handle_camera_command()` hinzugefügt
+  - Stop-Commands werden mit `pass` ignoriert (Servos bewegen sich nicht kontinuierlich)
+- Betroffene Dateien:
+  - **Server/GUIServer.py**: `handle_movement_command()` - Partial-Match entfernt, nur exakte Matches
+  - **Server/GUIServer.py**: `handle_camera_command()` - LRstop/UDstop hinzugefügt
+
 **Layout-Visualisierung:**
 ```
 LINKS (Movement/Roboter)              RECHTS (Camera/Kamera)
