@@ -292,6 +292,20 @@ def loop():
   - **Server/GUIServer.py**: `handle_movement_command()` - Partial-Match entfernt, nur exakte Matches
   - **Server/GUIServer.py**: `handle_camera_command()` - LRstop/UDstop hinzugefügt
 
+**7. Home Button funktioniert nicht (IN DIAGNOSE)**
+- Problem:
+  - Camera Home Button sendet Command, aber Kamera bewegt sich nicht zur Home-Position
+  - Andere Camera-Buttons (Up/Down/Left/Right) funktionieren korrekt
+- Diagnose:
+  - Client sendet `'home'` Command korrekt (GUI.py Zeile 268)
+  - Server empfängt Command in `handle_camera_command()` (GUIServer.py Zeile 289)
+  - Server ruft `move.home()` auf (Move.py Zeile 1592)
+  - Funktion existiert und sollte Servos auf Position 300 setzen
+  - Debug-Ausgaben hinzugefügt zur Fehlersuche
+- Status: **Bitte Server neu starten und Home Button testen** - Konsolen-Output prüfen!
+- Betroffene Dateien:
+  - **Server/GUIServer.py**: Debug-Ausgaben hinzugefügt zu `handle_camera_command()`
+
 **Layout-Visualisierung:**
 ```
 LINKS (Movement/Roboter)              RECHTS (Camera/Kamera)
