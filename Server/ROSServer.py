@@ -25,8 +25,18 @@ Services:
 """
 
 import sys
+import os
 import time
 import threading
+
+# Add parent directory to path for protocol.py import
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from protocol import (
+    CMD_FORWARD, CMD_BACKWARD, CMD_LEFT, CMD_RIGHT,
+    CMD_FAST, CMD_SLOW, MOVE_STAND,
+    CMD_LOOK_UP, CMD_LOOK_DOWN, CMD_LOOK_LEFT, CMD_LOOK_RIGHT, CMD_LOOK_HOME,
+    CMD_SMOOTH_CAM, CMD_SMOOTH_CAM_OFF
+)
 
 # ROS 2 imports
 try:
@@ -231,16 +241,16 @@ class RaspClawsNode(Node):
             # Map to robot movement commands
             if abs(linear_x) > 0.1:
                 if linear_x > 0:
-                    move.commandInput('forward')
+                    move.commandInput(CMD_FORWARD)
                 else:
-                    move.commandInput('backward')
+                    move.commandInput(CMD_BACKWARD)
             elif abs(angular_z) > 0.1:
                 if angular_z > 0:
-                    move.commandInput('left')
+                    move.commandInput(CMD_LEFT)
                 else:
-                    move.commandInput('right')
+                    move.commandInput(CMD_RIGHT)
             else:
-                move.commandInput('stand')
+                move.commandInput(MOVE_STAND)
 
             self.get_logger().debug(f'Movement command executed: linear={linear_x:.2f}, angular={angular_z:.2f}')
 
@@ -260,14 +270,14 @@ class RaspClawsNode(Node):
             # msg.y: up/down (-1.0 to 1.0)
 
             if msg.x > 0.1:
-                move.look_right()
+                move.commandInput(CMD_LOOK_RIGHT)
             elif msg.x < -0.1:
-                move.look_left()
+                move.commandInput(CMD_LOOK_LEFT)
 
             if msg.y > 0.1:
-                move.look_up()
+                move.commandInput(CMD_LOOK_UP)
             elif msg.y < -0.1:
-                move.look_down()
+                move.commandInput(CMD_LOOK_DOWN)
 
             self.get_logger().debug(f'Head command executed: x={msg.x:.2f}, y={msg.y:.2f}')
 
@@ -278,7 +288,7 @@ class RaspClawsNode(Node):
         """Service callback to reset all servos"""
         try:
             if ROBOT_MODULES_AVAILABLE:
-                move.home()
+                move.commandInput(CMD_LOOK_HOME)
                 self.get_logger().info('Servos reset to home position')
                 response.success = True
                 response.message = 'Servos reset successfully'
@@ -300,9 +310,9 @@ class RaspClawsNode(Node):
 
             if ROBOT_MODULES_AVAILABLE:
                 if self.smooth_mode:
-                    move.commandInput('slow')
+                    move.commandInput(CMD_SLOW)
                 else:
-                    move.commandInput('fast')
+                    move.commandInput(CMD_FAST)
 
             self.get_logger().info(f'Smooth mode: {self.smooth_mode}')
             response.success = True
@@ -321,9 +331,9 @@ class RaspClawsNode(Node):
 
             if ROBOT_MODULES_AVAILABLE:
                 if self.smooth_cam_mode:
-                    move.commandInput('smoothCam')
+                    move.commandInput(CMD_SMOOTH_CAM)
                 else:
-                    move.commandInput('smoothCamOff')
+                    move.commandInput(CMD_SMOOTH_CAM_OFF)
 
             self.get_logger().info(f'Smooth camera mode: {self.smooth_cam_mode}')
             response.success = True
