@@ -636,14 +636,20 @@ def handle_servo_standby_status(active):
 	global servo_standby_state, Btn_ServoStandby
 
 	servo_standby_state = active
-	if active:
-		# Servo is in standby - show "Wake" button
-		Btn_ServoStandby.config(bg='#FF6D00', fg='#000000', text='Servo Wake [M]')
-		print("🔋 Servo Standby ACTIVE (synced from server)")
-	else:
-		# Servo is awake - show "Standby" button
-		Btn_ServoStandby.config(bg=color_btn, fg=color_text, text='Servo Standby [M]')
-		print("⚡ Servo Standby INACTIVE (synced from server)")
+
+	# Check if button exists (might not be created yet during startup)
+	try:
+		if active:
+			# Servo is in standby - show "Wake" button
+			Btn_ServoStandby.config(bg='#FF6D00', fg='#000000', text='Servo Wake [M]')
+			print("🔋 Servo Standby ACTIVE (synced from server)")
+		else:
+			# Servo is awake - show "Standby" button
+			Btn_ServoStandby.config(bg=color_btn, fg=color_text, text='Servo Standby [M]')
+			print("⚡ Servo Standby INACTIVE (synced from server)")
+	except (NameError, AttributeError):
+		# Button not created yet, state will be applied when button is created
+		print(f"Servo standby state received: {'ACTIVE' if active else 'INACTIVE'} (button not ready yet)")
 
 
 def handle_camera_pause_status(paused):
@@ -651,14 +657,20 @@ def handle_camera_pause_status(paused):
 	global camera_pause_state, Btn_CameraPause
 
 	camera_pause_state = paused
-	if paused:
-		# Camera is paused - show "Resume" button
-		Btn_CameraPause.config(bg='#FF6D00', fg='#000000', text='Camera Resume [,]')
-		print("📷 Camera Pause ACTIVE (synced from server)")
-	else:
-		# Camera is active - show "Pause" button
-		Btn_CameraPause.config(bg=color_btn, fg=color_text, text='Camera Pause [,]')
-		print("📷 Camera Pause INACTIVE (synced from server)")
+
+	# Check if button exists (might not be created yet during startup)
+	try:
+		if paused:
+			# Camera is paused - show "Resume" button
+			Btn_CameraPause.config(bg='#FF6D00', fg='#000000', text='Camera Resume [,]')
+			print("📷 Camera Pause ACTIVE (synced from server)")
+		else:
+			# Camera is active - show "Pause" button
+			Btn_CameraPause.config(bg=color_btn, fg=color_text, text='Camera Pause [,]')
+			print("📷 Camera Pause INACTIVE (synced from server)")
+	except (NameError, AttributeError):
+		# Button not created yet, state will be applied when button is created
+		print(f"Camera pause state received: {'PAUSED' if paused else 'ACTIVE'} (button not ready yet)")
 
 
 # ==================== Connection Thread ====================
@@ -1053,6 +1065,7 @@ def create_camera_control_buttons(root, color_text, color_btn):
 def create_feature_buttons(root, color_text, color_btn):
 	"""Create feature buttons (Steady, SmoothCam, Power Management)"""
 	global Btn_Steady, Btn_SmoothCam, Btn_ServoStandby, Btn_CameraPause
+	global servo_standby_state, camera_pause_state
 
 	# Steady mode button
 	Btn_Steady = tk.Button(root, width=10, text='Steady [Z]', fg=color_text, bg=color_btn, relief='ridge')
@@ -1066,13 +1079,29 @@ def create_feature_buttons(root, color_text, color_btn):
 	root.bind('<KeyPress-n>', call_SmoothCam)
 	Btn_SmoothCam.bind('<ButtonPress-1>', call_SmoothCam)
 
-	# Power Management buttons
-	Btn_ServoStandby = tk.Button(root, width=21, text='Servo Standby [M]', fg=color_text, bg=color_btn, relief='ridge')
+	# Power Management buttons - initialize with current state from server
+	# Servo Standby button
+	if servo_standby_state:
+		# Servo is in standby - show "Wake" button (orange)
+		Btn_ServoStandby = tk.Button(root, width=21, text='Servo Wake [M]',
+		                              fg='#000000', bg='#FF6D00', relief='ridge')
+	else:
+		# Servo is awake - show "Standby" button (blue)
+		Btn_ServoStandby = tk.Button(root, width=21, text='Servo Standby [M]',
+		                              fg=color_text, bg=color_btn, relief='ridge')
 	Btn_ServoStandby.place(x=30, y=480)
 	root.bind('<KeyPress-m>', call_servo_standby)
 	Btn_ServoStandby.bind('<ButtonPress-1>', call_servo_standby)
 
-	Btn_CameraPause = tk.Button(root, width=21, text='Camera Pause [,]', fg=color_text, bg=color_btn, relief='ridge')
+	# Camera Pause button
+	if camera_pause_state:
+		# Camera is paused - show "Resume" button (orange)
+		Btn_CameraPause = tk.Button(root, width=21, text='Camera Resume [,]',
+		                             fg='#000000', bg='#FF6D00', relief='ridge')
+	else:
+		# Camera is active - show "Pause" button (blue)
+		Btn_CameraPause = tk.Button(root, width=21, text='Camera Pause [,]',
+		                             fg=color_text, bg=color_btn, relief='ridge')
 	Btn_CameraPause.place(x=200, y=480)
 	root.bind('<KeyPress-comma>', call_camera_pause)
 	Btn_CameraPause.bind('<ButtonPress-1>', call_camera_pause)
