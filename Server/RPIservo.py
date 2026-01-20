@@ -102,6 +102,32 @@ class ServoCtrl(threading.Thread):
 		self.__flag.set()
 
 
+	def standby(self):
+		"""
+		Put all servos into standby mode by stopping PWM signals.
+		Servos will be 'soft' and can be moved by hand.
+		Saves power while keeping the Pi running.
+		"""
+		print('Servos entering STANDBY mode - PWM signals stopped')
+		if not MOCK_MODE:
+			# Stop PWM signals on all 16 channels (0-15)
+			for i in range(16):
+				pwm.set_pwm(i, 0, 0)  # Setting pulse to 0 stops the signal
+		self.pause()
+
+
+	def wakeup(self):
+		"""
+		Wake up servos from standby mode.
+		Restores last known positions smoothly.
+		"""
+		print('Servos WAKING UP - restoring positions')
+		if not MOCK_MODE:
+			# Restore all servos to their last known positions
+			for i in range(16):
+				pwm.set_pwm(i, 0, self.nowPos[i])
+		self.resume()
+
 	def moveInit(self):
 		self.scMode = 'init'
 		for i in range(0,16):

@@ -19,6 +19,9 @@ import psutil
 import Switch as switch
 import RobotLight as robotLight
 import ast
+# Add parent directory to path to import protocol module
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from protocol import *
 step_set = 1
 speed_set = 100
 
@@ -48,10 +51,15 @@ rm.pause()
 SmoothMode = 0
 steadyMode = 0
 
+# Power Management Status
+servo_standby_active = False
+camera_paused_active = False
+
 # Battery monitoring using ADS7830
 battery_available = False
 adc = None
 
+# Try method 1: smbus (original method)
 try:
 	import smbus
 
@@ -70,13 +78,48 @@ try:
 	# Test read to verify it works
 	test_value = adc.analogRead(0)
 	battery_available = True
-	print("✓ ADS7830 battery monitor initialized successfully")
+	print("✓ ADS7830 battery monitor initialized successfully (using smbus)")
+	print(f"  Battery ADC test read: {test_value}")
 except Exception as e:
-	print(f"⚠ Battery monitoring not available: {e}")
-	battery_available = False
+	print(f"⚠ smbus method failed: {e}")
+	# Try method 2: adafruit_bus_device (fallback, like in BatteryLevelMonitoring.py example)
+	try:
+		# Try to import adafruit libraries (may not be installed)
+		try:
+			import board
+			import busio
+			from adafruit_bus_device.i2c_device import I2CDevice  # type: ignore
+		except ImportError as import_error:
+			raise Exception(f"Adafruit libraries not installed: {import_error}")
 
-# Battery constants (from Voltage.py)
-ADCVref = 4.93
+		class ADS7830_Adafruit(object):
+			def __init__(self):
+				self.cmd = 0x84
+				i2c = busio.I2C(board.SCL, board.SDA)
+				self.device = I2CDevice(i2c, 0x48)  # ADS7830 address
+
+			def analogRead(self, chn):
+				control_byte = self.cmd | (((chn << 2 | chn >> 1) & 0x07) << 4)
+				buffer = bytearray(1)
+				self.device.write_then_readinto(bytes([control_byte]), buffer)
+				return buffer[0]
+
+		# Try to initialize ADS7830 with Adafruit library
+		adc = ADS7830_Adafruit()
+		# Test read to verify it works
+		test_value = adc.analogRead(0)
+		battery_available = True
+		print("✓ ADS7830 battery monitor initialized successfully (using adafruit_bus_device)")
+		print(f"  Battery ADC test read: {test_value}")
+	except Exception as e2:
+		print(f"⚠ adafruit_bus_device method also failed: {e2}")
+		print("  Battery monitoring not available - no suitable I2C library found.")
+		print("  This is normal if ADS7830 ADC hardware is not connected.")
+		print("  Battery display will show 'N/A' in GUI.")
+		battery_available = False
+
+# Battery constants (from Voltage.py and BatteryLevelMonitoring.py)
+ADCVref = 4.93  # Can be adjusted based on actual reference voltage
 battery_channel = 0
 R15 = 3000
 R17 = 1000
@@ -155,34 +198,70 @@ def info_get():
 def info_send_client():
     # Use the existing tcpCliSock connection instead of creating a new one
 
-    # Send VIDEO_READY signal multiple times at the start
-    # This ensures the client receives it even if it's not ready immediately
-    print("INFO_SEND_CLIENT: Starting to send VIDEO_READY signals...")
+    # Send initial status immediately (don't wait for VIDEO_READY to finish!)
+    print("INFO_SEND_CLIENT: Sending initial status...")
+    sys.stdout.flush()
+
+    try:
+        # Send Power Management status first
+        if servo_standby_active:
+            tcpCliSock.send(f'{STATUS_SERVO_STANDBY}\n'.encode())
+            print("✓ Sent servo standby status: ACTIVE")
+        else:
+            tcpCliSock.send(f'{STATUS_SERVO_WAKEUP}\n'.encode())
+            print("✓ Sent servo standby status: INACTIVE")
+
+        if camera_paused_active:
+            tcpCliSock.send(f'{STATUS_CAMERA_PAUSED}\n'.encode())
+            print("✓ Sent camera pause status: PAUSED")
+        else:
+            tcpCliSock.send(f'{STATUS_CAMERA_RESUMED}\n'.encode())
+            print("✓ Sent camera pause status: ACTIVE")
+
+        # Send first INFO message immediately
+        battery_voltage = get_battery_voltage()
+        servo_positions = move.get_servo_positions_info()
+        mpu_data = move.get_mpu6050_data()
+        info_data = STATUS_INFO_PREFIX + get_cpu_tempfunc() + ' ' + get_cpu_use() + ' ' + get_ram_info() + ' ' + battery_voltage + ' | ' + servo_positions + ' | ' + mpu_data + '\n'
+        tcpCliSock.send(info_data.encode())
+        print("✓ Sent initial INFO data")
+
+    except Exception as e:
+        print(f"⚠ Failed to send initial status: {e}")
+
+    sys.stdout.flush()
+
+    # Send VIDEO_READY signals (reduced to 5 times with shorter delays)
+    print("INFO_SEND_CLIENT: Starting VIDEO_READY signals...")
     sys.stdout.flush()
     success_count = 0
-    for i in range(10):  # Try 10 times over 10 seconds (increased from 5)
+    for i in range(5):  # Reduced from 10 to 5
         try:
-            tcpCliSock.send('VIDEO_READY\n'.encode())
+            tcpCliSock.send(f'{STATUS_VIDEO_READY}\n'.encode())
             success_count += 1
-            print(f"✅ Sent VIDEO_READY signal (attempt {i+1}/10, success #{success_count})")
+            print(f"✅ VIDEO_READY {i+1}/5")
             sys.stdout.flush()
-            time.sleep(1)
+            time.sleep(0.5)  # Reduced from 1.0 to 0.5 seconds
         except Exception as e:
-            print(f"⚠ Failed to send VIDEO_READY (attempt {i+1}/10): {e}")
+            print(f"⚠ Failed to send VIDEO_READY {i+1}/5: {e}")
             sys.stdout.flush()
-            # Don't break - continue trying!
-            time.sleep(1)
+            time.sleep(0.5)
 
-    print(f"INFO_SEND_CLIENT: Finished VIDEO_READY phase ({success_count}/10 successful)")
+    print(f"INFO_SEND_CLIENT: Finished VIDEO_READY phase ({success_count}/5 successful)")
     sys.stdout.flush()
 
     # Then continue with regular info sending
     while 1:
         try:
             battery_voltage = get_battery_voltage()
-            info_data = 'INFO:' + get_cpu_tempfunc() + ' ' + get_cpu_use() + ' ' + get_ram_info() + ' ' + battery_voltage + '\n'
+            servo_positions = move.get_servo_positions_info()
+
+            # Get MPU6050 data (gyro/accelerometer)
+            mpu_data = move.get_mpu6050_data()
+
+            info_data = STATUS_INFO_PREFIX + get_cpu_tempfunc() + ' ' + get_cpu_use() + ' ' + get_ram_info() + ' ' + battery_voltage + ' | ' + servo_positions + ' | ' + mpu_data + '\n'
             tcpCliSock.send(info_data.encode())
-            time.sleep(1)
+            time.sleep(0.2)  # 200ms update interval for better servo analysis
         except Exception as e:
             print(f"⚠ Failed to send INFO: {e}")
             sys.stdout.flush()
@@ -209,116 +288,93 @@ def handle_movement_command(data):
 	"""Handle movement commands (forward, backward, left, right, etc.)"""
 	global direction_command, turn_command
 
-	if data == 'forward':
-		direction_command = 'forward'
-		move.commandInput(direction_command)
-	elif data == 'backward':
-		direction_command = 'backward'
-		move.commandInput(direction_command)
-	elif 'DS' in data:
-		direction_command = 'stand'
-		move.commandInput(direction_command)
-	elif data == 'left':
-		direction_command = 'left'
-		move.commandInput(direction_command)
-	elif data == 'right':
-		direction_command = 'right'
-		move.commandInput(direction_command)
-	elif 'TS' in data:
-		direction_command = 'no'
-		move.commandInput(direction_command)
-	else:
-		return False  # Command not handled
-	return True  # Command was handled
+	# EXACT match only - no partial matching to avoid conflicts with lookleft/lookright
+	move_command = GUI_TO_MOVE_COMMAND_MAP.get(data)
+
+	if move_command:
+		print(f"[GUIServer] Movement command: '{data}' -> '{move_command}'")
+		# Use Move.py's handle_movement_command which properly resumes the robot thread
+		result = move.handle_movement_command(move_command)
+		if result:
+			# Update local state variables for GUI sync
+			if move_command in [CMD_FORWARD, CMD_BACKWARD, MOVE_STAND]:
+				direction_command = move_command
+			elif move_command in [CMD_LEFT, CMD_RIGHT, MOVE_NO]:
+				turn_command = move_command
+		return result
+	return False  # Command not handled
 
 
 def handle_camera_command(data):
-	"""Handle camera movement commands (up, down, left, right, home)"""
-	if data == 'up':
+	"""Handle camera movement commands (lookUp, lookDown, lookLeft, lookRight, home)"""
+	if data == CMD_LOOK_UP:
+		print(f"[GUIServer] Camera command: lookUp")
 		move.look_up()
-	elif data == 'down':
+	elif data == CMD_LOOK_DOWN:
+		print(f"[GUIServer] Camera command: lookDown")
 		move.look_down()
-	elif data == 'home':
-		move.home()
-	elif data == 'lookleft':
+	elif data == CMD_LOOK_HOME:
+		print(f"[GUIServer] Camera command: lookHome - calling move.look_home()")
+		move.look_home()
+		print(f"[GUIServer] move.look_home() completed")
+	elif data == CMD_LOOK_LEFT:
+		print(f"[GUIServer] Camera command: lookLeft")
 		move.look_left()
-	elif data == 'lookright':
+	elif data == CMD_LOOK_RIGHT:
+		print(f"[GUIServer] Camera command: lookRight")
 		move.look_right()
-	elif data == 'steadyCamera':
+	elif data == CMD_LR_STOP:
+		pass  # Camera servos don't need explicit stop (they move to position and stay)
+	elif data == CMD_UD_STOP:
+		pass  # Camera servos don't need explicit stop (they move to position and stay)
+	elif data == CMD_STEADY_CAMERA:
 		move.commandInput(data)
-		tcpCliSock.send('steadyCamera'.encode())
-	elif data == 'steadyCameraOff':
+		tcpCliSock.send(CMD_STEADY_CAMERA.encode())
+	elif data == CMD_STEADY_CAMERA_OFF:
 		move.commandInput(data)
-		tcpCliSock.send('steadyCameraOff'.encode())
-	elif data == 'smoothCam':
+		tcpCliSock.send(CMD_STEADY_CAMERA_OFF.encode())
+	elif data == CMD_SMOOTH_CAM:
 		move.commandInput(data)
-		tcpCliSock.send('smoothCam'.encode())
-	elif data == 'smoothCamOff':
+		tcpCliSock.send(CMD_SMOOTH_CAM.encode())
+	elif data == CMD_SMOOTH_CAM_OFF:
 		move.commandInput(data)
-		tcpCliSock.send('smoothCamOff'.encode())
+		tcpCliSock.send(CMD_SMOOTH_CAM_OFF.encode())
 	else:
 		return False  # Command not handled
 	return True  # Command was handled
 
 
-def handle_computer_vision_command(data):
-	"""Handle computer vision commands (findColor, motionGet, stopCV, etc.)"""
-	global direction_command, turn_command
-
-	if data == 'findColor':
-		fpv.FindColor(1)
-		tcpCliSock.send('findColor'.encode())
-	elif 'motionGet' in data:
-		fpv.WatchDog(1)
-		tcpCliSock.send('motionGet'.encode())
-	elif 'stopCV' in data:
-		fpv.FindColor(0)
-		fpv.WatchDog(0)
-		fpv.FindLineMode(0)
-		tcpCliSock.send('stopCV'.encode())
-		direction_command = 'stand'
-		turn_command = 'no'
-		move.commandInput('stand')
-		move.commandInput('no')
-	elif 'findColorSet' in data:
-		try:
-			command_dict = ast.literal_eval(data)
-			if 'data' in command_dict and len(command_dict['data']) == 3:
-				r, g, b = command_dict['data']
-				fpv.colorFindSet(r, g, b)
-				print(f"color: r={r}, g={g}, b={b}")
-		except (SyntaxError, ValueError):
-			print("The received string format is incorrect and cannot be parsed.")
-	else:
-		return False  # Command not handled
-	return True  # Command was handled
+# Note: handle_computer_vision_command removed - CV features (FindColor, WatchDog, LineFollow) not needed
 
 
 def handle_speed_command(data):
-	"""Handle speed control commands (fast, slow)"""
-	if data == 'fast':
-		move.commandInput(data)
-		tcpCliSock.send('fast'.encode())
-	elif data == 'slow':
-		move.commandInput(data)
-		tcpCliSock.send('slow'.encode())
-	else:
-		return False  # Command not handled
-	return True  # Command was handled
+	"""
+	Handle speed control commands.
+
+	Note: fast/slow modes removed - always uses smooth movement now.
+	      This function kept for backwards compatibility but does nothing.
+	      Speed adjustment will be implemented in the future via speed parameter.
+	"""
+	if data == CMD_FAST or data == CMD_SLOW:
+		# Deprecated: Movement is always smooth now
+		# Just acknowledge the command for backwards compatibility
+		tcpCliSock.send(data.encode())
+		return True
+	return False  # Command not handled
 
 
 def handle_led_command(data):
 	"""Handle LED commands (police, policeOff)"""
 	global ws2812
 
-	if data == 'police':
+	if data == CMD_POLICE:
 		if ws2812:
 			ws2812.police()
-		tcpCliSock.send('police'.encode())
-	elif data == 'policeOff':
+		tcpCliSock.send(CMD_POLICE.encode())
+	elif data == CMD_POLICE_OFF:
 		if ws2812:
 			ws2812.breath(70, 70, 255)
-		tcpCliSock.send('policeOff'.encode())
+		tcpCliSock.send(CMD_POLICE_OFF.encode())
 	else:
 		return False  # Command not handled
 	return True  # Command was handled
@@ -326,58 +382,30 @@ def handle_led_command(data):
 
 def handle_switch_command(data):
 	"""Handle GPIO switch commands (Switch_1/2/3 on/off)"""
-	if 'Switch_1_on' in data:
+	if CMD_SWITCH_1_ON in data:
 		switch.switch(1, 1)
-		tcpCliSock.send('Switch_1_on'.encode())
-	elif 'Switch_1_off' in data:
+		tcpCliSock.send(CMD_SWITCH_1_ON.encode())
+	elif CMD_SWITCH_1_OFF in data:
 		switch.switch(1, 0)
-		tcpCliSock.send('Switch_1_off'.encode())
-	elif 'Switch_2_on' in data:
+		tcpCliSock.send(CMD_SWITCH_1_OFF.encode())
+	elif CMD_SWITCH_2_ON in data:
 		switch.switch(2, 1)
-		tcpCliSock.send('Switch_2_on'.encode())
-	elif 'Switch_2_off' in data:
+		tcpCliSock.send(CMD_SWITCH_2_ON.encode())
+	elif CMD_SWITCH_2_OFF in data:
 		switch.switch(2, 0)
-		tcpCliSock.send('Switch_2_off'.encode())
-	elif 'Switch_3_on' in data:
+		tcpCliSock.send(CMD_SWITCH_2_OFF.encode())
+	elif CMD_SWITCH_3_ON in data:
 		switch.switch(3, 1)
-		tcpCliSock.send('Switch_3_on'.encode())
-	elif 'Switch_3_off' in data:
+		tcpCliSock.send(CMD_SWITCH_3_ON.encode())
+	elif CMD_SWITCH_3_OFF in data:
 		switch.switch(3, 0)
-		tcpCliSock.send('Switch_3_off'.encode())
+		tcpCliSock.send(CMD_SWITCH_3_OFF.encode())
 	else:
 		return False  # Command not handled
 	return True  # Command was handled
 
 
-def handle_line_tracking_command(data):
-	"""Handle line tracking / FindLine commands"""
-	global steadyMode
-
-	if data == 'CVFL' and steadyMode == 0:
-		if not FPV.FindLineMode:
-			FPV.FindLineMode = 1
-			tcpCliSock.send('CVFL_on'.encode())
-	elif data == 'CVFLColorSet 0':
-		FPV.lineColorSet = 0
-	elif data == 'CVFLColorSet 255':
-		FPV.lineColorSet = 255
-	elif 'CVFLL1' in data:
-		try:
-			set_lip1 = data.split()
-			lip1_set = int(set_lip1[1])
-			FPV.linePos_1 = lip1_set
-		except:
-			pass
-	elif 'CVFLL2' in data:
-		try:
-			set_lip2 = data.split()
-			lip2_set = int(set_lip2[1])
-			FPV.linePos_2 = lip2_set
-		except:
-			pass
-	else:
-		return False  # Command not handled
-	return True  # Command was handled
+# Note: handle_line_tracking_command removed - Line Following feature not needed
 
 
 def process_client_command(data):
@@ -387,19 +415,60 @@ def process_client_command(data):
 		return
 	if handle_camera_command(data):
 		return
-	if handle_computer_vision_command(data):
-		return
+	# Note: handle_computer_vision_command removed - CV features not needed
 	if handle_speed_command(data):
 		return
 	if handle_led_command(data):
 		return
 	if handle_switch_command(data):
 		return
-	if handle_line_tracking_command(data):
+	# Note: handle_line_tracking_command removed - Line Following not needed
+	if handle_power_management_command(data):
 		return
 
 	# Command not recognized - this is OK, just ignore
 	pass
+
+
+# ==================== Power Management Commands ====================
+
+def handle_power_management_command(data):
+	"""Handle servo standby/wakeup and camera pause/resume commands"""
+	global fps_threading, servo_standby_active, camera_paused_active
+
+	if data == CMD_SERVO_STANDBY:
+		print("🔋 SERVO STANDBY - Stopping PWM signals")
+		move.standby()  # Call standby in Move module
+		servo_standby_active = True
+		# Send status update to client
+		tcpCliSock.send(f'{STATUS_SERVO_STANDBY}\n'.encode())
+		return True
+
+	elif data == CMD_SERVO_WAKEUP:
+		print("⚡ SERVO WAKEUP - Restoring servo positions")
+		move.wakeup()  # Call wakeup in Move module
+		servo_standby_active = False
+		# Send status update to client
+		tcpCliSock.send(f'{STATUS_SERVO_WAKEUP}\n'.encode())
+		return True
+
+	elif data == CMD_CAMERA_PAUSE:
+		print("📷 CAMERA PAUSE - Stopping video stream")
+		FPV.pause_stream()
+		camera_paused_active = True
+		# Send status update to client
+		tcpCliSock.send(f'{STATUS_CAMERA_PAUSED}\n'.encode())
+		return True
+
+	elif data == CMD_CAMERA_RESUME:
+		print("📷 CAMERA RESUME - Restarting video stream")
+		FPV.resume_stream()
+		camera_paused_active = False
+		# Send status update to client
+		tcpCliSock.send(f'{STATUS_CAMERA_RESUMED}\n'.encode())
+		return True
+
+	return False
 
 
 # ==================== Main Server Loop ====================

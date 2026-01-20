@@ -4,13 +4,19 @@
 __pycache__/
 *.py[cod]
 *$py.class
+*.pyc
+*.pyo
+*.pyd
 *.so
 .Python
 *.egg-info/
 dist/
 build/
+
+# Virtual environment
 .venv/
 venv/
+ENV/
 
 # Docker
 docker-compose.override.yml
