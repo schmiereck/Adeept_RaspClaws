@@ -687,81 +687,77 @@ def calculate_target_positions(phase, speed, command):
 	elif command == CMD_LEFT:
 		# LEFT TURN (CCW): Tripod-Gait Rotation (FT43)
 		# Group A (L1, R2, L3) alternates with Group B (R1, L2, R3)
-		# Legs from both sides in each group move in opposite directions to create rotation
+		# KEY: All legs in a phase have SAME h value. rightSide_direction=0 inverts for right legs.
+		# Result: Left legs pull back, right legs push forward → CCW rotation
 		if phase < 0.5:
-			# Phase 2: Group A (L1, R2, L3) in air, Group B (R1, L2, R3) on ground pushing
+			# Phase 1: Group B (R1, L2, R3) in air, Group A (L1, R2, L3) on ground pushing
 			t = phase * 2  # 0.0 to 1.0
 			v = int(3 * abs(speed) * math.sin(t * math.pi))  # Smooth arc
 
-			# Group A in air: L1/L3 swing FORWARD, R2 swings BACK
-			h_swing = int(abs(speed) * math.cos(t * math.pi))  # +speed to -speed
-			positions['L1'] = {'h': h_swing, 'v': v}   # L1: swing forward
-			positions['R2'] = {'h': h_swing, 'v': v}   # R2: swing back (negated for rightSide_direction=0)
-			positions['L3'] = {'h': h_swing, 'v': v}   # L3: swing forward
+			# Group B in air: swing from -speed to +speed (repositioning)
+			h_swing = int(abs(speed) * math.cos((t + 1) * math.pi))  # -speed to +speed
+			positions['R1'] = {'h': h_swing, 'v': v}  # Right: -speed→+speed inverted = forward→back
+			positions['L2'] = {'h': h_swing, 'v': v}  # Left: -speed→+speed = back→forward
+			positions['R3'] = {'h': h_swing, 'v': v}  # Right: -speed→+speed inverted = forward→back
 
-			# Group B on ground: R1/R3 push FORWARD, L2 pushes BACK
-			# For CCW: right side forward, left side back
-			# NOTE: R1/R3 values are NEGATED because rightSide_direction=0 inverts the sign
-			h_push = int(abs(speed) * math.cos((t + 1) * math.pi))  # -speed to +speed
-			positions['R1'] = {'h': -h_push, 'v': -10}  # R1: push forward (negated!)
-			positions['L2'] = {'h': -h_push, 'v': -10}  # L2: push back
-			positions['R3'] = {'h': -h_push, 'v': -10}  # R3: push forward (negated!)
+			# Group A on ground: push from +speed to -speed (creates rotation!)
+			h_push = int(abs(speed) * math.cos(t * math.pi))  # +speed to -speed
+			positions['L1'] = {'h': h_push, 'v': -10}  # Left: +speed→-speed = forward→back (pulls left)
+			positions['R2'] = {'h': h_push, 'v': -10}  # Right: +speed→-speed inverted = back→forward (pushes left)
+			positions['L3'] = {'h': h_push, 'v': -10}  # Left: +speed→-speed = forward→back (pulls left)
 		else:
-			# Phase 4: Group B (R1, L2, R3) in air, Group A (L1, R2, L3) on ground pushing
+			# Phase 2: Group A (L1, R2, L3) in air, Group B (R1, L2, R3) on ground pushing
 			t = (phase - 0.5) * 2  # 0.0 to 1.0
 			v = int(3 * abs(speed) * math.sin(t * math.pi))  # Smooth arc
 
-			# Group B in air: R1/R3 swing FORWARD, L2 swings BACK
-			h_swing = int(abs(speed) * math.cos(t * math.pi))  # +speed to -speed
-			positions['R1'] = {'h': h_swing, 'v': v}   # R1: swing forward (negated for rightSide_direction=0)
-			positions['L2'] = {'h': h_swing, 'v': v}   # L2: swing back
-			positions['R3'] = {'h': h_swing, 'v': v}   # R3: swing forward (negated for rightSide_direction=0)
+			# Group A in air: swing from -speed to +speed (repositioning)
+			h_swing = int(abs(speed) * math.cos((t + 1) * math.pi))  # -speed to +speed
+			positions['L1'] = {'h': h_swing, 'v': v}  # Left: -speed→+speed = back→forward
+			positions['R2'] = {'h': h_swing, 'v': v}  # Right: -speed→+speed inverted = forward→back
+			positions['L3'] = {'h': h_swing, 'v': v}  # Left: -speed→+speed = back→forward
 
-			# Group A on ground: L1/L3 push BACK, R2 pushes FORWARD
-			# NOTE: R2 value is NEGATED because rightSide_direction=0 inverts the sign
-			h_push = int(abs(speed) * math.cos((t + 1) * math.pi))  # -speed to +speed
-			positions['L1'] = {'h': -h_push, 'v': -10}  # L1: push back
-			positions['R2'] = {'h': -h_push, 'v': -10}  # R2: push forward (negated!)
-			positions['L3'] = {'h': -h_push, 'v': -10}  # L3: push back
+			# Group B on ground: push from +speed to -speed (creates rotation!)
+			h_push = int(abs(speed) * math.cos(t * math.pi))  # +speed to -speed
+			positions['R1'] = {'h': h_push, 'v': -10}  # Right: +speed→-speed inverted = back→forward (pushes left)
+			positions['L2'] = {'h': h_push, 'v': -10}  # Left: +speed→-speed = forward→back (pulls left)
+			positions['R3'] = {'h': h_push, 'v': -10}  # Right: +speed→-speed inverted = back→forward (pushes left)
 
 	elif command == CMD_RIGHT:
 		# RIGHT TURN (CW): Tripod-Gait Rotation (mirror of LEFT)
-		# Same tripod groups but all directions reversed
+		# KEY: Opposite of LEFT - swap the direction of ground push
+		# Result: Right legs pull back, left legs push forward → CW rotation
 		if phase < 0.5:
-			# Phase 2: Group A (L1, R2, L3) in air, Group B (R1, L2, R3) on ground pushing
+			# Phase 1: Group B (R1, L2, R3) in air, Group A (L1, R2, L3) on ground pushing
 			t = phase * 2  # 0.0 to 1.0
 			v = int(3 * abs(speed) * math.sin(t * math.pi))  # Smooth arc
 
-			# Group A in air: L1/L3 swing BACK, R2 swings FORWARD (opposite of LEFT)
+			# Group B in air: swing from +speed to -speed (repositioning)
 			h_swing = int(abs(speed) * math.cos(t * math.pi))  # +speed to -speed
-			positions['L1'] = {'h': -h_swing, 'v': v}  # L1: swing back
-			positions['R2'] = {'h': -h_swing, 'v': v}  # R2: swing forward (negated for rightSide_direction=0)
-			positions['L3'] = {'h': -h_swing, 'v': v}  # L3: swing back
+			positions['R1'] = {'h': h_swing, 'v': v}  # Right: +speed→-speed inverted = back→forward
+			positions['L2'] = {'h': h_swing, 'v': v}  # Left: +speed→-speed = forward→back
+			positions['R3'] = {'h': h_swing, 'v': v}  # Right: +speed→-speed inverted = back→forward
 
-			# Group B on ground: R1/R3 push BACK, L2 pushes FORWARD (opposite of LEFT)
-			# For CW: right side back, left side forward
-			# NOTE: R1/R3 values are NEGATED because rightSide_direction=0 inverts the sign
+			# Group A on ground: push from -speed to +speed (creates rotation!)
 			h_push = int(abs(speed) * math.cos((t + 1) * math.pi))  # -speed to +speed
-			positions['R1'] = {'h': h_push, 'v': -10}   # R1: push back (negated!)
-			positions['L2'] = {'h': h_push, 'v': -10}   # L2: push forward
-			positions['R3'] = {'h': h_push, 'v': -10}   # R3: push back (negated!)
+			positions['L1'] = {'h': h_push, 'v': -10}  # Left: -speed→+speed = back→forward (pushes right)
+			positions['R2'] = {'h': h_push, 'v': -10}  # Right: -speed→+speed inverted = forward→back (pulls right)
+			positions['L3'] = {'h': h_push, 'v': -10}  # Left: -speed→+speed = back→forward (pushes right)
 		else:
-			# Phase 4: Group B (R1, L2, R3) in air, Group A (L1, R2, L3) on ground pushing
+			# Phase 2: Group A (L1, R2, L3) in air, Group B (R1, L2, R3) on ground pushing
 			t = (phase - 0.5) * 2  # 0.0 to 1.0
 			v = int(3 * abs(speed) * math.sin(t * math.pi))  # Smooth arc
 
-			# Group B in air: R1/R3 swing BACK, L2 swings FORWARD (opposite of LEFT)
+			# Group A in air: swing from +speed to -speed (repositioning)
 			h_swing = int(abs(speed) * math.cos(t * math.pi))  # +speed to -speed
-			positions['R1'] = {'h': -h_swing, 'v': v}  # R1: swing back (negated for rightSide_direction=0)
-			positions['L2'] = {'h': -h_swing, 'v': v}  # L2: swing forward
-			positions['R3'] = {'h': -h_swing, 'v': v}  # R3: swing back (negated for rightSide_direction=0)
+			positions['L1'] = {'h': h_swing, 'v': v}  # Left: +speed→-speed = forward→back
+			positions['R2'] = {'h': h_swing, 'v': v}  # Right: +speed→-speed inverted = back→forward
+			positions['L3'] = {'h': h_swing, 'v': v}  # Left: +speed→-speed = forward→back
 
-			# Group A on ground: L1/L3 push FORWARD, R2 pushes BACK (opposite of LEFT)
-			# NOTE: R2 value is NEGATED because rightSide_direction=0 inverts the sign
+			# Group B on ground: push from -speed to +speed (creates rotation!)
 			h_push = int(abs(speed) * math.cos((t + 1) * math.pi))  # -speed to +speed
-			positions['L1'] = {'h': h_push, 'v': -10}   # L1: push forward
-			positions['R2'] = {'h': h_push, 'v': -10}   # R2: push back (negated!)
-			positions['L3'] = {'h': h_push, 'v': -10}   # L3: push forward
+			positions['R1'] = {'h': h_push, 'v': -10}  # Right: -speed→+speed inverted = forward→back (pulls right)
+			positions['L2'] = {'h': h_push, 'v': -10}  # Left: -speed→+speed = back→forward (pushes right)
+			positions['R3'] = {'h': h_push, 'v': -10}  # Right: -speed→+speed inverted = forward→back (pulls right)
 
 	return positions
 
