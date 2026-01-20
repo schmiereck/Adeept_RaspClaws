@@ -1166,17 +1166,17 @@ def create_movement_buttons(root, color_text, color_btn):
 
 	# Speed control slider
 	speed_label = tk.Label(root, text='Speed:', fg=color_text, bg='#212121', width=6)
-	speed_label.place(x=30, y=275)
+	speed_label.place(x=30, y=115)
 
 	speed_slider = tk.Scale(root, from_=10, to=60, orient=tk.HORIZONTAL,
 	                        length=200, fg=color_text, bg='#37474F',
 	                        troughcolor='#263238', highlightthickness=0,
 	                        command=lambda val: on_speed_change(val))
 	speed_slider.set(35)  # Default speed
-	speed_slider.place(x=80, y=270)
+	speed_slider.place(x=30, y=140)
 
 	speed_value_label = tk.Label(root, text='35', fg=color_text, bg='#212121', width=3)
-	speed_value_label.place(x=285, y=275)
+	speed_value_label.place(x=240, y=145)
 
 	# Store references globally for updates
 	global speed_slider_widget, speed_value_label_widget

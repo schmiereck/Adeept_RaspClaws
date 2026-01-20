@@ -635,14 +635,7 @@ def move_smooth(speed, command, cycle_steps=30):
 			alpha = 0.25 + eased_t * 0.5  # 0.25 → 0.75 with cubic easing
 		else:
 			# Normal: gentle continuous interpolation for smooth servo motion
-			# At high speeds (45+), use higher alpha to prevent phase overlap
-			# where one leg is still up when the next should already be down
-			if abs(speed) >= 45:
-				alpha = 0.9  # More aggressive at high speeds
-			elif abs(speed) >= 40:
-				alpha = 0.8  # Medium aggressive
-			else:
-				alpha = 0.7  # Smooth following at normal speeds
+			alpha = 0.7  # Smooth following, prevents jerky jumps
 
 		# Update and apply positions for each leg
 		for leg in ['L1', 'L2', 'L3', 'R1', 'R2', 'R3']:
@@ -674,13 +667,6 @@ def calculate_target_positions(phase, speed, command):
 
 	Returns:
 		Dictionary with target positions for each leg: {'L1': {'h': ..., 'v': ...}, ...}
-
-	Note:
-		Vertical height is clamped to max 110 to prevent legs from hanging in air
-		at high speeds. Without clamping, v = 3*speed*sin(t*pi) can reach 135+ at
-		speed=45+, which is too high for the interpolation (alpha=0.7) to follow.
-		This causes both rear legs to stay partially elevated simultaneously,
-		breaking the tripod-gait pattern and causing the robot to tip backward.
 	"""
 	positions = {}
 
@@ -690,15 +676,7 @@ def calculate_target_positions(phase, speed, command):
 			# Group 1 (L1, R2, L3) in air
 			t = phase * 2  # 0.0 to 1.0
 			h1 = int(speed * math.cos(t * math.pi))
-			# Limit vertical height to prevent legs hanging in air at high speeds
-			# Formula: v = 3 * speed * sin(t*pi), but clamped to max 110
-			# CRITICAL: Add dead zone at bottom (v < 15) to prevent both rear legs
-			# being off ground simultaneously during phase transitions
-			v1_raw = int(3 * abs(speed) * math.sin(t * math.pi))
-			if v1_raw < 15:
-				v1 = -10  # Force to ground level
-			else:
-				v1 = min(v1_raw, 110)
+			v1 = int(3 * abs(speed) * math.sin(t * math.pi))
 
 			# Group 2 (R1, L2, R3) on ground
 			h2 = -h1
@@ -714,12 +692,7 @@ def calculate_target_positions(phase, speed, command):
 			# Group 2 (R1, L2, R3) in air
 			t = (phase - 0.5) * 2  # 0.0 to 1.0
 			h2 = int(speed * math.cos(t * math.pi))
-			# Limit vertical height + add dead zone at bottom
-			v2_raw = int(3 * abs(speed) * math.sin(t * math.pi))
-			if v2_raw < 15:
-				v2 = -10  # Force to ground level
-			else:
-				v2 = min(v2_raw, 110)
+			v2 = int(3 * abs(speed) * math.sin(t * math.pi))
 
 			# Group 1 (L1, R2, L3) on ground
 			h1 = -h2
@@ -739,12 +712,7 @@ def calculate_target_positions(phase, speed, command):
 		if phase < 0.5:
 			# Phase 1: Group B (R1, L2, R3) in air, Group A (L1, R2, L3) on ground pushing
 			t = phase * 2  # 0.0 to 1.0
-			# Limit vertical height + add dead zone at bottom
-			v_raw = int(3 * abs(speed) * math.sin(t * math.pi))
-			if v_raw < 15:
-				v = -10  # Force to ground level
-			else:
-				v = min(v_raw, 110)
+			v = int(3 * abs(speed) * math.sin(t * math.pi))
 
 			# Group B in air: swing - right pulls forward, left pulls back
 			h_swing = int(abs(speed) * math.cos((t + 1) * math.pi))  # -speed to +speed
@@ -760,12 +728,7 @@ def calculate_target_positions(phase, speed, command):
 		else:
 			# Phase 2: Group A (L1, R2, L3) in air, Group B (R1, L2, R3) on ground pushing
 			t = (phase - 0.5) * 2  # 0.0 to 1.0
-			# Limit vertical height + add dead zone at bottom
-			v_raw = int(3 * abs(speed) * math.sin(t * math.pi))
-			if v_raw < 15:
-				v = -10  # Force to ground level
-			else:
-				v = min(v_raw, 110)
+			v = int(3 * abs(speed) * math.sin(t * math.pi))
 
 			# Group A in air: swing - right pulls forward, left pulls back
 			h_swing = int(abs(speed) * math.cos((t + 1) * math.pi))  # -speed to +speed
@@ -787,12 +750,7 @@ def calculate_target_positions(phase, speed, command):
 		if phase < 0.5:
 			# Phase 1: Group B (R1, L2, R3) in air, Group A (L1, R2, L3) on ground pushing
 			t = phase * 2  # 0.0 to 1.0
-			# Limit vertical height + add dead zone at bottom
-			v_raw = int(3 * abs(speed) * math.sin(t * math.pi))
-			if v_raw < 15:
-				v = -10  # Force to ground level
-			else:
-				v = min(v_raw, 110)
+			v = int(3 * abs(speed) * math.sin(t * math.pi))
 
 			# Group B in air: swing - left pulls forward, right pulls back
 			h_swing = int(abs(speed) * math.cos((t + 1) * math.pi))  # -speed to +speed
@@ -808,12 +766,7 @@ def calculate_target_positions(phase, speed, command):
 		else:
 			# Phase 2: Group A (L1, R2, L3) in air, Group B (R1, L2, R3) on ground pushing
 			t = (phase - 0.5) * 2  # 0.0 to 1.0
-			# Limit vertical height + add dead zone at bottom
-			v_raw = int(3 * abs(speed) * math.sin(t * math.pi))
-			if v_raw < 15:
-				v = -10  # Force to ground level
-			else:
-				v = min(v_raw, 110)
+			v = int(3 * abs(speed) * math.sin(t * math.pi))
 
 			# Group A in air: swing - left pulls forward, right pulls back
 			h_swing = int(abs(speed) * math.cos((t + 1) * math.pi))  # -speed to +speed
