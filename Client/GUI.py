@@ -767,6 +767,72 @@ def connection_thread():
 		import traceback
 		traceback.print_exc()
 
+	# Signal that connection was lost
+	print("[connection_thread] Connection lost - will attempt reconnect")
+
+
+def connection_monitor_thread():
+	"""Monitor connection and auto-reconnect if lost"""
+	global ip_stu, video_thread_started
+
+	max_reconnect_attempts = 5
+	reconnect_delay = 5  # seconds
+
+	while not shutdown_requested:
+		# Start connection thread
+		conn_thread = thread.Thread(target=connection_thread, daemon=True)
+		conn_thread.start()
+
+		# Wait for connection thread to finish (means connection was lost)
+		conn_thread.join()
+
+		if shutdown_requested:
+			break
+
+		# Connection was lost - attempt reconnect
+		for attempt in range(1, max_reconnect_attempts + 1):
+			if shutdown_requested:
+				break
+
+			print(f"\n[Auto-Reconnect] Attempt {attempt}/{max_reconnect_attempts} in {reconnect_delay}s...")
+			update_connection_status('Reconnecting', '#FF9800', f'Retry {attempt}/{max_reconnect_attempts}')
+
+			time.sleep(reconnect_delay)
+
+			if shutdown_requested:
+				break
+
+			# Try to reconnect
+			print(f"[Auto-Reconnect] Attempting to reconnect to {ip_adr}:10223...")
+			try:
+				# Reset video thread flag
+				video_thread_started = False
+
+				# Create new socket
+				global tcpClicSock
+				tcpClicSock = socket(AF_INET, SOCK_STREAM)
+				tcpClicSock.connect((ip_adr, 10223))
+
+				print("✓ Reconnected to server!")
+				update_connection_status('Connected', '#558B2F', f'Reconnected')
+				ip_stu = 0
+
+				# Break retry loop - connection successful, outer while will start new connection_thread
+				break
+
+			except Exception as e:
+				print(f"✗ Reconnect attempt {attempt} failed: {e}")
+				if attempt < max_reconnect_attempts:
+					continue
+				else:
+					print(f"✗ Failed to reconnect after {max_reconnect_attempts} attempts")
+					update_connection_status('Disconnected', '#F44336', 'Reconnect failed')
+					ip_stu = 1
+					return  # Exit monitor thread
+
+		if ip_stu == 1:  # All reconnect attempts failed
+			break
+
 
 # ==================== Connection Functions ====================
 
@@ -842,12 +908,14 @@ def video_ready_timeout_watchdog():
 
 
 def start_connection_threads():
-	"""Start connection and video threads"""
+	"""Start connection and video threads with auto-reconnect"""
 	global video_thread_started
 
-	connection_threading = thread.Thread(target=connection_thread, daemon=True)
-	connection_threading.start()
+	# Start connection monitor (manages connection_thread and reconnects)
+	monitor_threading = thread.Thread(target=connection_monitor_thread, daemon=True)
+	monitor_threading.start()
 
+	print("Connection monitor started with auto-reconnect...")
 	print("Waiting for video server to initialize...")
 
 	# Start timeout watchdog for VIDEO_READY signal
