@@ -635,8 +635,14 @@ def move_smooth(speed, command, cycle_steps=30):
 			alpha = 0.25 + eased_t * 0.5  # 0.25 → 0.75 with cubic easing
 		else:
 			# Normal: gentle continuous interpolation for smooth servo motion
-			# Never use alpha=1.0 as it causes jerky servo movements
-			alpha = 0.7  # Smooth following, prevents jerky jumps
+			# At high speeds (45+), use higher alpha to prevent phase overlap
+			# where one leg is still up when the next should already be down
+			if abs(speed) >= 45:
+				alpha = 0.9  # More aggressive at high speeds
+			elif abs(speed) >= 40:
+				alpha = 0.8  # Medium aggressive
+			else:
+				alpha = 0.7  # Smooth following at normal speeds
 
 		# Update and apply positions for each leg
 		for leg in ['L1', 'L2', 'L3', 'R1', 'R2', 'R3']:
