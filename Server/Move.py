@@ -699,12 +699,12 @@ def calculate_target_positions(phase, speed, command):
 			positions['R2'] = {'h': -h_swing, 'v': v}  # R2: swing back
 			positions['L3'] = {'h': h_swing, 'v': v}   # L3: swing forward
 
-			# Group B on ground: R1/R3 push BACK, L2 pushes FORWARD
-			# Use cosine for smooth push motion: -speed to +speed
+			# Group B on ground: R1/R3 push FORWARD, L2 pushes BACK
+			# For CCW: right side forward, left side back
 			h_push = int(abs(speed) * math.cos((t + 1) * math.pi))  # -speed to +speed
-			positions['R1'] = {'h': -h_push, 'v': -10}  # R1: push back (creates CCW rotation)
-			positions['L2'] = {'h': h_push, 'v': -10}   # L2: push forward (creates CCW rotation)
-			positions['R3'] = {'h': -h_push, 'v': -10}  # R3: push back (creates CCW rotation)
+			positions['R1'] = {'h': h_push, 'v': -10}   # R1: push forward (creates CCW rotation)
+			positions['L2'] = {'h': -h_push, 'v': -10}  # L2: push back (creates CCW rotation)
+			positions['R3'] = {'h': h_push, 'v': -10}   # R3: push forward (creates CCW rotation)
 		else:
 			# Phase 4: Group B (R1, L2, R3) in air, Group A (L1, R2, L3) on ground pushing
 			t = (phase - 0.5) * 2  # 0.0 to 1.0
@@ -737,11 +737,12 @@ def calculate_target_positions(phase, speed, command):
 			positions['R2'] = {'h': h_swing, 'v': v}   # R2: swing forward (positive)
 			positions['L3'] = {'h': -h_swing, 'v': v}  # L3: swing back (negative)
 
-			# Group B on ground: R1/R3 push FORWARD, L2 pushes BACK (opposite of LEFT)
+			# Group B on ground: R1/R3 push BACK, L2 pushes FORWARD (opposite of LEFT)
+			# For CW: right side back, left side forward
 			h_push = int(abs(speed) * math.cos((t + 1) * math.pi))  # -speed to +speed
-			positions['R1'] = {'h': h_push, 'v': -10}   # R1: push forward (creates CW rotation)
-			positions['L2'] = {'h': -h_push, 'v': -10}  # L2: push back (creates CW rotation)
-			positions['R3'] = {'h': h_push, 'v': -10}   # R3: push forward (creates CW rotation)
+			positions['R1'] = {'h': -h_push, 'v': -10}  # R1: push back (creates CW rotation)
+			positions['L2'] = {'h': h_push, 'v': -10}   # L2: push forward (creates CW rotation)
+			positions['R3'] = {'h': -h_push, 'v': -10}  # R3: push back (creates CW rotation)
 		else:
 			# Phase 4: Group B (R1, L2, R3) in air, Group A (L1, R2, L3) on ground pushing
 			t = (phase - 0.5) * 2  # 0.0 to 1.0
