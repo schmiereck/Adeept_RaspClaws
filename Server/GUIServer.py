@@ -250,27 +250,41 @@ def handle_movement_command(data):
 	"""Handle movement commands (forward, backward, left, right, etc.)"""
 	global direction_command, turn_command
 
-	if data == 'forward':
-		direction_command = 'forward'
-		move.commandInput(direction_command)
-	elif data == 'backward':
-		direction_command = 'backward'
-		move.commandInput(direction_command)
-	elif 'DS' in data:
-		direction_command = 'stand'
-		move.commandInput(direction_command)
-	elif data == 'left':
-		direction_command = 'left'
-		move.commandInput(direction_command)
-	elif data == 'right':
-		direction_command = 'right'
-		move.commandInput(direction_command)
-	elif 'TS' in data:
-		direction_command = 'no'
-		move.commandInput(direction_command)
+	# Map GUI commands to Move.py commands
+	command_mapping = {
+		'forward': 'forward',
+		'backward': 'backward',
+		'DS': 'stand',
+		'left': 'left',
+		'right': 'right',
+		'TS': 'no',
+		'leftside': 'left',    # Strafe left -> turn left
+		'rightside': 'right',  # Strafe right -> turn right
+	}
+
+	# Find matching command
+	move_command = None
+	if data in command_mapping:
+		move_command = command_mapping[data]
 	else:
-		return False  # Command not handled
-	return True  # Command was handled
+		# Check for partial matches (e.g., 'DS' in data)
+		for key, value in command_mapping.items():
+			if key in data:
+				move_command = value
+				break
+
+	if move_command:
+		print(f"[GUIServer] Movement command: '{data}' -> '{move_command}'")
+		# Use Move.py's handle_movement_command which properly resumes the robot thread
+		result = move.handle_movement_command(move_command)
+		if result:
+			# Update local state variables for GUI sync
+			if move_command in ['forward', 'backward', 'stand']:
+				direction_command = move_command
+			elif move_command in ['left', 'right', 'no']:
+				turn_command = move_command
+		return result
+	return False  # Command not handled
 
 
 def handle_camera_command(data):

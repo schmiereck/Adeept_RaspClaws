@@ -432,7 +432,7 @@ def update_mpu_canvas():
 			radius = (r / 100) * max_range
 			canvas_mpu.create_oval(center_x - radius, center_y - radius,
 			                       center_x + radius, center_y + radius,
-			                       outline='#212121', width=1)
+			                       outline='#616161', width=1)
 
 		if not MPU_AVAILABLE:
 			# Display "N/A" if sensor not available
@@ -498,8 +498,142 @@ def update_mpu_canvas():
 # ==================== End MPU6050 ====================
 
 
+# ==================== Message Handlers ====================
+
+def handle_video_ready():
+	"""Handle VIDEO_READY signal from server"""
+	global video_thread_started
+	if not video_thread_started:
+		print("✅ Server signals: Video stream is ready")
+		video_threading = thread.Thread(target=run_open, daemon=True)
+		video_threading.start()
+		video_thread_started = True
+		print("✓ Video thread started")
+
+
+def handle_video_timeout():
+	"""Handle VIDEO_TIMEOUT signal from server"""
+	print("⚠ Video server failed to start - no video stream available")
+
+
+def update_battery_display(battery_volt):
+	"""Update battery display with color coding"""
+	if battery_volt == 0.0:
+		# Battery monitoring not available
+		BATTERY_lab.config(text='Battery: N/A', bg='#757575', fg=color_text)
+	else:
+		# Calculate percentage (6.0V = 0%, 8.4V = 100%)
+		Vref = 8.4
+		WarningThreshold = 6.0
+		battery_percent = ((battery_volt - WarningThreshold) / (Vref - WarningThreshold)) * 100
+		battery_percent = max(0, min(100, battery_percent))  # Clamp to 0-100%
+
+		# Color coding: green > 60%, orange 30-60%, red < 30%
+		if battery_percent >= 60:
+			bg_color = '#4CAF50'  # Green
+		elif battery_percent >= 30:
+			bg_color = '#FF9800'  # Orange
+		else:
+			bg_color = '#F44336'  # Red
+
+		BATTERY_lab.config(text='Battery: %.1fV (%.0f%%)'%(battery_volt, battery_percent),
+		                   bg=bg_color, fg='#FFFFFF')
+
+
+def update_system_info(system_info):
+	"""Update CPU, RAM, and Battery information"""
+	global CPU_TEP, CPU_USE, RAM_USE, BATTERY_VOLTAGE
+
+	info_get = system_info.split()
+	if len(info_get) >= 4:
+		# New format: CPU_TEMP CPU_USE RAM_USE BATTERY_VOLTAGE
+		CPU_TEP, CPU_USE, RAM_USE, BATTERY_VOLTAGE = info_get[0], info_get[1], info_get[2], info_get[3]
+		CPU_TEP_lab.config(text='CPU Temp: %s℃'%CPU_TEP)
+		CPU_USE_lab.config(text='CPU Usage: %s'%CPU_USE)
+		RAM_lab.config(text='RAM Usage: %s'%RAM_USE)
+
+		# Update battery display
+		battery_volt = float(BATTERY_VOLTAGE)
+		update_battery_display(battery_volt)
+
+	elif len(info_get) >= 3:
+		# Old format without battery (backwards compatibility)
+		CPU_TEP, CPU_USE, RAM_USE = info_get[0], info_get[1], info_get[2]
+		CPU_TEP_lab.config(text='CPU Temp: %s℃'%CPU_TEP)
+		CPU_USE_lab.config(text='CPU Usage: %s'%CPU_USE)
+		RAM_lab.config(text='RAM Usage: %s'%RAM_USE)
+		BATTERY_lab.config(text='Battery: N/A', bg='#757575', fg=color_text)
+
+
+def handle_info_message(car_info):
+	"""Process INFO message from server (CPU/RAM/Battery/MPU/Servo data)"""
+	try:
+		info_data = car_info[5:].strip()  # Remove 'INFO:' prefix
+
+		# Split by '|' to separate system info, servo positions, and MPU data
+		parts = info_data.split('|')
+		system_info = parts[0].strip()
+		servo_info = parts[1].strip() if len(parts) > 1 else None
+		mpu_info = parts[2].strip() if len(parts) > 2 else None
+
+		# Update system information
+		update_system_info(system_info)
+
+		# Parse MPU6050 data (format: "G:x,y,z A:x,y,z" or "MPU:N/A")
+		if mpu_info:
+			parse_mpu_data(mpu_info)
+
+		# Log servo positions to terminal with timestamp
+		if servo_info:
+			timestamp = int(time.time() * 1000)  # Milliseconds since epoch
+			print(f"[{timestamp}] [SERVOS] {servo_info}")
+
+	except Exception as e:
+		print(f"⚠ Error processing INFO: {e}")
+
+
+def handle_steady_camera(enabled):
+	"""Handle steady camera mode toggle"""
+	global steadyMode, SmoothMode
+	if enabled:
+		steadyMode = 1
+		SmoothMode = 1
+		Btn_Steady.config(bg='#FF6D00', fg='#000000')
+	else:
+		steadyMode = 0
+		SmoothMode = 0
+		Btn_Steady.config(bg=color_btn, fg=color_text)
+
+
+def handle_smooth_cam(enabled):
+	"""Handle smooth camera mode toggle"""
+	global SmoothCamMode
+	if enabled:
+		SmoothCamMode = 1
+		Btn_SmoothCam.config(bg='#FF6D00', fg='#000000')
+	else:
+		SmoothCamMode = 0
+		Btn_SmoothCam.config(bg=color_btn, fg=color_text)
+
+
+def handle_switch(switch_num, enabled):
+	"""Handle switch on/off state"""
+	global Switch_1, Switch_2, Switch_3
+
+	if switch_num == 1:
+		Switch_1 = 1 if enabled else 0
+		Btn_Switch_1.config(bg='#4CAF50' if enabled else color_btn)
+	elif switch_num == 2:
+		Switch_2 = 1 if enabled else 0
+		Btn_Switch_2.config(bg='#4CAF50' if enabled else color_btn)
+	elif switch_num == 3:
+		Switch_3 = 1 if enabled else 0
+		Btn_Switch_3.config(bg='#4CAF50' if enabled else color_btn)
+
+
 # ==================== Connection Thread ====================
 def connection_thread():
+	"""Main connection thread - receives and processes messages from server"""
 	global funcMode, Switch_3, Switch_2, Switch_1, SmoothMode, SmoothCamMode, steadyMode
 	global CPU_TEP, CPU_USE, RAM_USE, BATTERY_VOLTAGE
 	global GYRO_X, GYRO_Y, GYRO_Z, ACCEL_X, ACCEL_Y, ACCEL_Z  # MPU6050 data
@@ -511,130 +645,46 @@ def connection_thread():
 			if not car_info:
 				continue
 
-			# Handle VIDEO_READY signal from server
-			elif 'VIDEO_READY' in car_info:
-				if not video_thread_started:
-					print("✅ Server signals: Video stream is ready")
-					video_threading = thread.Thread(target=run_open, daemon=True)
-					video_threading.start()
-					video_thread_started = True
-					print("✓ Video thread started")
-				continue
+			# Dispatch message to appropriate handler
+			if 'VIDEO_READY' in car_info:
+				handle_video_ready()
 
 			elif 'VIDEO_TIMEOUT' in car_info:
-				print("⚠ Video server failed to start - no video stream available")
-				continue
+				handle_video_timeout()
 
 			elif car_info.startswith('INFO:'):
-				# Process CPU/RAM/Battery info from server
-				try:
-					info_data = car_info[5:].strip()  # Remove 'INFO:' prefix
+				handle_info_message(car_info)
 
-					# Split by '|' to separate system info, servo positions, and MPU data
-					parts = info_data.split('|')
-					system_info = parts[0].strip()
-					servo_info = parts[1].strip() if len(parts) > 1 else None
-					mpu_info = parts[2].strip() if len(parts) > 2 else None
+			elif car_info == 'steadyCamera':
+				handle_steady_camera(enabled=True)
 
-					info_get = system_info.split()
-					if len(info_get) >= 4:
-						# New format: CPU_TEMP CPU_USE RAM_USE BATTERY_VOLTAGE
-						CPU_TEP, CPU_USE, RAM_USE, BATTERY_VOLTAGE = info_get[0], info_get[1], info_get[2], info_get[3]
-						CPU_TEP_lab.config(text='CPU Temp: %s℃'%CPU_TEP)
-						CPU_USE_lab.config(text='CPU Usage: %s'%CPU_USE)
-						RAM_lab.config(text='RAM Usage: %s'%RAM_USE)
-
-						# Update battery display with color coding
-						battery_volt = float(BATTERY_VOLTAGE)
-						if battery_volt == 0.0:
-							# Battery monitoring not available
-							BATTERY_lab.config(text='Battery: N/A', bg='#757575', fg=color_text)
-						else:
-							# Calculate percentage (6.0V = 0%, 8.4V = 100%)
-							Vref = 8.4
-							WarningThreshold = 6.0
-							battery_percent = ((battery_volt - WarningThreshold) / (Vref - WarningThreshold)) * 100
-							battery_percent = max(0, min(100, battery_percent))  # Clamp to 0-100%
-
-							# Color coding: green > 60%, orange 30-60%, red < 30%
-							if battery_percent >= 60:
-								bg_color = '#4CAF50'  # Green
-							elif battery_percent >= 30:
-								bg_color = '#FF9800'  # Orange
-							else:
-								bg_color = '#F44336'  # Red
-
-							BATTERY_lab.config(text='Battery: %.1fV (%.0f%%)'%(battery_volt, battery_percent),
-							                   bg=bg_color, fg='#FFFFFF')
-
-					elif len(info_get) >= 3:
-						# Old format without battery (backwards compatibility)
-						CPU_TEP, CPU_USE, RAM_USE = info_get[0], info_get[1], info_get[2]
-						CPU_TEP_lab.config(text='CPU Temp: %s℃'%CPU_TEP)
-						CPU_USE_lab.config(text='CPU Usage: %s'%CPU_USE)
-						RAM_lab.config(text='RAM Usage: %s'%RAM_USE)
-						BATTERY_lab.config(text='Battery: N/A', bg='#757575', fg=color_text)
-
-					# Parse MPU6050 data (format: "G:x,y,z A:x,y,z" or "MPU:N/A")
-					if mpu_info:
-						parse_mpu_data(mpu_info)
-
-					# Log servo positions to terminal with timestamp (only once, at the end)
-					if servo_info:
-						timestamp = int(time.time() * 1000)  # Milliseconds since epoch
-						print(f"[{timestamp}] [SERVOS] {servo_info}")
-
-				except Exception as e:
-					print(f"⚠ Error processing INFO: {e}")
-					pass
-
-			elif 'steadyCamera' == car_info:
-				steadyMode = 1
-				SmoothMode = 1
-				Btn_Steady.config(bg='#FF6D00', fg='#000000')
-
-			elif 'steadyCameraOff' == car_info:
-				steadyMode = 0
-				SmoothMode = 0
-				Btn_Steady.config(bg=color_btn, fg=color_text)
-
+			elif car_info == 'steadyCameraOff':
+				handle_steady_camera(enabled=False)
 
 			elif 'smoothCam' in car_info:
-				SmoothCamMode = 1
-				Btn_SmoothCam.config(bg='#FF6D00', fg='#000000')
+				handle_smooth_cam(enabled=True)
 
 			elif 'smoothCamOff' in car_info:
-				SmoothCamMode = 0
-				Btn_SmoothCam.config(bg=color_btn, fg=color_text)
-
-
-			elif 'Switch_3_on' in car_info:
-				Switch_3 = 1
-				Btn_Switch_3.config(bg='#4CAF50')
-
-			elif 'Switch_2_on' in car_info:
-				Switch_2 = 1
-				Btn_Switch_2.config(bg='#4CAF50')
+				handle_smooth_cam(enabled=False)
 
 			elif 'Switch_1_on' in car_info:
-				Switch_1 = 1
-				Btn_Switch_1.config(bg='#4CAF50')
-
-			elif 'Switch_3_off' in car_info:
-				Switch_3 = 0
-				Btn_Switch_3.config(bg=color_btn)
-
-			elif 'Switch_2_off' in car_info:
-				Switch_2 = 0
-				Btn_Switch_2.config(bg=color_btn)
+				handle_switch(1, enabled=True)
 
 			elif 'Switch_1_off' in car_info:
-				Switch_1 = 0
-				Btn_Switch_1.config(bg=color_btn)
+				handle_switch(1, enabled=False)
 
+			elif 'Switch_2_on' in car_info:
+				handle_switch(2, enabled=True)
 
-		# Note: Removed generic print(car_info) here - it caused duplicate log output
-		# Specific messages are already handled by their respective elif blocks
+			elif 'Switch_2_off' in car_info:
+				handle_switch(2, enabled=False)
+
+			elif 'Switch_3_on' in car_info:
+				handle_switch(3, enabled=True)
+
+			elif 'Switch_3_off' in car_info:
+				handle_switch(3, enabled=False)
+
 
 	except Exception as e:
 		# Connection closed or socket error - exit thread gracefully
@@ -742,249 +792,308 @@ def connect_click():	   #Call this function to connect with the server
 		sc.start()							  #Thread starts
 
 
+# ==================== GUI Helper Functions ====================
 
-def loop():					  #GUI
-	global tcpClicSock,root,E1,connect,l_ip_4,l_ip_5,color_btn,color_text,Btn14,CPU_TEP_lab,CPU_USE_lab,RAM_lab,BATTERY_lab,color_text,Btn_Steady,Btn_Switch_1,Btn_Switch_2,Btn_Switch_3,Btn_SmoothCam,canvas_mpu,color_bg,shutdown_requested   #1 The value of tcpClicSock changes in the function loop(),would also changes in global so the other functions could use it.
-	while True:
-		color_bg='#000000'		#Set background color
-		color_text='#E1F5FE'	  #Set text color
-		color_btn='#0277BD'	   #Set button color
-		color_line='#01579B'	  #Set line color
-		color_can='#212121'	   #Set canvas color
-		color_oval='#2196F3'	  #Set oval color
-		target_color='#FF6D00'
+def setup_window_closing_handler(root):
+	"""Setup the window closing handler for clean shutdown"""
+	def on_closing():
+		"""Clean shutdown when window is closed"""
+		global tcpClicSock, footage_socket, footage_process, shutdown_requested
 
-		root = tk.Tk()			#Define a window named root
-		root.title('Adeept RaspClaws (schmiereck)')	  #Main window title
-		root.geometry('565x680')  #1 Main window size, middle of the English letter x.
-		root.config(bg=color_bg)  #Set the background color of root window
+		shutdown_requested = True  # Signal that shutdown was requested
+		print("Shutting down GUI...")
 
-		# Define cleanup function for proper shutdown
-		def on_closing():
-			"""Clean shutdown when window is closed"""
-			global tcpClicSock, footage_socket, footage_process, shutdown_requested
-
-			shutdown_requested = True  # Signal that shutdown was requested
-			print("Shutting down GUI...")
-
-			try:
-				# Close TCP socket
-				if tcpClicSock and tcpClicSock != '':
-					print("Closing TCP socket...")
-					tcpClicSock.close()
-			except Exception as e:
-				print(f"Error closing TCP socket: {e}")
-
-			try:
-				# Close footage socket
-				if footage_socket is not None:
-					print("Closing footage socket...")
-					footage_socket.close()
-			except Exception as e:
-				print(f"Error closing footage socket: {e}")
-
-			try:
-				# Terminate the Footage-GUI process if running
-				if footage_process is not None and footage_process.poll() is None:
-					print("Terminating Footage-GUI process...")
-					footage_process.terminate()
-					try:
-						footage_process.wait(timeout=2)
-						print("✓ Footage-GUI process terminated")
-					except:
-						print("Force killing Footage-GUI process...")
-						footage_process.kill()
-			except Exception as e:
-				print(f"Error terminating footage process: {e}")
-
-			try:
-				# Close all OpenCV windows
-				cv2.destroyAllWindows()
-			except Exception as e:
-				print(f"Error closing OpenCV windows: {e}")
-
-			# Destroy the root window
-			print("Closing GUI window...")
-			root.destroy()
-
-			# Exit the application completely
-			print("✓ Application shutdown complete")
-			import sys
-			sys.exit(0)
-
-		# Register the cleanup function to be called when window is closed
-		root.protocol("WM_DELETE_WINDOW", on_closing)
 		try:
-			logo =tk.PhotoImage(file = 'logo.png')		 #Define the picture of logo,but only supports '.png' and '.gif'
-			l_logo=tk.Label(root,image = logo,bg=color_bg) #Set a label to show the logo picture
-			l_logo.place(x=30,y=13)						#Place the Label in a right position
-		except:
-			pass
+			# Close TCP socket
+			if tcpClicSock and tcpClicSock != '':
+				print("Closing TCP socket...")
+				tcpClicSock.close()
+		except Exception as e:
+			print(f"Error closing TCP socket: {e}")
 
-		CPU_TEP_lab=tk.Label(root,width=18,text='CPU Temp:',fg=color_text,bg='#212121')
-		CPU_TEP_lab.place(x=400,y=15)						 #Define a Label and put it in position
+		try:
+			# Close footage socket
+			if footage_socket is not None:
+				print("Closing footage socket...")
+				footage_socket.close()
+		except Exception as e:
+			print(f"Error closing footage socket: {e}")
 
-		CPU_USE_lab=tk.Label(root,width=18,text='CPU Usage:',fg=color_text,bg='#212121')
-		CPU_USE_lab.place(x=400,y=45)						 #Define a Label and put it in position
+		try:
+			# Terminate the Footage-GUI process if running
+			if footage_process is not None and footage_process.poll() is None:
+				print("Terminating Footage-GUI process...")
+				footage_process.terminate()
+				try:
+					footage_process.wait(timeout=2)
+					print("✓ Footage-GUI process terminated")
+				except:
+					print("Force killing Footage-GUI process...")
+					footage_process.kill()
+		except Exception as e:
+			print(f"Error terminating footage process: {e}")
 
-		RAM_lab=tk.Label(root,width=18,text='RAM Usage:',fg=color_text,bg='#212121')
-		RAM_lab.place(x=400,y=75)						 #Define a Label and put it in position
+		try:
+			# Close all OpenCV windows
+			cv2.destroyAllWindows()
+		except Exception as e:
+			print(f"Error closing OpenCV windows: {e}")
 
-		BATTERY_lab=tk.Label(root,width=18,text='Battery: N/A',fg=color_text,bg='#757575')
-		BATTERY_lab.place(x=400,y=105)					 #Define a Label and put it in position
+		# Destroy the root window
+		print("Closing GUI window...")
+		root.destroy()
 
+		# Exit the application completely
+		print("✓ Application shutdown complete")
+		import sys
+		sys.exit(0)
 
-		l_ip_4=tk.Label(root,width=18,text='Disconnected',fg=color_text,bg='#F44336')
-		l_ip_4.place(x=400,y=140)						 #Define a Label and put it in position
-
-		l_ip_5=tk.Label(root,width=18,text='Use default IP',fg=color_text,bg=color_btn)
-		l_ip_5.place(x=400,y=175)						 #Define a Label and put it in position
-
-		E1 = tk.Entry(root,show=None,width=16,bg="#37474F",fg='#eceff1')
-		E1.place(x=180,y=40)							 #Define a Entry and put it in position
-
-		l_ip_3=tk.Label(root,width=10,text='IP Address:',fg=color_text,bg='#000000')
-		l_ip_3.place(x=175,y=15)						 #Define a Label and put it in position
-
-
-		################################
-		#canvas_rec=canvas_ultra.create_rectangle(0,0,340,30,fill = '#FFFFFF',width=0)
-		#canvas_text=canvas_ultra.create_text((90,11),text='Ultrasonic Output: 0.75m',fill=color_text)
-		################################
-		Btn_Switch_1 = tk.Button(root, width=8, text='Port 1',fg=color_text,bg=color_btn,relief='ridge')
-		Btn_Switch_2 = tk.Button(root, width=8, text='Port 2',fg=color_text,bg=color_btn,relief='ridge')
-		Btn_Switch_3 = tk.Button(root, width=8, text='Port 3',fg=color_text,bg=color_btn,relief='ridge')
-
-		Btn_Switch_1.place(x=30,y=265)
-		Btn_Switch_2.place(x=100,y=265)
-		Btn_Switch_3.place(x=170,y=265)
-
-		Btn_Switch_1.bind('<ButtonPress-1>', call_Switch_1)
-		Btn_Switch_2.bind('<ButtonPress-1>', call_Switch_2)
-		Btn_Switch_3.bind('<ButtonPress-1>', call_Switch_3)
-
-		Btn0 = tk.Button(root, width=8, text='Forward',fg=color_text,bg=color_btn,relief='ridge')
-		Btn1 = tk.Button(root, width=8, text='Backward',fg=color_text,bg=color_btn,relief='ridge')
-		Btn2 = tk.Button(root, width=8, text='Left',fg=color_text,bg=color_btn,relief='ridge')
-		Btn3 = tk.Button(root, width=8, text='Right',fg=color_text,bg=color_btn,relief='ridge')
+	# Register the cleanup function
+	root.protocol("WM_DELETE_WINDOW", on_closing)
 
 
+def create_status_labels(root, color_text, color_bg, color_btn):
+	"""Create status labels (CPU, RAM, Battery, Connection)"""
+	global CPU_TEP_lab, CPU_USE_lab, RAM_lab, BATTERY_lab, l_ip_4, l_ip_5
 
-		Btn0.place(x=100,y=195)
-		Btn1.place(x=100,y=230)
-		Btn2.place(x=30,y=230)
-		Btn3.place(x=170,y=230)
+	# Logo
+	try:
+		logo = tk.PhotoImage(file='logo.png')
+		l_logo = tk.Label(root, image=logo, bg=color_bg)
+		l_logo.image = logo  # Keep a reference!
+		l_logo.place(x=30, y=13)
+	except:
+		pass
 
-		Btn0.bind('<ButtonPress-1>', call_forward)
-		Btn0.bind('<ButtonRelease-1>', call_DS)
-		Btn1.bind('<ButtonPress-1>', call_back)
-		Btn1.bind('<ButtonRelease-1>', call_DS)
-		Btn2.bind('<ButtonPress-1>', call_Left)
-		Btn2.bind('<ButtonRelease-1>', call_TS)
-		Btn3.bind('<ButtonPress-1>', call_Right)
-		Btn3.bind('<ButtonRelease-1>', call_TS)
+	# System status labels
+	CPU_TEP_lab = tk.Label(root, width=18, text='CPU Temp:', fg=color_text, bg='#212121')
+	CPU_TEP_lab.place(x=400, y=15)
 
-		Btn0.bind('<ButtonRelease-1>', call_FB_stop)
-		Btn1.bind('<ButtonRelease-1>', call_FB_stop)
-		Btn2.bind('<ButtonRelease-1>', call_Turn_stop)
-		Btn3.bind('<ButtonRelease-1>', call_Turn_stop)
+	CPU_USE_lab = tk.Label(root, width=18, text='CPU Usage:', fg=color_text, bg='#212121')
+	CPU_USE_lab.place(x=400, y=45)
 
-		root.bind('<KeyPress-w>', call_forward) 
-		root.bind('<KeyRelease-w>', call_DS) 
-		root.bind('<KeyPress-a>', call_Left)
-		root.bind('<KeyRelease-a>', call_TS)
-		root.bind('<KeyPress-d>', call_Right)
-		root.bind('<KeyRelease-d>', call_TS)
-		root.bind('<KeyPress-s>', call_back)
-		root.bind('<KeyRelease-s>', call_DS)
+	RAM_lab = tk.Label(root, width=18, text='RAM Usage:', fg=color_text, bg='#212121')
+	RAM_lab.place(x=400, y=75)
 
-		root.bind('<KeyPress-q>', call_LeftSide)
-		root.bind('<KeyPress-e>', call_RightSide)
-		root.bind('<KeyRelease-q>', call_Turn_stop)
-		root.bind('<KeyRelease-e>', call_Turn_stop)
+	BATTERY_lab = tk.Label(root, width=18, text='Battery: N/A', fg=color_text, bg='#757575')
+	BATTERY_lab.place(x=400, y=105)
 
-		root.bind('<KeyRelease-w>', call_FB_stop)
-		root.bind('<KeyRelease-a>', call_Turn_stop)
-		root.bind('<KeyRelease-d>', call_Turn_stop)
-		root.bind('<KeyRelease-s>', call_FB_stop)
+	# Connection status labels
+	l_ip_4 = tk.Label(root, width=18, text='Disconnected', fg=color_text, bg='#F44336')
+	l_ip_4.place(x=400, y=140)
 
-		Btn_up = tk.Button(root, width=8, text='Up',fg=color_text,bg=color_btn,relief='ridge')
-		Btn_down = tk.Button(root, width=8, text='Down',fg=color_text,bg=color_btn,relief='ridge')
-		Btn_left = tk.Button(root, width=8, text='Left',fg=color_text,bg=color_btn,relief='ridge')
-		Btn_right = tk.Button(root, width=8, text='Right',fg=color_text,bg=color_btn,relief='ridge')
-		Btn_home = tk.Button(root, width=8, text='Home',fg=color_text,bg=color_btn,relief='ridge')
-		Btn_up.place(x=400,y=195)
-		Btn_down.place(x=400,y=265)
-		Btn_left.place(x=330,y=230)
-		Btn_right.place(x=470,y=230)
-		Btn_home.place(x=400,y=230)
-		root.bind('<KeyPress-i>', call_headup) 
-		root.bind('<KeyRelease-i>', call_UDstop)
-		root.bind('<KeyPress-k>', call_headdown)
-		root.bind('<KeyRelease-k>', call_UDstop) 
-		root.bind('<KeyPress-j>', call_headleft)
-		root.bind('<KeyPress-l>', call_headright)
-		root.bind('<KeyRelease-l>', call_LRstop)
-		root.bind('<KeyRelease-j>', call_LRstop)
-		Btn_up.bind('<ButtonPress-1>', call_headup)
-		Btn_up.bind('<ButtonRelease-1>', call_UDstop)
-		Btn_down.bind('<ButtonPress-1>', call_headdown)
-		Btn_down.bind('<ButtonRelease-1>', call_UDstop)
-		Btn_left.bind('<ButtonPress-1>', call_headleft)
-		Btn_left.bind('<ButtonRelease-1>', call_LRstop)
-		Btn_right.bind('<ButtonPress-1>', call_headright)
-		Btn_right.bind('<ButtonRelease-1>', call_LRstop)
-		Btn_home.bind('<ButtonPress-1>', call_headhome)
-
-		Btn14= tk.Button(root, width=8,height=2, text='Connect',fg=color_text,bg=color_btn,command=connect_click,relief='ridge')
-		Btn14.place(x=315,y=15)						  #Define a Button and put it in position
-
-		root.bind('<Return>', connect)
-
-		# Note: RGB sliders, CV FL, Color Set, and Line Following removed - not needed
-
-		Btn_Steady = tk.Button(root, width=10, text='Steady [Z]',fg=color_text,bg=color_btn,relief='ridge')
-		Btn_Steady.place(x=30,y=330)
-		root.bind('<KeyPress-z>', call_steady)
-		Btn_Steady.bind('<ButtonPress-1>', call_steady)
-
-		# Second row - SmoothCam button
-		Btn_SmoothCam = tk.Button(root, width=10, text='Smooth-Cam [N]',fg=color_text,bg=color_btn,relief='ridge')
-		Btn_SmoothCam.place(x=115,y=330)
-		root.bind('<KeyPress-n>', call_SmoothCam)
-		Btn_SmoothCam.bind('<ButtonPress-1>', call_SmoothCam)
-
-		# Third row - Power Management buttons
-		global Btn_ServoStandby, Btn_CameraPause
-
-		Btn_ServoStandby = tk.Button(root, width=21, text='Servo Standby [M]',fg=color_text,bg=color_btn,relief='ridge')
-		Btn_ServoStandby.place(x=30,y=480)
-		root.bind('<KeyPress-m>', call_servo_standby)
-		Btn_ServoStandby.bind('<ButtonPress-1>', call_servo_standby)
-
-		Btn_CameraPause = tk.Button(root, width=21, text='Camera Pause [,]',fg=color_text,bg=color_btn,relief='ridge')
-		Btn_CameraPause.place(x=200,y=480)
-		root.bind('<KeyPress-comma>', call_camera_pause)
-		Btn_CameraPause.bind('<ButtonPress-1>', call_camera_pause)
-
-		# MPU6050 Gyro/Accel Visualization (2D Cross Display)
-		global canvas_mpu
-		canvas_mpu = tk.Canvas(root, bg='#1a1a1a', width=160, height=160, highlightthickness=1, highlightbackground='#424242')
-		canvas_mpu.place(x=385, y=480)
-
-		# Initial display (will show "N/A" until data arrives)
-		update_mpu_canvas()
+	l_ip_5 = tk.Label(root, width=18, text='Use default IP', fg=color_text, bg=color_btn)
+	l_ip_5.place(x=400, y=175)
 
 
-		global stat, shutdown_requested
-		if stat==0:			  # Ensure the mainloop runs only once
-			root.mainloop()  # Run the mainloop()
-			stat=1		   # Change the value to '1' so the mainloop() would not run again.
+def create_ip_entry(root, color_text):
+	"""Create IP address entry field"""
+	global E1, l_ip_3, Btn14
+
+	E1 = tk.Entry(root, show=None, width=16, bg="#37474F", fg='#eceff1')
+	E1.place(x=180, y=40)
+
+	l_ip_3 = tk.Label(root, width=10, text='IP Address:', fg=color_text, bg='#000000')
+	l_ip_3.place(x=175, y=15)
+
+	Btn14 = tk.Button(root, width=8, height=2, text='Connect', fg=color_text, bg=color_btn,
+	                  command=connect_click, relief='ridge')
+	Btn14.place(x=315, y=15)
+
+	root.bind('<Return>', connect)
+
+
+def create_movement_buttons(root, color_text, color_btn):
+	"""Create movement control buttons"""
+	# Switch buttons (Port 1, 2, 3)
+	global Btn_Switch_1, Btn_Switch_2, Btn_Switch_3
+
+	Btn_Switch_1 = tk.Button(root, width=8, text='Port 1', fg=color_text, bg=color_btn, relief='ridge')
+	Btn_Switch_2 = tk.Button(root, width=8, text='Port 2', fg=color_text, bg=color_btn, relief='ridge')
+	Btn_Switch_3 = tk.Button(root, width=8, text='Port 3', fg=color_text, bg=color_btn, relief='ridge')
+
+	Btn_Switch_1.place(x=30, y=265)
+	Btn_Switch_2.place(x=100, y=265)
+	Btn_Switch_3.place(x=170, y=265)
+
+	Btn_Switch_1.bind('<ButtonPress-1>', call_Switch_1)
+	Btn_Switch_2.bind('<ButtonPress-1>', call_Switch_2)
+	Btn_Switch_3.bind('<ButtonPress-1>', call_Switch_3)
+
+	# Movement buttons (Forward, Backward, Left, Right)
+	Btn0 = tk.Button(root, width=8, text='Forward', fg=color_text, bg=color_btn, relief='ridge')
+	Btn1 = tk.Button(root, width=8, text='Backward', fg=color_text, bg=color_btn, relief='ridge')
+	Btn2 = tk.Button(root, width=8, text='Left', fg=color_text, bg=color_btn, relief='ridge')
+	Btn3 = tk.Button(root, width=8, text='Right', fg=color_text, bg=color_btn, relief='ridge')
+
+	# Position movement buttons
+	Btn0.place(x=100, y=195)    # Forward (center top)
+	Btn1.place(x=100, y=230)    # Backward (center middle)
+	Btn2.place(x=30, y=230)     # Left (left middle)
+	Btn3.place(x=170, y=230)    # Right (right middle)
+
+	# Bind keyboard events
+	root.bind('<KeyPress-w>', call_forward)
+	root.bind('<KeyRelease-w>', call_DS)
+	root.bind('<KeyPress-s>', call_back)
+	root.bind('<KeyRelease-s>', call_DS)
+	root.bind('<KeyPress-a>', call_Left)
+	root.bind('<KeyRelease-a>', call_TS)
+	root.bind('<KeyPress-d>', call_Right)
+	root.bind('<KeyRelease-d>', call_TS)
+
+	root.bind('<KeyRelease-w>', call_FB_stop)
+	root.bind('<KeyRelease-s>', call_FB_stop)
+	root.bind('<KeyRelease-a>', call_Turn_stop)
+	root.bind('<KeyRelease-d>', call_Turn_stop)
+
+	# Additional keyboard shortcuts for sideways movement
+	root.bind('<KeyPress-q>', call_LeftSide)
+	root.bind('<KeyPress-e>', call_RightSide)
+	root.bind('<KeyRelease-q>', call_Turn_stop)
+	root.bind('<KeyRelease-e>', call_Turn_stop)
+
+	root.bind('<KeyPress-h>', call_headhome)
+
+	# Bind mouse events
+	Btn0.bind('<ButtonPress-1>', call_forward)
+	Btn0.bind('<ButtonRelease-1>', call_DS)
+	Btn1.bind('<ButtonPress-1>', call_back)
+	Btn1.bind('<ButtonRelease-1>', call_DS)
+	Btn2.bind('<ButtonPress-1>', call_Left)
+	Btn2.bind('<ButtonRelease-1>', call_TS)
+	Btn3.bind('<ButtonPress-1>', call_Right)
+	Btn3.bind('<ButtonRelease-1>', call_TS)
+
+	Btn0.bind('<ButtonRelease-1>', call_FB_stop)
+	Btn1.bind('<ButtonRelease-1>', call_FB_stop)
+	Btn2.bind('<ButtonRelease-1>', call_Turn_stop)
+	Btn3.bind('<ButtonRelease-1>', call_Turn_stop)
+
+
+def create_camera_control_buttons(root, color_text, color_btn):
+	"""Create camera control buttons (pan/tilt)"""
+	Btn_up = tk.Button(root, width=8, text='Up', fg=color_text, bg=color_btn, relief='ridge')
+	Btn_down = tk.Button(root, width=8, text='Down', fg=color_text, bg=color_btn, relief='ridge')
+	Btn_left = tk.Button(root, width=8, text='Left', fg=color_text, bg=color_btn, relief='ridge')
+	Btn_right = tk.Button(root, width=8, text='Right', fg=color_text, bg=color_btn, relief='ridge')
+	Btn_home = tk.Button(root, width=8, text='Home', fg=color_text, bg=color_btn, relief='ridge')
+	
+	# Position camera buttons on the RIGHT side
+	Btn_up.place(x=400, y=195)      # Up
+	Btn_down.place(x=400, y=265)    # Down
+	Btn_left.place(x=330, y=230)    # Left
+	Btn_right.place(x=470, y=230)   # Right
+	Btn_home.place(x=400, y=230)    # Home
+
+	# Keyboard bindings
+	root.bind('<KeyPress-i>', call_headup)
+	root.bind('<KeyRelease-i>', call_UDstop)
+	root.bind('<KeyPress-k>', call_headdown)
+	root.bind('<KeyRelease-k>', call_UDstop)
+	root.bind('<KeyPress-j>', call_headleft)
+	root.bind('<KeyRelease-j>', call_LRstop)
+	root.bind('<KeyPress-l>', call_headright)
+	root.bind('<KeyRelease-l>', call_LRstop)
+
+	# Mouse bindings
+	Btn_up.bind('<ButtonPress-1>', call_headup)
+	Btn_up.bind('<ButtonRelease-1>', call_UDstop)
+	Btn_down.bind('<ButtonPress-1>', call_headdown)
+	Btn_down.bind('<ButtonRelease-1>', call_UDstop)
+	Btn_left.bind('<ButtonPress-1>', call_headleft)
+	Btn_left.bind('<ButtonRelease-1>', call_LRstop)
+	Btn_right.bind('<ButtonPress-1>', call_headright)
+	Btn_right.bind('<ButtonRelease-1>', call_LRstop)
+	Btn_home.bind('<ButtonPress-1>', call_headhome)
+
+
+def create_feature_buttons(root, color_text, color_btn):
+	"""Create feature buttons (Steady, SmoothCam, Power Management)"""
+	global Btn_Steady, Btn_SmoothCam, Btn_ServoStandby, Btn_CameraPause
+
+	# Steady mode button
+	Btn_Steady = tk.Button(root, width=10, text='Steady [Z]', fg=color_text, bg=color_btn, relief='ridge')
+	Btn_Steady.place(x=30, y=330)
+	root.bind('<KeyPress-z>', call_steady)
+	Btn_Steady.bind('<ButtonPress-1>', call_steady)
+
+	# SmoothCam button
+	Btn_SmoothCam = tk.Button(root, width=10, text='Smooth-Cam [N]', fg=color_text, bg=color_btn, relief='ridge')
+	Btn_SmoothCam.place(x=115, y=330)
+	root.bind('<KeyPress-n>', call_SmoothCam)
+	Btn_SmoothCam.bind('<ButtonPress-1>', call_SmoothCam)
+
+	# Power Management buttons
+	Btn_ServoStandby = tk.Button(root, width=21, text='Servo Standby [M]', fg=color_text, bg=color_btn, relief='ridge')
+	Btn_ServoStandby.place(x=30, y=480)
+	root.bind('<KeyPress-m>', call_servo_standby)
+	Btn_ServoStandby.bind('<ButtonPress-1>', call_servo_standby)
+
+	Btn_CameraPause = tk.Button(root, width=21, text='Camera Pause [,]', fg=color_text, bg=color_btn, relief='ridge')
+	Btn_CameraPause.place(x=200, y=480)
+	root.bind('<KeyPress-comma>', call_camera_pause)
+	Btn_CameraPause.bind('<ButtonPress-1>', call_camera_pause)
+
+
+def create_mpu_canvas(root):
+	"""Create MPU6050 visualization canvas"""
+	global canvas_mpu
+
+	canvas_mpu = tk.Canvas(root, bg='#1a1a1a', width=160, height=160,
+	                       highlightthickness=1, highlightbackground='#424242')
+	canvas_mpu.place(x=385, y=480)
+
+	# Initial display (will show "N/A" until data arrives)
+	update_mpu_canvas()
+
+
+# ==================== Main GUI Loop ====================
+
+def loop():
+	"""Main GUI loop - creates and manages the GUI window"""
+	global tcpClicSock, root, E1, connect, l_ip_4, l_ip_5, color_btn, color_text, Btn14
+	global CPU_TEP_lab, CPU_USE_lab, RAM_lab, BATTERY_lab
+	global Btn_Steady, Btn_Switch_1, Btn_Switch_2, Btn_Switch_3, Btn_SmoothCam
+	global canvas_mpu, color_bg, shutdown_requested, stat
+
+	while True:
+		# Define color scheme
+		color_bg = '#000000'      # Background color
+		color_text = '#E1F5FE'    # Text color
+		color_btn = '#0277BD'     # Button color
+		color_line = '#01579B'    # Line color
+		color_can = '#212121'     # Canvas color
+		color_oval = '#2196F3'    # Oval color
+		target_color = '#FF6D00'  # Target color
+
+		# Create main window
+		root = tk.Tk()
+		root.title('Adeept RaspClaws (schmiereck)')
+		root.geometry('565x680')
+		root.config(bg=color_bg)
+
+		# Setup window closing handler
+		setup_window_closing_handler(root)
+
+		# Create GUI components
+		create_status_labels(root, color_text, color_bg, color_btn)
+		create_ip_entry(root, color_text)
+		create_movement_buttons(root, color_text, color_btn)
+		create_camera_control_buttons(root, color_text, color_btn)
+		create_feature_buttons(root, color_text, color_btn)
+		create_mpu_canvas(root)
+
+		# Run the main loop
+		if stat == 0:  # Ensure the mainloop runs only once
+			root.mainloop()
+			stat = 1   # Change the value to '1' so the mainloop() would not run again.
 
 		# If shutdown was requested, break the while loop
 		if shutdown_requested:
 			print("Exiting application loop...")
 			break
+
 
 
 if __name__ == '__main__':
