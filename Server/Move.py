@@ -93,6 +93,7 @@ Up_Down_Max = 500
 Up_Down_Min = 270
 look_wiggle = 30
 move_stu = 1
+abort_current_movement = False  # Flag to immediately abort ongoing movement cycle
 
 
 '''
@@ -582,7 +583,7 @@ def move_smooth(speed, command, cycle_steps=30):
 	Uses actual leg position tracking to ensure smooth transitions even when
 	direction changes. Interpolates from current position to target position.
 	"""
-	global _leg_positions, _last_command, _last_speed_sign, direction_command, turn_command
+	global _leg_positions, _last_command, _last_speed_sign, direction_command, turn_command, abort_current_movement
 
 	# Detect command or direction change
 	current_speed_sign = 1 if speed > 0 else -1 if speed < 0 else 0
@@ -596,33 +597,23 @@ def move_smooth(speed, command, cycle_steps=30):
 
 	# Perform one complete walking cycle
 	for step in range(cycle_steps):
-		# Check if movement should stop
-		if not move_stu:
-			# Keep current positions when stopped (don't reset!)
-			# This allows smooth continuation when movement resumes
-			_last_command = None
-			_last_speed_sign = 0
-			break
-
-		# Check if button was released → abort current cycle immediately
-		should_stop = False
-		if command == 'no':
-			# Forward/Backward movement - check if button released
-			if direction_command == MOVE_NO:
-				print(f"[move_smooth] Forward/Backward button released at step {step}/{cycle_steps}")
-				should_stop = True
-		else:
-			# Turn movement (left/right) - check if button released
-			if turn_command == MOVE_NO:
-				print(f"[move_smooth] Turn button released at step {step}/{cycle_steps}")
-				should_stop = True
-
-		if should_stop:
+		# PRIORITY 1: Check abort flag (set by button release handlers)
+		if abort_current_movement:
+			print(f"[move_smooth] ⚡ ABORT FLAG detected at step {step}/{cycle_steps}")
 			# Lower all legs to ground for stable position
 			print("[move_smooth] Lowering legs to stable ground position...")
 			for leg in ['L1', 'L2', 'L3', 'R1', 'R2', 'R3']:
 				# Keep current horizontal position, set vertical to ground level
 				apply_leg_position(leg, _leg_positions[leg], -10)
+			_last_command = None
+			_last_speed_sign = 0
+			# Flag will be reset at end of function
+			break
+
+		# PRIORITY 2: Check if movement should stop (move_stu flag)
+		if not move_stu:
+			# Keep current positions when stopped (don't reset!)
+			# This allows smooth continuation when movement resumes
 			_last_command = None
 			_last_speed_sign = 0
 			break
@@ -661,6 +652,9 @@ def move_smooth(speed, command, cycle_steps=30):
 			apply_leg_position(leg, new_horizontal, vertical)
 
 		time.sleep(1.0 / cycle_steps)  # ~33ms per step = 1.0s per cycle (faster movement)
+
+	# Reset abort flag after cycle completes (either normally or via break)
+	abort_current_movement = False
 
 
 def calculate_target_positions(phase, speed, command):
@@ -1674,15 +1668,22 @@ def set_turn_and_resume(turn):
 
 def set_direction_and_pause(direction):
 	"""Set direction command and pause robot movement"""
-	global direction_command
+	global direction_command, abort_current_movement
 	direction_command = direction
+	# Set abort flag to immediately stop any ongoing movement cycle
+	abort_current_movement = True
+	print(f"[set_direction_and_pause] Setting abort flag, direction={direction}")
 	rm.pause()
 
 
 def set_turn_and_pause():
 	"""Set turn to 'no' and pause robot movement"""
-	global turn_command
+	global turn_command, direction_command, abort_current_movement
 	turn_command = MOVE_NO
+	direction_command = MOVE_NO  # Also reset direction (user released all movement buttons)
+	# Set abort flag to immediately stop any ongoing movement cycle
+	abort_current_movement = True
+	print("[set_turn_and_pause] Setting abort flag, turn=no, direction=no")
 	rm.pause()
 
 
