@@ -582,7 +582,7 @@ def move_smooth(speed, command, cycle_steps=30):
 	Uses actual leg position tracking to ensure smooth transitions even when
 	direction changes. Interpolates from current position to target position.
 	"""
-	global _leg_positions, _last_command, _last_speed_sign
+	global _leg_positions, _last_command, _last_speed_sign, direction_command, turn_command
 
 	# Detect command or direction change
 	current_speed_sign = 1 if speed > 0 else -1 if speed < 0 else 0
@@ -604,6 +604,14 @@ def move_smooth(speed, command, cycle_steps=30):
 			_last_speed_sign = 0
 			break
 
+		# Check if command has changed (button released) → abort current cycle
+		if command == 'no' and direction_command == MOVE_NO:
+			# User released forward/backward button
+			break
+		elif command != 'no' and turn_command == MOVE_NO:
+			# User released turn button
+			break
+
 		# Calculate current phase for this step (0.0 to 1.0)
 		phase = step / cycle_steps
 
@@ -614,10 +622,10 @@ def move_smooth(speed, command, cycle_steps=30):
 		# Use stronger interpolation at the beginning of a cycle
 		if command_changed and step < 5:
 			# Stronger interpolation for first few steps after direction change
-			alpha = 0.3 + (step / 5) * 0.7  # 0.3 → 1.0 over first 5 steps
+			alpha = 0.3 + (step / 5) * 0.4  # 0.3 → 0.7 over first 5 steps (not 1.0!)
 		else:
-			# Normal: move directly to target
-			alpha = 1.0
+			# Normal: smooth continuous interpolation (never jump!)
+			alpha = 0.6  # Always interpolate smoothly, never alpha=1.0
 
 		# Update and apply positions for each leg
 		for leg in ['L1', 'L2', 'L3', 'R1', 'R2', 'R3']:
