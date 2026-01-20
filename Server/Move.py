@@ -1905,22 +1905,26 @@ def standby():
 
 def wakeup():
 	"""
-	Wake up servos from standby - restores last known positions.
+	Wake up servos from standby - moves servos to stand position.
 	"""
-	print("⚡ WAKEUP - Restoring servo positions")
-	global servo_current_pos, direction_command, turn_command, step_set
+	print("⚡ WAKEUP - Moving servos to stand position")
+	global direction_command, turn_command, step_set
 
 	# Reset movement commands to safe defaults
-	direction_command = 'no'
+	direction_command = 'stand'  # Set to stand to trigger stand() in move_thread
 	turn_command = 'no'
 	step_set = 1  # Reset walk cycle to beginning
 
-	# Restore all servos to their last known positions
-	for i in range(16):
-		pwm.set_pwm(i, 0, servo_current_pos[i])
+	# Move servos to stand position (safe, known position)
+	# This is better than restoring old positions because servos may have been
+	# moved manually during standby
+	stand()  # Execute stand position immediately
+
+	# Reset to 'no' after stand is complete
+	direction_command = 'no'
 
 	# Resume the RobotM thread to allow movement again
 	print("[WAKEUP] Resuming RobotM thread")
 	rm.resume()
 
-	print("✓ All servos restored - robot ready")
+	print("✓ All servos in stand position - robot ready")
