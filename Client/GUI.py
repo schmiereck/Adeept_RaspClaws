@@ -57,6 +57,9 @@ root = ''
 stat = 0
 ip_adr = ''
 footage_socket = None
+speed_slider_widget = None
+speed_value_label_widget = None
+current_speed = 35  # Default movement speed
 
 Switch_3 = 0
 Switch_2 = 0
@@ -177,6 +180,22 @@ def send_movement_command(command, state_var_name, state_value=1):
 	if current_state == 0:
 		send_command(command)
 		state_dict[state_var_name]()
+
+
+def on_speed_change(value):
+	"""Handle speed slider value change"""
+	global current_speed, speed_value_label_widget
+
+	speed = int(float(value))
+	current_speed = speed
+
+	# Update value label
+	if speed_value_label_widget:
+		speed_value_label_widget.config(text=str(speed))
+
+	# Send speed command to server
+	send_command(f'{CMD_SET_SPEED}{speed}')
+	print(f"[Speed] Set to {speed}")
 
 
 # ==================== Movement Callbacks ====================
@@ -1144,6 +1163,25 @@ def create_movement_buttons(root, color_text, color_btn):
 	Btn1.bind('<ButtonRelease-1>', call_FB_stop)
 	Btn2.bind('<ButtonRelease-1>', call_Turn_stop)
 	Btn3.bind('<ButtonRelease-1>', call_Turn_stop)
+
+	# Speed control slider
+	speed_label = tk.Label(root, text='Speed:', fg=color_text, bg='#212121', width=6)
+	speed_label.place(x=30, y=275)
+
+	speed_slider = tk.Scale(root, from_=10, to=60, orient=tk.HORIZONTAL,
+	                        length=200, fg=color_text, bg='#37474F',
+	                        troughcolor='#263238', highlightthickness=0,
+	                        command=lambda val: on_speed_change(val))
+	speed_slider.set(35)  # Default speed
+	speed_slider.place(x=80, y=270)
+
+	speed_value_label = tk.Label(root, text='35', fg=color_text, bg='#212121', width=3)
+	speed_value_label.place(x=285, y=275)
+
+	# Store references globally for updates
+	global speed_slider_widget, speed_value_label_widget
+	speed_slider_widget = speed_slider
+	speed_value_label_widget = speed_value_label
 
 
 def create_camera_control_buttons(root, color_text, color_btn):

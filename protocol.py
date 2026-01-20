@@ -33,6 +33,7 @@ MOVE_NO = 'no'  # No movement command
 # Speed commands
 CMD_FAST = 'fast'
 CMD_SLOW = 'slow'
+CMD_SET_SPEED = 'setSpeed:'  # Set movement speed (format: "setSpeed:35")
 
 # Smooth movement mode
 CMD_SMOOTH = 'smooth'

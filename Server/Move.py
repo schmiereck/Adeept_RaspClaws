@@ -1512,6 +1512,26 @@ DPI = 15
 new_frame = 0
 direction_command = MOVE_NO
 turn_command = MOVE_NO
+movement_speed = 35  # Default movement speed (10-60 range)
+
+
+# ==================== Speed Control ====================
+
+def set_movement_speed(speed):
+	"""
+	Set the movement speed for walking and turning.
+
+	Args:
+		speed: Movement speed (10-60 range)
+		       - 10: Very slow, careful movements
+		       - 35: Default speed (balanced)
+		       - 60: Fast movements (may be less stable)
+	"""
+	global movement_speed
+	# Clamp to valid range
+	speed = max(10, min(60, int(speed)))
+	movement_speed = speed
+	print(f"[Move] Movement speed set to {movement_speed}")
 
 
 # ==================== Helper Functions for Movement ====================
@@ -1548,10 +1568,10 @@ def handle_direction_movement():
 	Returns True if movement was executed, False otherwise
 	"""
 	if direction_command == CMD_FORWARD and turn_command == MOVE_NO:
-		execute_movement_step(35, 'no')
+		execute_movement_step(-movement_speed, 'no')
 		return True
 	elif direction_command == CMD_BACKWARD and turn_command == MOVE_NO:
-		execute_movement_step(-35, 'no')
+		execute_movement_step(movement_speed, 'no')
 		return True
 	return False
 
@@ -1562,7 +1582,7 @@ def handle_turn_movement():
 	Returns True if turn was executed, False otherwise
 	"""
 	if turn_command != MOVE_NO:
-		execute_movement_step(40, turn_command)
+		execute_movement_step(movement_speed, turn_command)
 		return True
 	return False
 
@@ -1603,15 +1623,15 @@ def move_thread():
 		# Step 1: Handle directional movement (forward/backward)
 		# Only one of these will execute per cycle
 		if direction_command == CMD_FORWARD and turn_command == MOVE_NO:
-			execute_movement_step(-35, 'no')  # Negative = forward (legs pull forward)
+			execute_movement_step(-movement_speed, 'no')  # Negative = forward (legs pull forward)
 			movement_executed = True
 		elif direction_command == CMD_BACKWARD and turn_command == MOVE_NO:
-			execute_movement_step(35, 'no')  # Positive = backward (legs push back)
+			execute_movement_step(movement_speed, 'no')  # Positive = backward (legs push back)
 			movement_executed = True
 
 		# Step 2: Handle turn movement (independent of directional movement)
 		if turn_command != MOVE_NO:
-			execute_movement_step(40, turn_command)
+			execute_movement_step(movement_speed, turn_command)  # Use same speed for turns
 			movement_executed = True
 
 		# Step 3: ONLY apply stand/steady when NO movement is happening

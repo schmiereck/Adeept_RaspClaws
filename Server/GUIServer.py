@@ -356,11 +356,24 @@ def handle_speed_command(data):
 	"""
 	Handle speed control commands.
 
-	Note: fast/slow modes removed - always uses smooth movement now.
-	      This function kept for backwards compatibility but does nothing.
-	      Speed adjustment will be implemented in the future via speed parameter.
+	Supports:
+	- CMD_SET_SPEED: Set custom movement speed (format: "setSpeed:35")
+	- CMD_FAST/CMD_SLOW: Legacy commands (deprecated, kept for backwards compatibility)
 	"""
-	if data == CMD_FAST or data == CMD_SLOW:
+	if data.startswith(CMD_SET_SPEED):
+		# Extract speed value from "setSpeed:35"
+		try:
+			speed_str = data[len(CMD_SET_SPEED):]
+			speed = int(speed_str)
+			# Clamp speed to valid range (10-60)
+			speed = max(10, min(60, speed))
+			print(f"[GUIServer] Setting movement speed to {speed}")
+			move.set_movement_speed(speed)
+			return True
+		except ValueError:
+			print(f"[GUIServer] Invalid speed value: {data}")
+			return False
+	elif data == CMD_FAST or data == CMD_SLOW:
 		# Deprecated: Movement is always smooth now
 		# Just acknowledge the command for backwards compatibility
 		tcpCliSock.send(data.encode())
