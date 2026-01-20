@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(python -m py_compile:*)",
-      "Bash(python -c:*)"
+      "Bash(python -c:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nMerge master into ros2 branch\n\nResolved conflicts:\n- .gitignore: Combined both versions \\(ros2 with ROS 2/Docker entries + master Python entries\\)\n- agents.MD: Removed old file, kept new AGENTS.md from master\n\nBrings in all master improvements:\n- Protocol constants \\(protocol.py\\)\n- Fixed turn movement \\(FT43 Tripod-Gait\\)\n- Power management improvements \\(FT42\\)\n- All documentation updates \\(FT5-FT46\\)\n- Client connection retry mechanism\n- Camera pause button sync fix\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git commit:*)"
     ]
   }
 }
