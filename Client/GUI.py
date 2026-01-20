@@ -639,7 +639,7 @@ def handle_switch(switch_num, enabled):
 
 def handle_servo_standby_status(active):
 	"""Handle servo standby status update from server"""
-	global servo_standby_state, Btn_ServoStandby
+	global servo_standby_state, Btn_ServoStandby, color_btn, color_text
 
 	servo_standby_state = active
 
@@ -653,14 +653,14 @@ def handle_servo_standby_status(active):
 			# Servo is awake - show "Standby" button
 			Btn_ServoStandby.config(bg=color_btn, fg=color_text, text='Servo Standby [M]')
 			print("⚡ Servo Standby INACTIVE (synced from server)")
-	except (NameError, AttributeError):
+	except (NameError, AttributeError) as e:
 		# Button not created yet, state will be applied when button is created
-		print(f"Servo standby state received: {'ACTIVE' if active else 'INACTIVE'} (button not ready yet)")
+		print(f"Servo standby state received: {'ACTIVE' if active else 'INACTIVE'} (button not ready yet) - {e}")
 
 
 def handle_camera_pause_status(paused):
 	"""Handle camera pause status update from server"""
-	global camera_pause_state, Btn_CameraPause
+	global camera_pause_state, Btn_CameraPause, color_btn, color_text
 
 	camera_pause_state = paused
 
@@ -674,9 +674,9 @@ def handle_camera_pause_status(paused):
 			# Camera is active - show "Pause" button
 			Btn_CameraPause.config(bg=color_btn, fg=color_text, text='Camera Pause [,]')
 			print("📷 Camera Pause INACTIVE (synced from server)")
-	except (NameError, AttributeError):
+	except (NameError, AttributeError) as e:
 		# Button not created yet, state will be applied when button is created
-		print(f"Camera pause state received: {'PAUSED' if paused else 'ACTIVE'} (button not ready yet)")
+		print(f"Camera pause state received: {'PAUSED' if paused else 'ACTIVE'} (button not ready yet) - {e}")
 
 
 # ==================== Connection Thread ====================

@@ -205,17 +205,17 @@ def info_send_client():
     try:
         # Send Power Management status first
         if servo_standby_active:
-            tcpCliSock.send('servoStandby\n'.encode())
+            tcpCliSock.send(f'{STATUS_SERVO_STANDBY}\n'.encode())
             print("✓ Sent servo standby status: ACTIVE")
         else:
-            tcpCliSock.send('servoWakeup\n'.encode())
+            tcpCliSock.send(f'{STATUS_SERVO_WAKEUP}\n'.encode())
             print("✓ Sent servo standby status: INACTIVE")
 
         if camera_paused_active:
-            tcpCliSock.send('cameraPaused\n'.encode())
+            tcpCliSock.send(f'{STATUS_CAMERA_PAUSED}\n'.encode())
             print("✓ Sent camera pause status: PAUSED")
         else:
-            tcpCliSock.send('cameraResumed\n'.encode())
+            tcpCliSock.send(f'{STATUS_CAMERA_RESUMED}\n'.encode())
             print("✓ Sent camera pause status: ACTIVE")
 
         # Send first INFO message immediately
