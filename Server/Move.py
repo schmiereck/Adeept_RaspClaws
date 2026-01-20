@@ -632,7 +632,7 @@ def move_smooth(speed, command, cycle_steps=30):
 			# Apply to servos
 			apply_leg_position(leg, new_horizontal, vertical)
 
-		time.sleep(1.5 / cycle_steps)  # ~50ms per step = 1.5s per cycle
+		time.sleep(1.0 / cycle_steps)  # ~33ms per step = 1.0s per cycle (faster movement)
 
 
 def calculate_target_positions(phase, speed, command):
