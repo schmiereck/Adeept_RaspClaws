@@ -809,6 +809,23 @@ def establish_connection(server_ip, server_port):
 	return False
 
 
+def video_ready_timeout_watchdog():
+	"""Watchdog that warns if VIDEO_READY signal is not received within timeout"""
+	global video_thread_started
+
+	timeout_seconds = 15  # Should receive VIDEO_READY within 15 seconds
+	time.sleep(timeout_seconds)
+
+	if not video_thread_started:
+		print("⚠️ WARNING: Video server did not respond within 15s")
+		print("   This is usually caused by:")
+		print("   1. SSH tunnel not forwarding video port (check for 'connection refused')")
+		print("   2. Video server failed to start on Raspberry Pi")
+		print("   3. Network issues between client and server")
+		print("   → GUI will continue to work, but video stream is unavailable")
+		print("   → Try reconnecting or check server logs")
+
+
 def start_connection_threads():
 	"""Start connection and video threads"""
 	global video_thread_started
@@ -817,6 +834,10 @@ def start_connection_threads():
 	connection_threading.start()
 
 	print("Waiting for video server to initialize...")
+
+	# Start timeout watchdog for VIDEO_READY signal
+	timeout_thread = thread.Thread(target=video_ready_timeout_watchdog, daemon=True)
+	timeout_thread.start()
 
 
 def socket_connect():

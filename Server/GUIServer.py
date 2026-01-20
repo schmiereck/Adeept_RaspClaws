@@ -231,23 +231,28 @@ def info_send_client():
 
     sys.stdout.flush()
 
-    # Send VIDEO_READY signals (reduced to 5 times with shorter delays)
+    # Wait for client to start connection_thread (avoid race condition)
+    print("INFO_SEND_CLIENT: Waiting 2s for client to initialize...")
+    sys.stdout.flush()
+    time.sleep(2.0)
+
+    # Send VIDEO_READY signals (10 times with 1s delays = 10s window)
     print("INFO_SEND_CLIENT: Starting VIDEO_READY signals...")
     sys.stdout.flush()
     success_count = 0
-    for i in range(5):  # Reduced from 10 to 5
+    for i in range(10):
         try:
             tcpCliSock.send(f'{STATUS_VIDEO_READY}\n'.encode())
             success_count += 1
-            print(f"✅ VIDEO_READY {i+1}/5")
+            print(f"✅ VIDEO_READY {i+1}/10")
             sys.stdout.flush()
-            time.sleep(0.5)  # Reduced from 1.0 to 0.5 seconds
+            time.sleep(1.0)
         except Exception as e:
-            print(f"⚠ Failed to send VIDEO_READY {i+1}/5: {e}")
+            print(f"⚠ Failed to send VIDEO_READY {i+1}/10: {e}")
             sys.stdout.flush()
-            time.sleep(0.5)
+            time.sleep(1.0)
 
-    print(f"INFO_SEND_CLIENT: Finished VIDEO_READY phase ({success_count}/5 successful)")
+    print(f"INFO_SEND_CLIENT: Finished VIDEO_READY phase ({success_count}/10 successful)")
     sys.stdout.flush()
 
     # Then continue with regular info sending
