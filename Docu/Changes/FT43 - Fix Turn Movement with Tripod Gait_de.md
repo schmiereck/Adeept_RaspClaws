@@ -313,3 +313,55 @@ Bei `timeLast = 0.8s`:
 ```
 
 **Volle 360° Drehung:** Ca. 8-9 Sekunden
+
+---
+
+## Fix: Richtungsumkehr und Bewegungsamplitude (2026-01-20)
+
+### Probleme nach Refactoring (FT47)
+
+Nach dem Refactoring der Bewegungsfunktionen in FT47 wurden beim Testen zwei Probleme festgestellt:
+
+1. **Richtungsumkehr**: LEFT-Taste drehte nach rechts, RIGHT-Taste nach links
+2. **Zu kleine Bewegungen**: Drehung nur in mm-Schritten, sehr zaghaft
+
+### Root Cause
+
+**Problem 1: Vertauschte Implementierungen**
+- Bei der Implementierung in `calculate_target_positions()` wurden die Bewegungsmuster für CMD_LEFT und CMD_RIGHT vertauscht
+- Die als "LEFT (CCW)" kommentierte Logik produzierte tatsächlich eine CW-Drehung
+- Die als "RIGHT (CW)" kommentierte Logik produzierte tatsächlich eine CCW-Drehung
+
+**Problem 2: Zu kleiner Speed-Wert**
+- Turn-Movement nutzte `speed=20` (Move.py:1543, 1592)
+- Forward/Backward nutzen `speed=35` zum Vergleich
+- Resultat: Drehbewegungen waren nur ~57% der Amplitude von Vorwärtsbewegung
+
+### Fix
+
+**Fix 1: Implementierungen getauscht**
+- CMD_LEFT und CMD_RIGHT Blöcke in `calculate_target_positions()` komplett getauscht
+- Jetzt produziert CMD_LEFT korrekt CCW-Rotation
+- Jetzt produziert CMD_RIGHT korrekt CW-Rotation
+
+**Geänderte Datei:** Move.py:687-760
+
+**Fix 2: Speed erhöht**
+- Turn speed von `20` auf `40` erhöht
+- Jetzt ~114% der Forward-Amplitude statt 57%
+- Drehungen sind deutlich ausladender und sichtbarer
+
+**Geänderte Zeilen:** Move.py:1543, 1592
+
+### Testing nach Fix
+
+- [ ] LEFT-Taste dreht Roboter nach links (CCW) ✓
+- [ ] RIGHT-Taste dreht Roboter nach rechts (CW) ✓
+- [ ] Bewegungen sind ausladend genug (nicht mehr nur mm-Schritte) ✓
+- [ ] Keine Kollisionen oder Instabilität durch größere Amplitude
+
+### Lessons Learned
+
+1. **Testing ist essentiell**: Refactoring ohne Hardware-Test kann Logik-Fehler übersehen
+2. **Parametervergleich**: Speed-Werte sollten konsistent sein (Forward/Backward/Turn)
+3. **Semantik beachten**: Kommentare müssen mit tatsächlichem Verhalten übereinstimmen

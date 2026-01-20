@@ -693,35 +693,34 @@ def calculate_target_positions(phase, speed, command):
 			t = phase * 2  # 0.0 to 1.0
 			v = int(3 * abs(speed) * math.sin(t * math.pi))  # Smooth arc
 
-			# Group A in air: L1/L3 swing BACK, R2 swings FORWARD
-			# Use cosine starting from +1 (forward) going to -1 (back)
+			# Group A in air: L1/L3 swing FORWARD, R2 swings BACK
 			h_swing = int(abs(speed) * math.cos(t * math.pi))  # +speed to -speed
-			positions['L1'] = {'h': -h_swing, 'v': v}  # L1: swing back (negative)
-			positions['R2'] = {'h': h_swing, 'v': v}   # R2: swing forward (positive)
-			positions['L3'] = {'h': -h_swing, 'v': v}  # L3: swing back (negative)
+			positions['L1'] = {'h': h_swing, 'v': v}   # L1: swing forward
+			positions['R2'] = {'h': -h_swing, 'v': v}  # R2: swing back
+			positions['L3'] = {'h': h_swing, 'v': v}   # L3: swing forward
 
-			# Group B on ground: R1/R3 push FORWARD, L2 pushes BACK
+			# Group B on ground: R1/R3 push BACK, L2 pushes FORWARD
 			# Use cosine for smooth push motion: -speed to +speed
 			h_push = int(abs(speed) * math.cos((t + 1) * math.pi))  # -speed to +speed
-			positions['R1'] = {'h': h_push, 'v': -10}   # R1: push forward (creates CCW rotation)
-			positions['L2'] = {'h': -h_push, 'v': -10}  # L2: push back (creates CCW rotation)
-			positions['R3'] = {'h': h_push, 'v': -10}   # R3: push forward (creates CCW rotation)
+			positions['R1'] = {'h': -h_push, 'v': -10}  # R1: push back (creates CCW rotation)
+			positions['L2'] = {'h': h_push, 'v': -10}   # L2: push forward (creates CCW rotation)
+			positions['R3'] = {'h': -h_push, 'v': -10}  # R3: push back (creates CCW rotation)
 		else:
 			# Phase 4: Group B (R1, L2, R3) in air, Group A (L1, R2, L3) on ground pushing
 			t = (phase - 0.5) * 2  # 0.0 to 1.0
 			v = int(3 * abs(speed) * math.sin(t * math.pi))  # Smooth arc
 
-			# Group B in air: R1/R3 swing BACK, L2 swings FORWARD
+			# Group B in air: R1/R3 swing FORWARD, L2 swings BACK
 			h_swing = int(abs(speed) * math.cos(t * math.pi))  # +speed to -speed
-			positions['R1'] = {'h': h_swing, 'v': v}   # R1: swing back
-			positions['L2'] = {'h': -h_swing, 'v': v}  # L2: swing forward
-			positions['R3'] = {'h': h_swing, 'v': v}   # R3: swing back
+			positions['R1'] = {'h': -h_swing, 'v': v}  # R1: swing forward
+			positions['L2'] = {'h': h_swing, 'v': v}   # L2: swing back
+			positions['R3'] = {'h': -h_swing, 'v': v}  # R3: swing forward
 
-			# Group A on ground: L1/L3 push FORWARD, R2 pushes BACK
+			# Group A on ground: L1/L3 push BACK, R2 pushes FORWARD
 			h_push = int(abs(speed) * math.cos((t + 1) * math.pi))  # -speed to +speed
-			positions['L1'] = {'h': h_push, 'v': -10}   # L1: push forward (creates CCW rotation)
-			positions['R2'] = {'h': -h_push, 'v': -10}  # R2: push back (creates CCW rotation)
-			positions['L3'] = {'h': h_push, 'v': -10}   # L3: push forward (creates CCW rotation)
+			positions['L1'] = {'h': -h_push, 'v': -10}  # L1: push back (creates CCW rotation)
+			positions['R2'] = {'h': h_push, 'v': -10}   # R2: push forward (creates CCW rotation)
+			positions['L3'] = {'h': -h_push, 'v': -10}  # L3: push back (creates CCW rotation)
 
 	elif command == CMD_RIGHT:
 		# RIGHT TURN (CW): Tripod-Gait Rotation (mirror of LEFT)
@@ -731,33 +730,34 @@ def calculate_target_positions(phase, speed, command):
 			t = phase * 2  # 0.0 to 1.0
 			v = int(3 * abs(speed) * math.sin(t * math.pi))  # Smooth arc
 
-			# Group A in air: L1/L3 swing FORWARD, R2 swings BACK (opposite of LEFT)
+			# Group A in air: L1/L3 swing BACK, R2 swings FORWARD (opposite of LEFT)
+			# Use cosine starting from +1 (forward) going to -1 (back)
 			h_swing = int(abs(speed) * math.cos(t * math.pi))  # +speed to -speed
-			positions['L1'] = {'h': h_swing, 'v': v}   # L1: swing forward
-			positions['R2'] = {'h': -h_swing, 'v': v}  # R2: swing back
-			positions['L3'] = {'h': h_swing, 'v': v}   # L3: swing forward
+			positions['L1'] = {'h': -h_swing, 'v': v}  # L1: swing back (negative)
+			positions['R2'] = {'h': h_swing, 'v': v}   # R2: swing forward (positive)
+			positions['L3'] = {'h': -h_swing, 'v': v}  # L3: swing back (negative)
 
-			# Group B on ground: R1/R3 push BACK, L2 pushes FORWARD (opposite of LEFT)
+			# Group B on ground: R1/R3 push FORWARD, L2 pushes BACK (opposite of LEFT)
 			h_push = int(abs(speed) * math.cos((t + 1) * math.pi))  # -speed to +speed
-			positions['R1'] = {'h': -h_push, 'v': -10}  # R1: push back (creates CW rotation)
-			positions['L2'] = {'h': h_push, 'v': -10}   # L2: push forward (creates CW rotation)
-			positions['R3'] = {'h': -h_push, 'v': -10}  # R3: push back (creates CW rotation)
+			positions['R1'] = {'h': h_push, 'v': -10}   # R1: push forward (creates CW rotation)
+			positions['L2'] = {'h': -h_push, 'v': -10}  # L2: push back (creates CW rotation)
+			positions['R3'] = {'h': h_push, 'v': -10}   # R3: push forward (creates CW rotation)
 		else:
 			# Phase 4: Group B (R1, L2, R3) in air, Group A (L1, R2, L3) on ground pushing
 			t = (phase - 0.5) * 2  # 0.0 to 1.0
 			v = int(3 * abs(speed) * math.sin(t * math.pi))  # Smooth arc
 
-			# Group B in air: R1/R3 swing FORWARD, L2 swings BACK (opposite of LEFT)
+			# Group B in air: R1/R3 swing BACK, L2 swings FORWARD (opposite of LEFT)
 			h_swing = int(abs(speed) * math.cos(t * math.pi))  # +speed to -speed
-			positions['R1'] = {'h': -h_swing, 'v': v}  # R1: swing forward
-			positions['L2'] = {'h': h_swing, 'v': v}   # L2: swing back
-			positions['R3'] = {'h': -h_swing, 'v': v}  # R3: swing forward
+			positions['R1'] = {'h': h_swing, 'v': v}   # R1: swing back
+			positions['L2'] = {'h': -h_swing, 'v': v}  # L2: swing forward
+			positions['R3'] = {'h': h_swing, 'v': v}   # R3: swing back
 
-			# Group A on ground: L1/L3 push BACK, R2 pushes FORWARD (opposite of LEFT)
+			# Group A on ground: L1/L3 push FORWARD, R2 pushes BACK (opposite of LEFT)
 			h_push = int(abs(speed) * math.cos((t + 1) * math.pi))  # -speed to +speed
-			positions['L1'] = {'h': -h_push, 'v': -10}  # L1: push back (creates CW rotation)
-			positions['R2'] = {'h': h_push, 'v': -10}   # R2: push forward (creates CW rotation)
-			positions['L3'] = {'h': -h_push, 'v': -10}  # L3: push back (creates CW rotation)
+			positions['L1'] = {'h': h_push, 'v': -10}   # L1: push forward (creates CW rotation)
+			positions['R2'] = {'h': -h_push, 'v': -10}  # R2: push back (creates CW rotation)
+			positions['L3'] = {'h': h_push, 'v': -10}   # L3: push forward (creates CW rotation)
 
 	return positions
 
@@ -1540,7 +1540,7 @@ def handle_turn_movement():
 	Returns True if turn was executed, False otherwise
 	"""
 	if turn_command != MOVE_NO:
-		execute_movement_step(20, turn_command)
+		execute_movement_step(40, turn_command)
 		return True
 	return False
 
@@ -1589,7 +1589,7 @@ def move_thread():
 
 		# Step 2: Handle turn movement (independent of directional movement)
 		if turn_command != MOVE_NO:
-			execute_movement_step(20, turn_command)
+			execute_movement_step(40, turn_command)
 			movement_executed = True
 
 		# Step 3: ONLY apply stand/steady when NO movement is happening
