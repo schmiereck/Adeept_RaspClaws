@@ -715,16 +715,18 @@ def connection_thread():
 			elif CMD_SMOOTH_CAM_OFF in car_info:
 				handle_smooth_cam(enabled=False)
 
-			elif STATUS_SERVO_STANDBY in car_info:
+			# Note: Use 'if' instead of 'elif' for status messages
+			# because multiple status updates can arrive in one TCP message
+			if STATUS_SERVO_STANDBY in car_info:
 				handle_servo_standby_status(active=True)
 
-			elif STATUS_SERVO_WAKEUP in car_info:
+			if STATUS_SERVO_WAKEUP in car_info:
 				handle_servo_standby_status(active=False)
 
-			elif STATUS_CAMERA_PAUSED in car_info:
+			if STATUS_CAMERA_PAUSED in car_info:
 				handle_camera_pause_status(paused=True)
 
-			elif STATUS_CAMERA_RESUMED in car_info:
+			if STATUS_CAMERA_RESUMED in car_info:
 				handle_camera_pause_status(paused=False)
 
 			elif CMD_SWITCH_1_ON in car_info:
