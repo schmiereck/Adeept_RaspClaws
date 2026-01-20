@@ -1908,11 +1908,12 @@ def wakeup():
 	Wake up servos from standby - restores last known positions.
 	"""
 	print("⚡ WAKEUP - Restoring servo positions")
-	global servo_current_pos, direction_command, turn_command
+	global servo_current_pos, direction_command, turn_command, step_set
 
 	# Reset movement commands to safe defaults
 	direction_command = 'no'
 	turn_command = 'no'
+	step_set = 1  # Reset walk cycle to beginning
 
 	# Restore all servos to their last known positions
 	for i in range(16):
