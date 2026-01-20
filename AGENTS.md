@@ -135,7 +135,7 @@ ssh -L 10223:localhost:10223 -L 5555:localhost:5555 pi@192.168.2.126
 
 **Automatisierung**: `Client/start_ssh_tunnel.bat` (interaktiv, Passwort erforderlich)
 
-⚠️ **Wichtig**: SSH Tunnel muss manuell gestartet werden und läuft interaktiv (Passwort-Eingabe erforderlich). SSH-Keys können für passwortlose Authentifizierung konfiguriert werden (siehe `Docu/SSH_KEYS_SETUP_EN.md`).
+⚠️ **Wichtig**: SSH Tunnel muss manuell gestartet werden und läuft interaktiv (Passwort-Eingabe erforderlich). SSH-Keys können für passwortlose Authentifizierung konfiguriert werden (siehe `Docu/Changes/FT5 - SSH Keys Setup_en.md`).
 
 **Fehlermeldung "channel 5: open failed"**:
 - Diese Meldung kann auftreten, wenn der Server noch nicht bereit ist oder der Video-Stream noch nicht initialisiert wurde
@@ -294,7 +294,7 @@ Der Video-Stream wird als **separater Prozess** gestartet:
 - `smooth`: Sanftes Anfahren/Stoppen für Bewegung
 - `smoothOff`: Smooth Mode aus
 
-Dokumentation: `Docu/SMOOTHMODE_ANALYSE.md`
+Dokumentation: `Docu/Changes/FT20 - SmoothMode Analyse_de.md`
 
 ### 6.2 Kamera-Steuerung
 
@@ -309,7 +309,7 @@ Dokumentation: `Docu/SMOOTHMODE_ANALYSE.md`
 - `smoothCam`: Sanfte Kamera-Bewegungen
 - `smoothCamOff`: Sanfte Kamera-Bewegungen aus
 
-Dokumentation: `Docu/SMOOTHCAM_IMPLEMENTATION.md`
+Dokumentation: `Docu/Changes/FT31 - SmoothCam Implementation_de.md`
 
 ### 6.3 Computer Vision Features
 
@@ -356,7 +356,7 @@ Beispiel: `INFO:58.0 4.3 42.6 7.8`
   - Rot: < 30% (< 6.72V)
   - Grau: "N/A" wenn Hardware nicht verfügbar
 
-Dokumentation: `Docu/BATTERY_MONITOR_DE.md` / `Docu/BATTERY_MONITOR_EN.md`
+Dokumentation: `Docu/Changes/FT33 - Battery Monitor_de.md` / `Docu/Changes/FT33 - Battery Monitor_en.md`
 
 ---
 
@@ -381,7 +381,7 @@ Siehe Dokumentation:
 
 **Lösung**: In `RPIservo.py` und `GUIServer.py` geändert
 
-Dokumentation: `Docu/PCA9685_FIX_EN.md`
+Dokumentation: `Docu/Changes/FT6 - PCA9685 Fix_en.md`
 
 ### 8.2 Reconnection Problem (GELÖST)
 
@@ -389,7 +389,7 @@ Dokumentation: `Docu/PCA9685_FIX_EN.md`
 
 **Lösung**: FPV Thread läuft kontinuierlich, nicht pro Client
 
-Dokumentation: `Docu/RECONNECTION_FIX.md`, `Docu/FPV_THREAD_FIX.md`
+Dokumentation: `Docu/Changes/FT13 - Reconnection Fix_de.md`, `Docu/Changes/FT12 - FPV Thread Fix_de.md`
 
 ### 8.3 ZMQ Video Stream Binding
 
@@ -397,7 +397,7 @@ Dokumentation: `Docu/RECONNECTION_FIX.md`, `Docu/FPV_THREAD_FIX.md`
 
 **Lösung**: Server bindet auf `tcp://*:5555` (alle Interfaces), Client verbindet sich auf die IP aus IP.txt
 
-Dokumentation: `Docu/ZMQ_PUBSUB_FIX.md`
+Dokumentation: `Docu/Changes/FT14 - ZMQ PubSub Fix_de.md`
 
 ### 8.4 CPU Last Optimierung
 
@@ -405,7 +405,7 @@ Dokumentation: `Docu/ZMQ_PUBSUB_FIX.md`
 
 **Lösung**: Strategische `time.sleep(0.01)` in Haupt-Loops eingefügt
 
-Dokumentation: `Docu/CPU_OPTIMIZATION.md`
+Dokumentation: `Docu/Changes/FT32 - CPU Optimization_de.md`
 
 ### 8.5 LED Problem
 
@@ -413,7 +413,7 @@ Dokumentation: `Docu/CPU_OPTIMIZATION.md`
 
 **Lösung**: Mock-Mode implementiert, Server läuft ohne LEDs
 
-Dokumentation: `Docu/LED_PROBLEM_EN.md`
+Dokumentation: `Docu/Changes/FT19 - LED Problem_en.md`
 
 ### 8.6 Connection Error Handling
 
@@ -421,7 +421,7 @@ Dokumentation: `Docu/LED_PROBLEM_EN.md`
 
 **Lösung**: Umfassendes Exception Handling für alle Socket-Fehlertypen
 
-Dokumentation: `Docu/CONNECTION_ERROR_HANDLING.md`
+Dokumentation: `Docu/Changes/FT15 - Connection Error Handling_de.md`
 
 ---
 
@@ -429,12 +429,23 @@ Dokumentation: `Docu/CONNECTION_ERROR_HANDLING.md`
 
 Alle Feature-Änderungen sind dokumentiert unter `Docu/Changes/`:
 
-1. **FT1**: Connection Problem Fix
-2. **FT2**: Video Stream Fix
-3. **FT3**: Second Connect Fix
-4. **FT4**: Second Connect Critical Bug Fix
+**Wichtige Features** (Auswahl):
+1. **FT1-FT4**: Connection und Video Stream Fixes
+2. **FT5**: SSH Keys Setup
+3. **FT6**: PCA9685 Fix (I2C Adresse 0x40)
+4. **FT12-FT15**: Reconnection, FPV Thread, ZMQ PubSub Fixes
+5. **FT16-FT18**: Servo Tester Tool
+6. **FT19**: LED Problem Fix
+7. **FT20**: SmoothMode Analyse
+8. **FT21-FT30**: Smooth Movement Implementierung und Optimierungen
+9. **FT31**: SmoothCam Implementation
+10. **FT32**: CPU Optimization
+11. **FT33**: Battery Monitor
+12. **FT34-FT46**: Weitere Bugfixes, Refactorings und Verbesserungen
 
-Jede Änderung existiert in Deutsch (_de) und Englisch (_en).
+Viele Änderungen existieren in Deutsch (_de) und Englisch (_en).
+
+Vollständige Liste: Siehe `Docu/Changes/` Verzeichnis.
 
 ---
 
@@ -534,7 +545,7 @@ netstat -ano | findstr :10223
   - Schieberegler für alle 8 Servo-Kanäle
   - SSH-fähig (X11-Forwarding)
   - Mock-Mode für Entwicklung ohne Hardware
-  - Dokumentation: `Docu/SERVO_TESTER_DE.md` / `SERVO_TESTER_EN.md`
+  - Dokumentation: `Docu/Changes/FT16 - Servo Tester_de.md` / `Docu/Changes/FT16 - Servo Tester_en.md`
 
 ### 11.3 Dokumentation
 
