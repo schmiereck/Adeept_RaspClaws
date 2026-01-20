@@ -13,6 +13,11 @@ import threading as thread
 import tkinter as tk
 import subprocess
 from ip_utils import num_import, replace_num
+import sys
+import os
+# Add parent directory to path to import protocol module
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from protocol import *
 try:
 	import cv2
 except Exception as e:
@@ -178,45 +183,45 @@ def send_movement_command(command, state_var_name, state_value=1):
 
 def call_forward(event):
 	"""Command car to move forward"""
-	send_movement_command('forward', 'c_f_stu')
+	send_movement_command(CMD_FORWARD, 'c_f_stu')
 
 
 def call_back(event):
 	"""Command car to move backward"""
-	send_movement_command('backward', 'c_b_stu')
+	send_movement_command(CMD_BACKWARD, 'c_b_stu')
 
 
 def call_Left(event):
 	"""Command car to turn left"""
-	send_movement_command('left', 'c_l_stu')
+	send_movement_command(CMD_LEFT, 'c_l_stu')
 
 
 def call_Right(event):
 	"""Command car to turn right"""
-	send_movement_command('right', 'c_r_stu')
+	send_movement_command(CMD_RIGHT, 'c_r_stu')
 
 
 def call_LeftSide(event):
 	"""Command car to strafe left"""
-	send_movement_command('leftside', 'c_ls_stu')
+	send_movement_command(CMD_LEFT_SIDE, 'c_ls_stu')
 
 
 def call_RightSide(event):
 	"""Command car to strafe right"""
-	send_movement_command('rightside', 'c_rs_stu')
+	send_movement_command(CMD_RIGHT_SIDE, 'c_rs_stu')
 
 
 def call_DS(event):
 	"""Direction Stop"""
 	global DS_stu
-	send_command('DS')
+	send_command(CMD_DIRECTION_STOP)
 	DS_stu = 0
 
 
 def call_TS(event):
 	"""Turn Stop"""
 	global TS_stu
-	send_command('TS')
+	send_command(CMD_TURN_STOP)
 	TS_stu = 0
 
 
@@ -225,7 +230,7 @@ def call_FB_stop(event):
 	global c_f_stu, c_b_stu
 	c_f_stu = 0
 	c_b_stu = 0
-	send_command('DS')
+	send_command(CMD_DIRECTION_STOP)
 
 
 def call_Turn_stop(event):
@@ -235,37 +240,37 @@ def call_Turn_stop(event):
 	c_r_stu = 0
 	c_ls_stu = 0
 	c_rs_stu = 0
-	send_command('TS')
+	send_command(CMD_TURN_STOP)
 
 
 # ==================== Camera Callbacks ====================
 
 def call_headup(event):
-	send_command('lookUp')
+	send_command(CMD_LOOK_UP)
 
 
 def call_headdown(event):
-	send_command('lookDown')
+	send_command(CMD_LOOK_DOWN)
 
 
 def call_headleft(event):
-	send_command('lookLeft')
+	send_command(CMD_LOOK_LEFT)
 
 
 def call_headright(event):
-	send_command('lookRight')
+	send_command(CMD_LOOK_RIGHT)
 
 
 def call_LRstop(event):
-	send_command('LRstop')
+	send_command(CMD_LR_STOP)
 
 
 def call_UDstop(event):
-	send_command('UDstop')
+	send_command(CMD_UD_STOP)
 
 
 def call_headhome(event):
-	send_command('lookHome')
+	send_command(CMD_LOOK_HOME)
 
 
 # ==================== Mode Toggle Callbacks ====================
@@ -274,10 +279,10 @@ def call_steady(event):
 	"""Toggle steady camera mode"""
 	global steadyMode
 	if steadyMode == 0:
-		send_command('steadyCamera')
+		send_command(CMD_STEADY_CAMERA)
 		steadyMode = 1
 	else:
-		send_command('steadyCameraOff')
+		send_command(CMD_STEADY_CAMERA_OFF)
 		steadyMode = 0
 
 
@@ -285,10 +290,10 @@ def call_SmoothCam(event):
 	"""Toggle smooth camera movement mode"""
 	global SmoothCamMode
 	if SmoothCamMode == 0:
-		send_command('smoothCam')
+		send_command(CMD_SMOOTH_CAM)
 		SmoothCamMode = 1
 	else:
-		send_command('smoothCamOff')
+		send_command(CMD_SMOOTH_CAM_OFF)
 		SmoothCamMode = 0
 
 
@@ -296,25 +301,25 @@ def call_SmoothCam(event):
 def call_Switch_1(event):
 	"""Toggle GPIO Switch 1"""
 	if Switch_1 == 0:
-		send_command('Switch_1_on')
+		send_command(CMD_SWITCH_1_ON)
 	else:
-		send_command('Switch_1_off')
+		send_command(CMD_SWITCH_1_OFF)
 
 
 def call_Switch_2(event):
 	"""Toggle GPIO Switch 2"""
 	if Switch_2 == 0:
-		send_command('Switch_2_on')
+		send_command(CMD_SWITCH_2_ON)
 	else:
-		send_command('Switch_2_off')
+		send_command(CMD_SWITCH_2_OFF)
 
 
 def call_Switch_3(event):
 	"""Toggle GPIO Switch 3"""
 	if Switch_3 == 0:
-		send_command('Switch_3_on')
+		send_command(CMD_SWITCH_3_ON)
 	else:
-		send_command('Switch_3_off')
+		send_command(CMD_SWITCH_3_OFF)
 
 
 
@@ -329,12 +334,12 @@ def call_servo_standby(event):
 	global servo_standby_state
 	try:
 		if not servo_standby_state:
-			send_command('servo_standby')
+			send_command(CMD_SERVO_STANDBY)
 			Btn_ServoStandby.config(bg='#FF6D00', fg='#000000', text='Servo Wake [M]')
 			servo_standby_state = True
 			print("🔋 Servos in STANDBY mode - low power")
 		else:
-			send_command('servo_wakeup')
+			send_command(CMD_SERVO_WAKEUP)
 			Btn_ServoStandby.config(bg=color_btn, fg=color_text, text='Servo Standby [M]')
 			servo_standby_state = False
 			print("⚡ Servos AWAKE - ready to move")
@@ -347,12 +352,12 @@ def call_camera_pause(event):
 	global camera_pause_state
 	try:
 		if not camera_pause_state:
-			send_command('camera_pause')
+			send_command(CMD_CAMERA_PAUSE)
 			Btn_CameraPause.config(bg='#FF6D00', fg='#000000', text='Camera Resume [,]')
 			camera_pause_state = True
 			print("📷 Camera PAUSED - saving power")
 		else:
-			send_command('camera_resume')
+			send_command(CMD_CAMERA_RESUME)
 			Btn_CameraPause.config(bg=color_btn, fg=color_text, text='Camera Pause [,]')
 			camera_pause_state = False
 			print("📷 Camera RESUMED")
@@ -568,7 +573,7 @@ def update_system_info(system_info):
 def handle_info_message(car_info):
 	"""Process INFO message from server (CPU/RAM/Battery/MPU/Servo data)"""
 	try:
-		info_data = car_info[5:].strip()  # Remove 'INFO:' prefix
+		info_data = car_info[len(STATUS_INFO_PREFIX):].strip()  # Remove 'INFO:' prefix
 
 		# Split by '|' to separate system info, servo positions, and MPU data
 		parts = info_data.split('|')
@@ -688,55 +693,55 @@ def connection_thread():
 				continue
 
 			# Dispatch message to appropriate handler
-			if 'VIDEO_READY' in car_info:
+			if STATUS_VIDEO_READY in car_info:
 				handle_video_ready()
 
 			elif 'VIDEO_TIMEOUT' in car_info:
 				handle_video_timeout()
 
-			elif car_info.startswith('INFO:'):
+			elif car_info.startswith(STATUS_INFO_PREFIX):
 				handle_info_message(car_info)
 
-			elif car_info == 'steadyCamera':
+			elif car_info == CMD_STEADY_CAMERA:
 				handle_steady_camera(enabled=True)
 
-			elif car_info == 'steadyCameraOff':
+			elif car_info == CMD_STEADY_CAMERA_OFF:
 				handle_steady_camera(enabled=False)
 
-			elif 'smoothCam' in car_info:
+			elif CMD_SMOOTH_CAM in car_info:
 				handle_smooth_cam(enabled=True)
 
-			elif 'smoothCamOff' in car_info:
+			elif CMD_SMOOTH_CAM_OFF in car_info:
 				handle_smooth_cam(enabled=False)
 
-			elif 'servoStandby' in car_info:
+			elif STATUS_SERVO_STANDBY in car_info:
 				handle_servo_standby_status(active=True)
 
-			elif 'servoWakeup' in car_info:
+			elif STATUS_SERVO_WAKEUP in car_info:
 				handle_servo_standby_status(active=False)
 
-			elif 'cameraPaused' in car_info:
+			elif STATUS_CAMERA_PAUSED in car_info:
 				handle_camera_pause_status(paused=True)
 
-			elif 'cameraResumed' in car_info:
+			elif STATUS_CAMERA_RESUMED in car_info:
 				handle_camera_pause_status(paused=False)
 
-			elif 'Switch_1_on' in car_info:
+			elif CMD_SWITCH_1_ON in car_info:
 				handle_switch(1, enabled=True)
 
-			elif 'Switch_1_off' in car_info:
+			elif CMD_SWITCH_1_OFF in car_info:
 				handle_switch(1, enabled=False)
 
-			elif 'Switch_2_on' in car_info:
+			elif CMD_SWITCH_2_ON in car_info:
 				handle_switch(2, enabled=True)
 
-			elif 'Switch_2_off' in car_info:
+			elif CMD_SWITCH_2_OFF in car_info:
 				handle_switch(2, enabled=False)
 
-			elif 'Switch_3_on' in car_info:
+			elif CMD_SWITCH_3_ON in car_info:
 				handle_switch(3, enabled=True)
 
-			elif 'Switch_3_off' in car_info:
+			elif CMD_SWITCH_3_OFF in car_info:
 				handle_switch(3, enabled=False)
 
 

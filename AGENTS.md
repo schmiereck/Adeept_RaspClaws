@@ -550,9 +550,13 @@ netstat -ano | findstr :10223
 ### 11.3 Dokumentation
 
 Alle Dokumente unter `Docu/`:
-- Englische Versionen enden mit `_EN.md`
+- Englische Versionen enden mit `_en.md`
 - Deutsche Versionen ohne Suffix oder mit `_de.md`
-- Change History unter `Docu/Changes/`
+- Features History unter `Docu/Changes/`
+  - Dort wird für jedes neue Feature eine "FT<nr> - <description>_<language>.md" Datei erstellt. Diese wird bei Änderungen an dem Feature geupdated.
+
+Für ein neues Feature wird eine neue FT-Datei angelegt.
+Hinweis: Du musst nicht jeden Bugfix in den FT Dateien eintragen. Dort sollen eher die Features in ihrer Funktionalität beschrieben werden.
 
 ---
 

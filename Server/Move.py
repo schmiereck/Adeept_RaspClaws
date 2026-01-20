@@ -11,6 +11,11 @@ import Kalman_Filter as Kalman_filter
 import PID
 import threading
 import RPIservo
+import sys
+import os
+# Add parent directory to path to import protocol module
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from protocol import *
 
 pwm0 = 300
 pwm1 = 300
@@ -520,7 +525,7 @@ def move(step_input, speed, command):
 		# Calculate intermediate speed (gradually increase)
 		intermediate_speed = int(speed * (i + 1) / interpolation_steps)
 
-		if command == 'no':
+		if command == MOVE_NO:
 			right_I(step_I, intermediate_speed, 0)
 			left_II(step_I, intermediate_speed, 0)
 			right_III(step_I, intermediate_speed, 0)
@@ -528,7 +533,7 @@ def move(step_input, speed, command):
 			left_I(step_II, intermediate_speed, 0)
 			right_II(step_II, intermediate_speed, 0)
 			left_III(step_II, intermediate_speed, 0)
-		elif command == 'left':
+		elif command == CMD_LEFT:
 			right_I(step_I, intermediate_speed, 0)
 			left_II(step_I, -intermediate_speed, 0)
 			right_III(step_I, intermediate_speed, 0)
@@ -536,7 +541,7 @@ def move(step_input, speed, command):
 			left_I(step_II, -intermediate_speed, 0)
 			right_II(step_II, intermediate_speed, 0)
 			left_III(step_II, -intermediate_speed, 0)
-		elif command == 'right':
+		elif command == CMD_RIGHT:
 			right_I(step_I, -intermediate_speed, 0)
 			left_II(step_I, intermediate_speed, 0)
 			right_III(step_I, -intermediate_speed, 0)
@@ -644,7 +649,7 @@ def calculate_target_positions(phase, speed, command):
 	"""
 	positions = {}
 
-	if command == 'no':
+	if command == MOVE_NO:
 		# Forward/backward movement
 		if phase < 0.5:
 			# Group 1 (L1, R2, L3) in air
@@ -679,7 +684,7 @@ def calculate_target_positions(phase, speed, command):
 			positions['L2'] = {'h': h2, 'v': v2}
 			positions['R3'] = {'h': h2, 'v': v2}
 
-	elif command == 'left':
+	elif command == CMD_LEFT:
 		# Turn left: Right side walks forward (normal forward movement)
 		#            Left side lifts/lowers synchronously but stays at h=0
 		# This prevents left side from blocking the turn!
@@ -718,7 +723,7 @@ def calculate_target_positions(phase, speed, command):
 			positions['R2'] = {'h': h, 'v': -10}     # Right: pushes forward on ground
 			positions['L3'] = {'h': 0, 'v': -10}     # Left: on ground at center
 
-	elif command == 'right':
+	elif command == CMD_RIGHT:
 		# Turn right: Left side walks forward, right side lifts/lowers synchronously
 		if phase < 0.5:
 			# Group 1 (L1, R2, L3) in air
@@ -920,7 +925,7 @@ def dove_smooth(phase, speed, timeLast, command):
 	# Phase 0.0-0.5: Group 1 moves
 	# Phase 0.5-1.0: Group 2 moves
 
-	if command == 'no':
+	if command == MOVE_NO:
 		# Forward/backward movement
 		if phase < 0.5:
 			# Group 1 (L1, R2, L3) in air, moving from +speed to -speed
@@ -969,7 +974,7 @@ def dove_smooth(phase, speed, timeLast, command):
 			dove_Left_II(h2, v2)
 			dove_Right_III(h2, v2)
 
-	elif command == 'left':
+	elif command == CMD_LEFT:
 		# Turn left: left legs move backward, right legs move forward
 		if phase < 0.5:
 			t = phase * 2
@@ -996,7 +1001,7 @@ def dove_smooth(phase, speed, timeLast, command):
 			dove_Left_II(-h, v)
 			dove_Right_III(h, v)
 
-	elif command == 'right':
+	elif command == CMD_RIGHT:
 		# Turn right: left legs move forward, right legs move backward
 		if phase < 0.5:
 			t = phase * 2
@@ -1036,7 +1041,7 @@ def dove(step_input, speed, timeLast, dpi, command):
 			# Ensure we interpolate exactly from +speed to -speed
 			num_steps = dpi
 			for i in range(num_steps + 1):
-				if move_stu and command == 'no':
+				if move_stu and command == MOVE_NO:
 					# Gradual lift and forward motion for first group
 					# Interpolate from +speed to -speed over num_steps
 					t = i / num_steps  # 0.0 to 1.0
@@ -1054,7 +1059,7 @@ def dove(step_input, speed, timeLast, dpi, command):
 				else:
 					pass
 
-				if command == 'left':
+				if command == CMD_LEFT:
 					# Same logic for left turn: interpolate from +speed to -speed
 					t = i / num_steps
 					horizontal_pos = int(speed - (2 * speed * t))
@@ -1068,7 +1073,7 @@ def dove(step_input, speed, timeLast, dpi, command):
 					dove_Left_II(-speed, -10)
 					dove_Right_III(speed, -10)
 					time.sleep(timeLast/dpi)
-				elif command == 'right':
+				elif command == CMD_RIGHT:
 					t = i / num_steps
 					horizontal_pos = int(speed - (2 * speed * t))
 					vertical_pos = int(3 * speed * t)
@@ -1092,7 +1097,7 @@ def dove(step_input, speed, timeLast, dpi, command):
 			# Continue smoothly from step 1: interpolate from -speed to +speed
 			num_steps = dpi
 			for i in range(num_steps + 1):
-				if move_stu and command == 'no':
+				if move_stu and command == MOVE_NO:
 					# Interpolate from -speed to +speed
 					t = i / num_steps
 					horizontal_pos = int(-speed + (2 * speed * t))  # -speed to +speed
@@ -1109,7 +1114,7 @@ def dove(step_input, speed, timeLast, dpi, command):
 				else:
 					pass
 
-				if command == 'left':
+				if command == CMD_LEFT:
 					# LEFT TURN (CCW): Tripod-Gait Rotation
 					# Phase 2: Group A (L1, R2, L3) lifts and swings
 					# Group B (R1, L2, R3) stays on ground and pushes for rotation
@@ -1127,7 +1132,7 @@ def dove(step_input, speed, timeLast, dpi, command):
 					dove_Left_II(-horizontal_pos, -10)  # L2: back (pushes body CCW)
 					dove_Right_III(horizontal_pos, -10) # R3: forward (pushes body CCW)
 					time.sleep(timeLast/dpi)
-				elif command == 'right':
+				elif command == CMD_RIGHT:
 					# RIGHT TURN (CW): Tripod-Gait Rotation
 					# Phase 2: Group A (L1, R2, L3) lifts and swings
 					# Group B (R1, L2, R3) stays on ground and pushes for rotation
@@ -1155,7 +1160,7 @@ def dove(step_input, speed, timeLast, dpi, command):
 			# Interpolate second group from +speed to -speed
 			num_steps = dpi
 			for i in range(num_steps + 1):
-				if move_stu and command == 'no':
+				if move_stu and command == MOVE_NO:
 					# First group stays at +speed
 					# Second group interpolates from +speed to -speed
 					dove_Left_I(speed, -10)
@@ -1173,7 +1178,7 @@ def dove(step_input, speed, timeLast, dpi, command):
 				else:
 					pass
 
-				if command == 'left':
+				if command == CMD_LEFT:
 					# LEFT TURN (CCW): Phase 3
 					# Group A (L1, R2, L3) on ground - preparing for push
 					# Group B (R1, L2, R3) lifts and repositions
@@ -1191,7 +1196,7 @@ def dove(step_input, speed, timeLast, dpi, command):
 					dove_Left_II(-horizontal_pos, vertical_pos)  # L2: forward (repositioning)
 					dove_Right_III(horizontal_pos, vertical_pos) # R3: back (repositioning)
 					time.sleep(timeLast/dpi)
-				elif command == 'right':
+				elif command == CMD_RIGHT:
 					# RIGHT TURN (CW): Phase 3
 					# Group A (L1, R2, L3) on ground - preparing for push
 					# Group B (R1, L2, R3) lifts and repositions
@@ -1219,7 +1224,7 @@ def dove(step_input, speed, timeLast, dpi, command):
 			# Continue smoothly from step 3: interpolate from -speed to +speed
 			num_steps = dpi
 			for i in range(num_steps + 1):
-				if move_stu and command == 'no':
+				if move_stu and command == MOVE_NO:
 					t = i / num_steps
 					horizontal_pos = int(-speed + (2 * speed * t))  # -speed to +speed
 					vertical_pos = int(3 * speed * (1 - t))        # 3*speed to 0
@@ -1235,7 +1240,7 @@ def dove(step_input, speed, timeLast, dpi, command):
 				else:
 					pass
 
-				if command == 'left':
+				if command == CMD_LEFT:
 					# LEFT TURN (CCW): Phase 4
 					# Group B (R1, L2, R3) descends to ground
 					# Group A (L1, R2, L3) pushes on ground for rotation
@@ -1253,7 +1258,7 @@ def dove(step_input, speed, timeLast, dpi, command):
 					dove_Left_II(-horizontal_pos, vertical_pos)  # L2: lands at forward
 					dove_Right_III(horizontal_pos, vertical_pos) # R3: lands at back
 					time.sleep(timeLast/dpi)
-				elif command == 'right':
+				elif command == CMD_RIGHT:
 					# RIGHT TURN (CW): Phase 4
 					# Group B (R1, L2, R3) descends to ground
 					# Group A (L1, R2, L3) pushes on ground for rotation
@@ -1283,7 +1288,7 @@ def dove(step_input, speed, timeLast, dpi, command):
 			# Backward movement: interpolate from -speed to +speed
 			num_steps = dpi
 			for i in range(num_steps + 1):
-				if move_stu and command == 'no':
+				if move_stu and command == MOVE_NO:
 					t = i / num_steps
 					horizontal_pos = int(-speed + (2 * speed * t))  # -speed to +speed
 					vertical_pos = int(3 * speed * t)               # 0 to 3*speed
@@ -1306,7 +1311,7 @@ def dove(step_input, speed, timeLast, dpi, command):
 			# Continue smoothly from step 1 for backward movement
 			num_steps = dpi
 			for i in range(num_steps + 1):
-				if move_stu and command == 'no':
+				if move_stu and command == MOVE_NO:
 					t = i / num_steps
 					horizontal_pos = int(speed - (2 * speed * t))  # +speed to -speed
 					vertical_pos = int(3 * speed * (1 - t))       # 3*speed to 0
@@ -1329,7 +1334,7 @@ def dove(step_input, speed, timeLast, dpi, command):
 			# Backward movement second group: interpolate from -speed to +speed
 			num_steps = dpi
 			for i in range(num_steps + 1):
-				if move_stu and command == 'no':
+				if move_stu and command == MOVE_NO:
 					dove_Left_I(-speed, -10)  # Stay at -speed
 					dove_Right_II(-speed, -10)
 					dove_Left_III(-speed, -10)
@@ -1352,7 +1357,7 @@ def dove(step_input, speed, timeLast, dpi, command):
 			# Continue smoothly from step 3 for backward movement
 			num_steps = dpi
 			for i in range(num_steps + 1):
-				if move_stu and command == 'no':
+				if move_stu and command == MOVE_NO:
 					t = i / num_steps
 					horizontal_pos = int(speed - (2 * speed * t))  # +speed to -speed
 					vertical_pos = int(3 * speed * (1 - t))       # 3*speed to 0
@@ -1627,8 +1632,8 @@ step_set = 1
 DPI = 15
 
 new_frame = 0
-direction_command = 'no'
-turn_command = 'no'
+direction_command = MOVE_NO
+turn_command = MOVE_NO
 
 
 # ==================== Helper Functions for Movement ====================
@@ -1664,10 +1669,10 @@ def handle_direction_movement():
 	Handle forward/backward movement
 	Returns True if movement was executed, False otherwise
 	"""
-	if direction_command == 'forward' and turn_command == 'no':
+	if direction_command == CMD_FORWARD and turn_command == MOVE_NO:
 		execute_movement_step(35, 'no')
 		return True
-	elif direction_command == 'backward' and turn_command == 'no':
+	elif direction_command == CMD_BACKWARD and turn_command == MOVE_NO:
 		execute_movement_step(-35, 'no')
 		return True
 	return False
@@ -1678,7 +1683,7 @@ def handle_turn_movement():
 	Handle left/right turning
 	Returns True if turn was executed, False otherwise
 	"""
-	if turn_command != 'no':
+	if turn_command != MOVE_NO:
 		execute_movement_step(20, turn_command)
 		return True
 	return False
@@ -1691,7 +1696,7 @@ def handle_stand_or_steady():
 	"""
 	global step_set
 
-	if turn_command == 'no' and direction_command == 'stand':
+	if turn_command == MOVE_NO and direction_command == MOVE_STAND:
 		stand()
 		step_set = 1
 	else:
@@ -1719,22 +1724,22 @@ def move_thread():
 
 		# Step 1: Handle directional movement (forward/backward)
 		# Only one of these will execute per cycle
-		if direction_command == 'forward' and turn_command == 'no':
+		if direction_command == CMD_FORWARD and turn_command == MOVE_NO:
 			execute_movement_step(-35, 'no')  # Negative = forward (legs pull forward)
 			movement_executed = True
-		elif direction_command == 'backward' and turn_command == 'no':
+		elif direction_command == CMD_BACKWARD and turn_command == MOVE_NO:
 			execute_movement_step(35, 'no')  # Positive = backward (legs push back)
 			movement_executed = True
 
 		# Step 2: Handle turn movement (independent of directional movement)
-		if turn_command != 'no':
+		if turn_command != MOVE_NO:
 			execute_movement_step(20, turn_command)
 			movement_executed = True
 
 		# Step 3: ONLY apply stand/steady when NO movement is happening
 		# This prevents the jerky return to center position between cycles
 		if not movement_executed:
-			if turn_command == 'no' and direction_command == 'stand':
+			if turn_command == MOVE_NO and direction_command == MOVE_STAND:
 				stand()
 				step_set = 1
 			else:
@@ -1793,7 +1798,7 @@ def set_direction_and_pause(direction):
 def set_turn_and_pause():
 	"""Set turn to 'no' and pause robot movement"""
 	global turn_command
-	turn_command = 'no'
+	turn_command = MOVE_NO
 	rm.pause()
 
 
@@ -1831,18 +1836,18 @@ def handle_mode_command(command):
 		SmoothMode = 0  # Keep for backwards compatibility
 		return True
 	# Camera smooth mode (independent from movement)
-	elif command == 'smoothCam':
+	elif command == CMD_SMOOTH_CAM:
 		SmoothCamMode = 1
 		return True
-	elif command == 'smoothCamOff':
+	elif command == CMD_SMOOTH_CAM_OFF:
 		SmoothCamMode = 0
 		return True
 	# Steady camera mode
-	elif command == 'steadyCamera':
+	elif command == CMD_STEADY_CAMERA:
 		steadyMode = 1
 		rm.resume()
 		return True
-	elif command == 'steadyCameraOff':
+	elif command == CMD_STEADY_CAMERA_OFF:
 		steadyMode = 0
 		rm.pause()
 		return True
@@ -1911,8 +1916,8 @@ def wakeup():
 	global direction_command, turn_command, step_set, move_stu
 
 	# Reset movement commands to safe defaults
-	direction_command = 'stand'  # Set to stand to trigger stand() in move_thread
-	turn_command = 'no'
+	direction_command = MOVE_STAND  # Set to stand to trigger stand() in move_thread
+	turn_command = MOVE_NO
 	step_set = 1  # Reset walk cycle to beginning
 	move_stu = 1  # Re-enable movement (was set to 0 in standby)
 
@@ -1922,7 +1927,7 @@ def wakeup():
 	stand()  # Execute stand position immediately
 
 	# Reset to 'no' after stand is complete
-	direction_command = 'no'
+	direction_command = MOVE_NO
 
 	# Resume the RobotM thread to allow movement again
 	print("[WAKEUP] Resuming RobotM thread")

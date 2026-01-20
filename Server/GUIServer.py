@@ -19,6 +19,9 @@ import psutil
 import Switch as switch
 import RobotLight as robotLight
 import ast
+# Add parent directory to path to import protocol module
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from protocol import *
 step_set = 1
 speed_set = 100
 
@@ -219,7 +222,7 @@ def info_send_client():
         battery_voltage = get_battery_voltage()
         servo_positions = move.get_servo_positions_info()
         mpu_data = move.get_mpu6050_data()
-        info_data = 'INFO:' + get_cpu_tempfunc() + ' ' + get_cpu_use() + ' ' + get_ram_info() + ' ' + battery_voltage + ' | ' + servo_positions + ' | ' + mpu_data + '\n'
+        info_data = STATUS_INFO_PREFIX + get_cpu_tempfunc() + ' ' + get_cpu_use() + ' ' + get_ram_info() + ' ' + battery_voltage + ' | ' + servo_positions + ' | ' + mpu_data + '\n'
         tcpCliSock.send(info_data.encode())
         print("✓ Sent initial INFO data")
 
@@ -234,7 +237,7 @@ def info_send_client():
     success_count = 0
     for i in range(5):  # Reduced from 10 to 5
         try:
-            tcpCliSock.send('VIDEO_READY\n'.encode())
+            tcpCliSock.send(f'{STATUS_VIDEO_READY}\n'.encode())
             success_count += 1
             print(f"✅ VIDEO_READY {i+1}/5")
             sys.stdout.flush()
@@ -256,7 +259,7 @@ def info_send_client():
             # Get MPU6050 data (gyro/accelerometer)
             mpu_data = move.get_mpu6050_data()
 
-            info_data = 'INFO:' + get_cpu_tempfunc() + ' ' + get_cpu_use() + ' ' + get_ram_info() + ' ' + battery_voltage + ' | ' + servo_positions + ' | ' + mpu_data + '\n'
+            info_data = STATUS_INFO_PREFIX + get_cpu_tempfunc() + ' ' + get_cpu_use() + ' ' + get_ram_info() + ' ' + battery_voltage + ' | ' + servo_positions + ' | ' + mpu_data + '\n'
             tcpCliSock.send(info_data.encode())
             time.sleep(0.2)  # 200ms update interval for better servo analysis
         except Exception as e:
@@ -285,20 +288,8 @@ def handle_movement_command(data):
 	"""Handle movement commands (forward, backward, left, right, etc.)"""
 	global direction_command, turn_command
 
-	# Map GUI commands to Move.py commands (exact matches only!)
-	command_mapping = {
-		'forward': 'forward',
-		'backward': 'backward',
-		'DS': 'stand',
-		'left': 'left',
-		'right': 'right',
-		'TS': 'no',
-		'leftside': 'left',    # Strafe left -> turn left
-		'rightside': 'right',  # Strafe right -> turn right
-	}
-
 	# EXACT match only - no partial matching to avoid conflicts with lookleft/lookright
-	move_command = command_mapping.get(data)
+	move_command = GUI_TO_MOVE_COMMAND_MAP.get(data)
 
 	if move_command:
 		print(f"[GUIServer] Movement command: '{data}' -> '{move_command}'")
@@ -306,9 +297,9 @@ def handle_movement_command(data):
 		result = move.handle_movement_command(move_command)
 		if result:
 			# Update local state variables for GUI sync
-			if move_command in ['forward', 'backward', 'stand']:
+			if move_command in [CMD_FORWARD, CMD_BACKWARD, MOVE_STAND]:
 				direction_command = move_command
-			elif move_command in ['left', 'right', 'no']:
+			elif move_command in [CMD_LEFT, CMD_RIGHT, MOVE_NO]:
 				turn_command = move_command
 		return result
 	return False  # Command not handled
@@ -316,38 +307,38 @@ def handle_movement_command(data):
 
 def handle_camera_command(data):
 	"""Handle camera movement commands (lookUp, lookDown, lookLeft, lookRight, home)"""
-	if data == 'lookUp':
+	if data == CMD_LOOK_UP:
 		print(f"[GUIServer] Camera command: lookUp")
 		move.look_up()
-	elif data == 'lookDown':
+	elif data == CMD_LOOK_DOWN:
 		print(f"[GUIServer] Camera command: lookDown")
 		move.look_down()
-	elif data == 'lookHome':
+	elif data == CMD_LOOK_HOME:
 		print(f"[GUIServer] Camera command: lookHome - calling move.look_home()")
 		move.look_home()
 		print(f"[GUIServer] move.look_home() completed")
-	elif data == 'lookLeft':
+	elif data == CMD_LOOK_LEFT:
 		print(f"[GUIServer] Camera command: lookLeft")
 		move.look_left()
-	elif data == 'lookRight':
+	elif data == CMD_LOOK_RIGHT:
 		print(f"[GUIServer] Camera command: lookRight")
 		move.look_right()
-	elif data == 'LRstop':
+	elif data == CMD_LR_STOP:
 		pass  # Camera servos don't need explicit stop (they move to position and stay)
-	elif data == 'UDstop':
+	elif data == CMD_UD_STOP:
 		pass  # Camera servos don't need explicit stop (they move to position and stay)
-	elif data == 'steadyCamera':
+	elif data == CMD_STEADY_CAMERA:
 		move.commandInput(data)
-		tcpCliSock.send('steadyCamera'.encode())
-	elif data == 'steadyCameraOff':
+		tcpCliSock.send(CMD_STEADY_CAMERA.encode())
+	elif data == CMD_STEADY_CAMERA_OFF:
 		move.commandInput(data)
-		tcpCliSock.send('steadyCameraOff'.encode())
-	elif data == 'smoothCam':
+		tcpCliSock.send(CMD_STEADY_CAMERA_OFF.encode())
+	elif data == CMD_SMOOTH_CAM:
 		move.commandInput(data)
-		tcpCliSock.send('smoothCam'.encode())
-	elif data == 'smoothCamOff':
+		tcpCliSock.send(CMD_SMOOTH_CAM.encode())
+	elif data == CMD_SMOOTH_CAM_OFF:
 		move.commandInput(data)
-		tcpCliSock.send('smoothCamOff'.encode())
+		tcpCliSock.send(CMD_SMOOTH_CAM_OFF.encode())
 	else:
 		return False  # Command not handled
 	return True  # Command was handled
@@ -364,7 +355,7 @@ def handle_speed_command(data):
 	      This function kept for backwards compatibility but does nothing.
 	      Speed adjustment will be implemented in the future via speed parameter.
 	"""
-	if data == 'fast' or data == 'slow':
+	if data == CMD_FAST or data == CMD_SLOW:
 		# Deprecated: Movement is always smooth now
 		# Just acknowledge the command for backwards compatibility
 		tcpCliSock.send(data.encode())
@@ -376,14 +367,14 @@ def handle_led_command(data):
 	"""Handle LED commands (police, policeOff)"""
 	global ws2812
 
-	if data == 'police':
+	if data == CMD_POLICE:
 		if ws2812:
 			ws2812.police()
-		tcpCliSock.send('police'.encode())
-	elif data == 'policeOff':
+		tcpCliSock.send(CMD_POLICE.encode())
+	elif data == CMD_POLICE_OFF:
 		if ws2812:
 			ws2812.breath(70, 70, 255)
-		tcpCliSock.send('policeOff'.encode())
+		tcpCliSock.send(CMD_POLICE_OFF.encode())
 	else:
 		return False  # Command not handled
 	return True  # Command was handled
@@ -391,24 +382,24 @@ def handle_led_command(data):
 
 def handle_switch_command(data):
 	"""Handle GPIO switch commands (Switch_1/2/3 on/off)"""
-	if 'Switch_1_on' in data:
+	if CMD_SWITCH_1_ON in data:
 		switch.switch(1, 1)
-		tcpCliSock.send('Switch_1_on'.encode())
-	elif 'Switch_1_off' in data:
+		tcpCliSock.send(CMD_SWITCH_1_ON.encode())
+	elif CMD_SWITCH_1_OFF in data:
 		switch.switch(1, 0)
-		tcpCliSock.send('Switch_1_off'.encode())
-	elif 'Switch_2_on' in data:
+		tcpCliSock.send(CMD_SWITCH_1_OFF.encode())
+	elif CMD_SWITCH_2_ON in data:
 		switch.switch(2, 1)
-		tcpCliSock.send('Switch_2_on'.encode())
-	elif 'Switch_2_off' in data:
+		tcpCliSock.send(CMD_SWITCH_2_ON.encode())
+	elif CMD_SWITCH_2_OFF in data:
 		switch.switch(2, 0)
-		tcpCliSock.send('Switch_2_off'.encode())
-	elif 'Switch_3_on' in data:
+		tcpCliSock.send(CMD_SWITCH_2_OFF.encode())
+	elif CMD_SWITCH_3_ON in data:
 		switch.switch(3, 1)
-		tcpCliSock.send('Switch_3_on'.encode())
-	elif 'Switch_3_off' in data:
+		tcpCliSock.send(CMD_SWITCH_3_ON.encode())
+	elif CMD_SWITCH_3_OFF in data:
 		switch.switch(3, 0)
-		tcpCliSock.send('Switch_3_off'.encode())
+		tcpCliSock.send(CMD_SWITCH_3_OFF.encode())
 	else:
 		return False  # Command not handled
 	return True  # Command was handled
@@ -445,36 +436,36 @@ def handle_power_management_command(data):
 	"""Handle servo standby/wakeup and camera pause/resume commands"""
 	global fps_threading, servo_standby_active, camera_paused_active
 
-	if data == 'servo_standby':
+	if data == CMD_SERVO_STANDBY:
 		print("🔋 SERVO STANDBY - Stopping PWM signals")
 		move.standby()  # Call standby in Move module
 		servo_standby_active = True
 		# Send status update to client
-		tcpCliSock.send('servoStandby\n'.encode())
+		tcpCliSock.send(f'{STATUS_SERVO_STANDBY}\n'.encode())
 		return True
 
-	elif data == 'servo_wakeup':
+	elif data == CMD_SERVO_WAKEUP:
 		print("⚡ SERVO WAKEUP - Restoring servo positions")
 		move.wakeup()  # Call wakeup in Move module
 		servo_standby_active = False
 		# Send status update to client
-		tcpCliSock.send('servoWakeup\n'.encode())
+		tcpCliSock.send(f'{STATUS_SERVO_WAKEUP}\n'.encode())
 		return True
 
-	elif data == 'camera_pause':
+	elif data == CMD_CAMERA_PAUSE:
 		print("📷 CAMERA PAUSE - Stopping video stream")
 		FPV.pause_stream()
 		camera_paused_active = True
 		# Send status update to client
-		tcpCliSock.send('cameraPaused\n'.encode())
+		tcpCliSock.send(f'{STATUS_CAMERA_PAUSED}\n'.encode())
 		return True
 
-	elif data == 'camera_resume':
+	elif data == CMD_CAMERA_RESUME:
 		print("📷 CAMERA RESUME - Restarting video stream")
 		FPV.resume_stream()
 		camera_paused_active = False
 		# Send status update to client
-		tcpCliSock.send('cameraResumed\n'.encode())
+		tcpCliSock.send(f'{STATUS_CAMERA_RESUMED}\n'.encode())
 		return True
 
 	return False
