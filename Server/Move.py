@@ -696,15 +696,16 @@ def calculate_target_positions(phase, speed, command):
 			# Group A in air: L1/L3 swing FORWARD, R2 swings BACK
 			h_swing = int(abs(speed) * math.cos(t * math.pi))  # +speed to -speed
 			positions['L1'] = {'h': h_swing, 'v': v}   # L1: swing forward
-			positions['R2'] = {'h': -h_swing, 'v': v}  # R2: swing back
+			positions['R2'] = {'h': h_swing, 'v': v}   # R2: swing back (negated for rightSide_direction=0)
 			positions['L3'] = {'h': h_swing, 'v': v}   # L3: swing forward
 
 			# Group B on ground: R1/R3 push FORWARD, L2 pushes BACK
 			# For CCW: right side forward, left side back
+			# NOTE: R1/R3 values are NEGATED because rightSide_direction=0 inverts the sign
 			h_push = int(abs(speed) * math.cos((t + 1) * math.pi))  # -speed to +speed
-			positions['R1'] = {'h': h_push, 'v': -10}   # R1: push forward (creates CCW rotation)
-			positions['L2'] = {'h': -h_push, 'v': -10}  # L2: push back (creates CCW rotation)
-			positions['R3'] = {'h': h_push, 'v': -10}   # R3: push forward (creates CCW rotation)
+			positions['R1'] = {'h': -h_push, 'v': -10}  # R1: push forward (negated!)
+			positions['L2'] = {'h': -h_push, 'v': -10}  # L2: push back
+			positions['R3'] = {'h': -h_push, 'v': -10}  # R3: push forward (negated!)
 		else:
 			# Phase 4: Group B (R1, L2, R3) in air, Group A (L1, R2, L3) on ground pushing
 			t = (phase - 0.5) * 2  # 0.0 to 1.0
@@ -712,15 +713,16 @@ def calculate_target_positions(phase, speed, command):
 
 			# Group B in air: R1/R3 swing FORWARD, L2 swings BACK
 			h_swing = int(abs(speed) * math.cos(t * math.pi))  # +speed to -speed
-			positions['R1'] = {'h': -h_swing, 'v': v}  # R1: swing forward
+			positions['R1'] = {'h': h_swing, 'v': v}   # R1: swing forward (negated for rightSide_direction=0)
 			positions['L2'] = {'h': h_swing, 'v': v}   # L2: swing back
-			positions['R3'] = {'h': -h_swing, 'v': v}  # R3: swing forward
+			positions['R3'] = {'h': h_swing, 'v': v}   # R3: swing forward (negated for rightSide_direction=0)
 
 			# Group A on ground: L1/L3 push BACK, R2 pushes FORWARD
+			# NOTE: R2 value is NEGATED because rightSide_direction=0 inverts the sign
 			h_push = int(abs(speed) * math.cos((t + 1) * math.pi))  # -speed to +speed
-			positions['L1'] = {'h': -h_push, 'v': -10}  # L1: push back (creates CCW rotation)
-			positions['R2'] = {'h': h_push, 'v': -10}   # R2: push forward (creates CCW rotation)
-			positions['L3'] = {'h': -h_push, 'v': -10}  # L3: push back (creates CCW rotation)
+			positions['L1'] = {'h': -h_push, 'v': -10}  # L1: push back
+			positions['R2'] = {'h': -h_push, 'v': -10}  # R2: push forward (negated!)
+			positions['L3'] = {'h': -h_push, 'v': -10}  # L3: push back
 
 	elif command == CMD_RIGHT:
 		# RIGHT TURN (CW): Tripod-Gait Rotation (mirror of LEFT)
@@ -731,18 +733,18 @@ def calculate_target_positions(phase, speed, command):
 			v = int(3 * abs(speed) * math.sin(t * math.pi))  # Smooth arc
 
 			# Group A in air: L1/L3 swing BACK, R2 swings FORWARD (opposite of LEFT)
-			# Use cosine starting from +1 (forward) going to -1 (back)
 			h_swing = int(abs(speed) * math.cos(t * math.pi))  # +speed to -speed
-			positions['L1'] = {'h': -h_swing, 'v': v}  # L1: swing back (negative)
-			positions['R2'] = {'h': h_swing, 'v': v}   # R2: swing forward (positive)
-			positions['L3'] = {'h': -h_swing, 'v': v}  # L3: swing back (negative)
+			positions['L1'] = {'h': -h_swing, 'v': v}  # L1: swing back
+			positions['R2'] = {'h': -h_swing, 'v': v}  # R2: swing forward (negated for rightSide_direction=0)
+			positions['L3'] = {'h': -h_swing, 'v': v}  # L3: swing back
 
 			# Group B on ground: R1/R3 push BACK, L2 pushes FORWARD (opposite of LEFT)
 			# For CW: right side back, left side forward
+			# NOTE: R1/R3 values are NEGATED because rightSide_direction=0 inverts the sign
 			h_push = int(abs(speed) * math.cos((t + 1) * math.pi))  # -speed to +speed
-			positions['R1'] = {'h': -h_push, 'v': -10}  # R1: push back (creates CW rotation)
-			positions['L2'] = {'h': h_push, 'v': -10}   # L2: push forward (creates CW rotation)
-			positions['R3'] = {'h': -h_push, 'v': -10}  # R3: push back (creates CW rotation)
+			positions['R1'] = {'h': h_push, 'v': -10}   # R1: push back (negated!)
+			positions['L2'] = {'h': h_push, 'v': -10}   # L2: push forward
+			positions['R3'] = {'h': h_push, 'v': -10}   # R3: push back (negated!)
 		else:
 			# Phase 4: Group B (R1, L2, R3) in air, Group A (L1, R2, L3) on ground pushing
 			t = (phase - 0.5) * 2  # 0.0 to 1.0
@@ -750,15 +752,16 @@ def calculate_target_positions(phase, speed, command):
 
 			# Group B in air: R1/R3 swing BACK, L2 swings FORWARD (opposite of LEFT)
 			h_swing = int(abs(speed) * math.cos(t * math.pi))  # +speed to -speed
-			positions['R1'] = {'h': h_swing, 'v': v}   # R1: swing back
+			positions['R1'] = {'h': -h_swing, 'v': v}  # R1: swing back (negated for rightSide_direction=0)
 			positions['L2'] = {'h': -h_swing, 'v': v}  # L2: swing forward
-			positions['R3'] = {'h': h_swing, 'v': v}   # R3: swing back
+			positions['R3'] = {'h': -h_swing, 'v': v}  # R3: swing back (negated for rightSide_direction=0)
 
 			# Group A on ground: L1/L3 push FORWARD, R2 pushes BACK (opposite of LEFT)
+			# NOTE: R2 value is NEGATED because rightSide_direction=0 inverts the sign
 			h_push = int(abs(speed) * math.cos((t + 1) * math.pi))  # -speed to +speed
-			positions['L1'] = {'h': h_push, 'v': -10}   # L1: push forward (creates CW rotation)
-			positions['R2'] = {'h': -h_push, 'v': -10}  # R2: push back (creates CW rotation)
-			positions['L3'] = {'h': h_push, 'v': -10}   # L3: push forward (creates CW rotation)
+			positions['L1'] = {'h': h_push, 'v': -10}   # L1: push forward
+			positions['R2'] = {'h': h_push, 'v': -10}   # R2: push back (negated!)
+			positions['L3'] = {'h': h_push, 'v': -10}   # L3: push forward
 
 	return positions
 
