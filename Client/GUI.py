@@ -694,8 +694,8 @@ def connection_thread():
 		while 1:
 			car_info = (tcpClicSock.recv(BUFSIZ)).decode()
 			if not car_info:
-				print("[connection_thread] Empty message received, continuing...")
-				continue
+				print("[connection_thread] Connection closed by server (empty recv)")
+				break  # Exit loop - connection is closed!
 
 			# DEBUG: Log ALL received messages initially for debugging
 			if not car_info.startswith(STATUS_INFO_PREFIX):
