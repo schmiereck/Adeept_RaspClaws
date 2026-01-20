@@ -604,12 +604,27 @@ def move_smooth(speed, command, cycle_steps=30):
 			_last_speed_sign = 0
 			break
 
-		# Check if command has changed (button released) → abort current cycle
-		if command == 'no' and direction_command == MOVE_NO:
-			# User released forward/backward button
-			break
-		elif command != 'no' and turn_command == MOVE_NO:
-			# User released turn button
+		# Check if button was released → abort current cycle immediately
+		should_stop = False
+		if command == 'no':
+			# Forward/Backward movement - check if button released
+			if direction_command == MOVE_NO:
+				print(f"[move_smooth] Forward/Backward button released at step {step}/{cycle_steps}")
+				should_stop = True
+		else:
+			# Turn movement (left/right) - check if button released
+			if turn_command == MOVE_NO:
+				print(f"[move_smooth] Turn button released at step {step}/{cycle_steps}")
+				should_stop = True
+
+		if should_stop:
+			# Lower all legs to ground for stable position
+			print("[move_smooth] Lowering legs to stable ground position...")
+			for leg in ['L1', 'L2', 'L3', 'R1', 'R2', 'R3']:
+				# Keep current horizontal position, set vertical to ground level
+				apply_leg_position(leg, _leg_positions[leg], -10)
+			_last_command = None
+			_last_speed_sign = 0
 			break
 
 		# Calculate current phase for this step (0.0 to 1.0)
@@ -619,13 +634,18 @@ def move_smooth(speed, command, cycle_steps=30):
 		target_positions = calculate_target_positions(phase, speed, command)
 
 		# Interpolate from current to target (smooth transition)
-		# Use stronger interpolation at the beginning of a cycle
-		if command_changed and step < 5:
-			# Stronger interpolation for first few steps after direction change
-			alpha = 0.3 + (step / 5) * 0.4  # 0.3 → 0.7 over first 5 steps (not 1.0!)
+		# Use ease-in/ease-out interpolation for smooth, non-jerky movements
+		if command_changed and step < 15:
+			# Smooth interpolation for first few steps after direction change
+			# Use cubic easing for smoother acceleration/deceleration
+			t = step / 15
+			# Cubic ease-out: rapid start, slow finish
+			eased_t = 1 - pow(1 - t, 3)
+			alpha = 0.25 + eased_t * 0.5  # 0.25 → 0.75 with cubic easing
 		else:
-			# Normal: smooth continuous interpolation (never jump!)
-			alpha = 0.6  # Always interpolate smoothly, never alpha=1.0
+			# Normal: gentle continuous interpolation for smooth servo motion
+			# Never use alpha=1.0 as it causes jerky servo movements
+			alpha = 0.7  # Smooth following, prevents jerky jumps
 
 		# Update and apply positions for each leg
 		for leg in ['L1', 'L2', 'L3', 'R1', 'R2', 'R3']:
