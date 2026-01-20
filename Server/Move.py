@@ -1894,7 +1894,7 @@ def standby():
 
 	# Stop PWM signals on all channels
 	for i in range(16):
-		pwm.set_pwm(i, 0)  # Setting pulse to 0 stops the signal
+		pwm.set_pwm(i, 0, 0)  # Fixed: set_pwm requires 3 args (channel, on, off)
 
 	print("✓ All servos in STANDBY - legs are soft, low power consumption")
 

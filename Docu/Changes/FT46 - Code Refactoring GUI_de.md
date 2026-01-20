@@ -330,6 +330,36 @@ def loop():
     - `def home():` → `def look_home():`
     - Docstring hinzugefügt
 
+**9. Power Management Funktionen funktionierten nicht (FT42 Bugfix)**
+- Problem:
+  - **Servo Standby Button** funktionierte nicht - Servos blieben steif
+  - **Camera Pause Button** funktionierte nicht - Video lief weiter
+  - Beide aus FT42 implementierte Features waren defekt
+- Ursache 1 - Servo Standby:
+  - `pwm.set_pwm(i, 0)` in `standby()` Funktion (Move.py Zeile 1897)
+  - **Falsche Anzahl Argumente**: `set_pwm()` benötigt 3 Parameter: `(channel, on, off)`
+  - Aufruf mit nur 2 Parametern verursachte Fehler
+  - Servos wurden nie in Standby versetzt
+- Ursache 2 - Camera Pause:
+  - `camera_paused` Flag wurde in FPV.py gesetzt (Zeile 39, 46)
+  - **Aber nie geprüft!** - `capture_thread()` ignorierte das Flag
+  - Video-Stream lief trotz Pause-Command weiter
+  - Frames wurden weiterhin encodiert und gesendet
+- Lösung 1 - Servo Standby:
+  - Korrektur: `pwm.set_pwm(i, 0, 0)` (3 Argumente)
+  - Alle 16 Servo-Kanäle werden korrekt gestoppt
+  - PWM-Signale werden auf 0 gesetzt → Servos werden weich
+- Lösung 2 - Camera Pause:
+  - Prüfung `if not camera_paused:` in `capture_thread()` hinzugefügt
+  - Frame-Encoding und -Sending werden übersprungen wenn pausiert
+  - Kamera läuft weiter, aber Frames werden nicht über Netzwerk gesendet
+  - Spart CPU-Last und Netzwerk-Bandbreite
+- Betroffene Dateien:
+  - **Server/Move.py**: `standby()` Funktion korrigiert (Zeile 1897)
+    - `pwm.set_pwm(i, 0)` → `pwm.set_pwm(i, 0, 0)`
+  - **Server/FPV.py**: `capture_thread()` erweitert (Zeile 157-161)
+    - `if not camera_paused:` Prüfung vor Frame-Sending
+
 **Layout-Visualisierung:**
 ```
 LINKS (Movement/Roboter)              RECHTS (Camera/Kamera)

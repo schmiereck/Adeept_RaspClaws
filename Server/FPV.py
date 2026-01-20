@@ -155,10 +155,12 @@ class FPV:
 			cv2.line(frame_image, (300, 240), (340, 240), (128, 255, 128), 1)
 			cv2.line(frame_image, (320, 220), (320, 260), (128, 255, 128), 1)
 
-			# Frame encoding and sending (MUST be inside the while True loop!)
-			encoded, buffer = cv2.imencode('.jpg', frame_image)
-			jpg_as_text = base64.b64encode(buffer)
-			footage_socket.send(jpg_as_text)
+			# Check if camera is paused - skip frame sending if paused
+			if not camera_paused:
+				# Frame encoding and sending (only when NOT paused)
+				encoded, buffer = cv2.imencode('.jpg', frame_image)
+				jpg_as_text = base64.b64encode(buffer)
+				footage_socket.send(jpg_as_text)
 
 			# Limit frame rate to reduce CPU load (~30 FPS = 33ms per frame)
 			time.sleep(0.033)  # 33ms = ~30 FPS, reduces CPU load significantly
