@@ -904,477 +904,334 @@ def dove_Right_III(horizontal, vertical):
 	set_servo_smooth(11, target_v, steps=0)
 
 
+# ==================== Generic Helper Functions for Movement ====================
+
+def _apply_tripod_group_positions(group_a_h, group_a_v, group_b_h, group_b_v):
+	"""
+	Apply horizontal and vertical positions to both tripod groups.
+
+	Tripod Group A: L1, R2, L3 (front-left, middle-right, rear-left)
+	Tripod Group B: R1, L2, R3 (front-right, middle-left, rear-right)
+
+	Args:
+		group_a_h: Horizontal position for Group A
+		group_a_v: Vertical position for Group A
+		group_b_h: Horizontal position for Group B
+		group_b_v: Vertical position for Group B
+	"""
+	# Group A (L1, R2, L3)
+	dove_Left_I(group_a_h, group_a_v)
+	dove_Right_II(group_a_h, group_a_v)
+	dove_Left_III(group_a_h, group_a_v)
+
+	# Group B (R1, L2, R3)
+	dove_Right_I(group_b_h, group_b_v)
+	dove_Left_II(group_b_h, group_b_v)
+	dove_Right_III(group_b_h, group_b_v)
+
+
+def _interpolate_linear(start, end, t):
+	"""
+	Linear interpolation between start and end.
+
+	Args:
+		start: Start value
+		end: End value
+		t: Interpolation parameter (0.0 to 1.0)
+
+	Returns:
+		Interpolated integer value
+	"""
+	return int(start + (end - start) * t)
+
+
+def _interpolate_vertical_arc(speed, t, descending=False):
+	"""
+	Calculate vertical position for smooth arc movement using sine curve.
+
+	Args:
+		speed: Movement amplitude
+		t: Phase parameter (0.0 to 1.0)
+		descending: If True, arc goes from peak to ground (3*speed → 0)
+		            If False, arc goes from ground to peak (0 → 3*speed)
+
+	Returns:
+		Vertical position as integer
+	"""
+	import math
+	if descending:
+		# Descending arc: 3*speed → 0
+		return int(3 * abs(speed) * math.sin((1 - t) * math.pi))
+	else:
+		# Ascending arc: 0 → 3*speed → 0 (full sine wave)
+		return int(3 * abs(speed) * math.sin(t * math.pi))
+
+
+def _calculate_turn_positions(base_h, command):
+	"""
+	Calculate horizontal positions for LEFT/RIGHT turn movements.
+
+	For turns, the two tripod groups move in opposite directions:
+	- LEFT turn: L1/L3 go back (negative), R2 goes forward (positive)
+	             R1/R3 go forward (positive), L2 goes back (negative)
+	- RIGHT turn: Mirror of LEFT
+
+	Args:
+		base_h: Base horizontal position (unsigned)
+		command: CMD_LEFT or CMD_RIGHT
+
+	Returns:
+		Tuple of (L1_h, R2_h, L3_h, R1_h, L2_h, R3_h)
+	"""
+	if command == CMD_LEFT:
+		# LEFT turn (CCW): L1/L3 back, R2 forward, R1/R3 forward, L2 back
+		return (-base_h, base_h, -base_h, base_h, -base_h, base_h)
+	elif command == CMD_RIGHT:
+		# RIGHT turn (CW): Mirror of LEFT
+		return (base_h, -base_h, base_h, -base_h, base_h, -base_h)
+	else:
+		# No turn: all same horizontal position
+		return (base_h, base_h, base_h, base_h, base_h, base_h)
+
+
+def _execute_step_loop(num_steps, time_per_step, position_calculator, command):
+	"""
+	Execute a step loop with interpolated positions.
+
+	Args:
+		num_steps: Number of interpolation steps
+		time_per_step: Sleep time between steps
+		position_calculator: Function(t, command) that returns (group_a_h, group_a_v, group_b_h, group_b_v)
+		                     or dict with individual leg positions for turns
+		command: Movement command (MOVE_NO, CMD_LEFT, CMD_RIGHT)
+	"""
+	for i in range(num_steps + 1):
+		# Check if movement should stop
+		if move_stu == 0:
+			break
+
+		# Calculate interpolation parameter
+		t = i / num_steps
+
+		# Get positions from calculator
+		positions = position_calculator(t, command)
+
+		# Apply positions based on return type
+		if isinstance(positions, dict):
+			# Individual leg positions (for turns)
+			dove_Left_I(positions['L1_h'], positions['L1_v'])
+			dove_Right_II(positions['R2_h'], positions['R2_v'])
+			dove_Left_III(positions['L3_h'], positions['L3_v'])
+			dove_Right_I(positions['R1_h'], positions['R1_v'])
+			dove_Left_II(positions['L2_h'], positions['L2_v'])
+			dove_Right_III(positions['R3_h'], positions['R3_v'])
+		else:
+			# Tripod group positions (for forward/backward)
+			group_a_h, group_a_v, group_b_h, group_b_v = positions
+			_apply_tripod_group_positions(group_a_h, group_a_v, group_b_h, group_b_v)
+
+		time.sleep(time_per_step)
+
+
+# ==================== Main Movement Functions ====================
+
 def dove_smooth(phase, speed, timeLast, command):
 	"""
 	Smooth continuous leg movement using sine/cosine curves.
+
+	Uses generic helper functions to reduce code duplication.
 
 	Args:
 		phase: Current phase (0.0 to 1.0) of the walking cycle
 		speed: Movement amplitude (horizontal range)
 		timeLast: Time per cycle
-		command: Movement command ('no', 'left', 'right')
+		command: Movement command (MOVE_NO, CMD_LEFT, CMD_RIGHT)
 
 	Phase mapping:
-		0.0 - 0.5: Group 1 (L1, R2, L3) in air, Group 2 (R1, L2, R3) on ground
-		0.5 - 1.0: Group 2 in air, Group 1 on ground
+		0.0 - 0.5: Group A (L1, R2, L3) in air, Group B (R1, L2, R3) on ground
+		0.5 - 1.0: Group B in air, Group A on ground
 	"""
 	import math
 
-	# Calculate positions using sine/cosine for smooth transitions
-	# Phase 0.0-0.5: Group 1 moves
-	# Phase 0.5-1.0: Group 2 moves
+	# Determine which half of the cycle we're in
+	if phase < 0.5:
+		# First half: Group A in air, Group B on ground
+		t = phase * 2  # Normalize to 0.0-1.0
 
-	if command == MOVE_NO:
-		# Forward/backward movement
-		if phase < 0.5:
-			# Group 1 (L1, R2, L3) in air, moving from +speed to -speed
-			t = phase * 2  # 0.0 to 1.0
+		# Calculate base horizontal position (cosine for smooth curve)
+		h_base = int(abs(speed) * math.cos(t * math.pi))  # +speed → -speed
 
-			# Horizontal: smooth transition from +speed to -speed using cosine
-			h1 = int(speed * math.cos(t * math.pi))  # +speed → -speed
+		# Calculate vertical position (sine arc)
+		v_air = _interpolate_vertical_arc(speed, t, descending=False)
+		v_ground = -10  # On ground
 
-			# Vertical: smooth arc using sine (lift up and down)
-			# Always use positive amplitude for vertical movement
-			v1 = int(3 * abs(speed) * math.sin(t * math.pi))  # 0 → 3*speed → 0
-
-			# Group 2 (R1, L2, R3) on ground, moving from -speed to +speed
-			h2 = -h1  # Opposite horizontal position
-			v2 = -10  # Stay on ground
-
-			# Apply positions
-			dove_Left_I(h1, v1)
-			dove_Right_II(h1, v1)
-			dove_Left_III(h1, v1)
-
-			dove_Right_I(h2, v2)
-			dove_Left_II(h2, v2)
-			dove_Right_III(h2, v2)
+		# Apply direction sign to horizontal position
+		if speed > 0:
+			h_air = h_base
+			h_ground = -h_base
 		else:
-			# Group 2 (R1, L2, R3) in air, moving from +speed to -speed
-			t = (phase - 0.5) * 2  # 0.0 to 1.0
+			h_air = -h_base
+			h_ground = h_base
 
-			# Horizontal: smooth transition
-			h2 = int(speed * math.cos(t * math.pi))  # +speed → -speed
-
-			# Vertical: smooth arc
-			# Always use positive amplitude for vertical movement
-			v2 = int(3 * abs(speed) * math.sin(t * math.pi))  # 0 → 3*speed → 0
-
-			# Group 1 on ground
-			h1 = -h2  # Opposite horizontal position
-			v1 = -10  # Stay on ground
-
-			# Apply positions
-			dove_Left_I(h1, v1)
-			dove_Right_II(h1, v1)
-			dove_Left_III(h1, v1)
-
-			dove_Right_I(h2, v2)
-			dove_Left_II(h2, v2)
-			dove_Right_III(h2, v2)
-
-	elif command == CMD_LEFT:
-		# Turn left: left legs move backward, right legs move forward
-		if phase < 0.5:
-			t = phase * 2
-			h = int(speed * math.cos(t * math.pi))
-			v = int(3 * speed * math.sin(t * math.pi))
-
-			dove_Left_I(-h, v)      # Left legs backward
-			dove_Right_II(h, v)     # Right legs forward
-			dove_Left_III(-h, v)
-
-			dove_Right_I(h, -10)
-			dove_Left_II(-h, -10)
-			dove_Right_III(h, -10)
+		# Calculate turn-specific positions if needed
+		if command == CMD_LEFT or command == CMD_RIGHT:
+			L1_h, R2_h, L3_h, R1_h, L2_h, R3_h = _calculate_turn_positions(h_base, command)
+			# Group A in air with turn positions
+			dove_Left_I(L1_h, v_air)
+			dove_Right_II(R2_h, v_air)
+			dove_Left_III(L3_h, v_air)
+			# Group B on ground with turn positions
+			dove_Right_I(R1_h, v_ground)
+			dove_Left_II(L2_h, v_ground)
+			dove_Right_III(R3_h, v_ground)
 		else:
-			t = (phase - 0.5) * 2
-			h = int(speed * math.cos(t * math.pi))
-			v = int(3 * speed * math.sin(t * math.pi))
+			# Forward/backward: both groups move same horizontal direction
+			_apply_tripod_group_positions(h_air, v_air, h_ground, v_ground)
 
-			dove_Left_I(-h, -10)
-			dove_Right_II(h, -10)
-			dove_Left_III(-h, -10)
+	else:
+		# Second half: Group B in air, Group A on ground
+		t = (phase - 0.5) * 2  # Normalize to 0.0-1.0
 
-			dove_Right_I(h, v)
-			dove_Left_II(-h, v)
-			dove_Right_III(h, v)
+		# Calculate base horizontal position
+		h_base = int(abs(speed) * math.cos(t * math.pi))  # +speed → -speed
 
-	elif command == CMD_RIGHT:
-		# Turn right: left legs move forward, right legs move backward
-		if phase < 0.5:
-			t = phase * 2
-			h = int(speed * math.cos(t * math.pi))
-			v = int(3 * speed * math.sin(t * math.pi))
+		# Calculate vertical position
+		v_air = _interpolate_vertical_arc(speed, t, descending=False)
+		v_ground = -10  # On ground
 
-			dove_Left_I(h, v)       # Left legs forward
-			dove_Right_II(-h, v)    # Right legs backward
-			dove_Left_III(h, v)
-
-			dove_Right_I(-h, -10)
-			dove_Left_II(h, -10)
-			dove_Right_III(-h, -10)
+		# Apply direction sign
+		if speed > 0:
+			h_air = h_base
+			h_ground = -h_base
 		else:
-			t = (phase - 0.5) * 2
-			h = int(speed * math.cos(t * math.pi))
-			v = int(3 * speed * math.sin(t * math.pi))
+			h_air = -h_base
+			h_ground = h_base
 
-			dove_Left_I(h, -10)
-			dove_Right_II(-h, -10)
-			dove_Left_III(h, -10)
-
-			dove_Right_I(-h, v)
-			dove_Left_II(h, v)
-			dove_Right_III(-h, v)
+		# Calculate turn-specific positions if needed
+		if command == CMD_LEFT or command == CMD_RIGHT:
+			L1_h, R2_h, L3_h, R1_h, L2_h, R3_h = _calculate_turn_positions(h_base, command)
+			# Group A on ground with turn positions
+			dove_Left_I(L1_h, v_ground)
+			dove_Right_II(R2_h, v_ground)
+			dove_Left_III(L3_h, v_ground)
+			# Group B in air with turn positions
+			dove_Right_I(R1_h, v_air)
+			dove_Left_II(L2_h, v_air)
+			dove_Right_III(R3_h, v_air)
+		else:
+			# Forward/backward: Group A on ground, Group B in air
+			_apply_tripod_group_positions(h_ground, v_ground, h_air, v_air)
 
 
 def dove(step_input, speed, timeLast, dpi, command):
-	step_I  = step_input
-	step_II = step_input + 2
+	"""
+	Step-based leg movement with 4-phase tripod gait.
 
-	if step_II > 4:
-		step_II = step_II - 4
-	
-	if speed > 0:
-		if step_input == 1:
-			# Ensure we interpolate exactly from +speed to -speed
-			num_steps = dpi
-			for i in range(num_steps + 1):
-				if move_stu and command == MOVE_NO:
-					# Gradual lift and forward motion for first group
-					# Interpolate from +speed to -speed over num_steps
-					t = i / num_steps  # 0.0 to 1.0
-					horizontal_pos = int(speed - (2 * speed * t))  # +speed to -speed
-					vertical_pos = int(3 * speed * t)              # 0 to 3*speed
+	Refactored to use generic helper functions and reduce code duplication.
 
-					dove_Left_I(horizontal_pos, vertical_pos)
-					dove_Right_II(horizontal_pos, vertical_pos)
-					dove_Left_III(horizontal_pos, vertical_pos)
-
-					dove_Right_I(speed, -10)  # Stay at +speed
-					dove_Left_II(speed, -10)
-					dove_Right_III(speed, -10)
-					time.sleep(timeLast/dpi)
-				else:
-					pass
-
-				if command == CMD_LEFT:
-					# Same logic for left turn: interpolate from +speed to -speed
-					t = i / num_steps
-					horizontal_pos = int(speed - (2 * speed * t))
-					vertical_pos = int(3 * speed * t)
-
-					dove_Left_I(-horizontal_pos, vertical_pos)
-					dove_Right_II(horizontal_pos, vertical_pos)
-					dove_Left_III(-horizontal_pos, vertical_pos)
-
-					dove_Right_I(speed, -10)
-					dove_Left_II(-speed, -10)
-					dove_Right_III(speed, -10)
-					time.sleep(timeLast/dpi)
-				elif command == CMD_RIGHT:
-					t = i / num_steps
-					horizontal_pos = int(speed - (2 * speed * t))
-					vertical_pos = int(3 * speed * t)
-
-					dove_Left_I(horizontal_pos, vertical_pos)
-					dove_Right_II(-horizontal_pos, vertical_pos)
-					dove_Left_III(horizontal_pos, vertical_pos)
-
-					dove_Right_I(-speed, -10)
-					dove_Left_II(speed, -10)
-					dove_Right_III(-speed, -10)
-					time.sleep(timeLast/dpi)
-				else:
-					pass
-
-				# Stop at end of step if move_stu == 0 (button released)
-				if move_stu == 0:
-					break
-
-		elif step_input == 2:
-			# Continue smoothly from step 1: interpolate from -speed to +speed
-			num_steps = dpi
-			for i in range(num_steps + 1):
-				if move_stu and command == MOVE_NO:
-					# Interpolate from -speed to +speed
-					t = i / num_steps
-					horizontal_pos = int(-speed + (2 * speed * t))  # -speed to +speed
-					vertical_pos = int(3 * speed * (1 - t))        # 3*speed to 0
-
-					dove_Left_I(horizontal_pos, vertical_pos)
-					dove_Right_II(horizontal_pos, vertical_pos)
-					dove_Left_III(horizontal_pos, vertical_pos)
-
-					dove_Right_I(-horizontal_pos, -10)
-					dove_Left_II(-horizontal_pos, -10)
-					dove_Right_III(-horizontal_pos, -10)
-					time.sleep(timeLast/dpi)
-				else:
-					pass
-
-				if command == CMD_LEFT:
-					# LEFT TURN (CCW): Tripod-Gait Rotation
-					# Phase 2: Group A (L1, R2, L3) lifts and swings
-					# Group B (R1, L2, R3) stays on ground and pushes for rotation
-					t = i / num_steps
-					horizontal_pos = int(-speed + (2 * speed * t))  # -speed to +speed
-					vertical_pos = int(3 * speed * (1 - t))          # 3*speed to 0 (descending)
-
-					# Group A in air: L1/L3 swing BACK, R2 swings FORWARD
-					dove_Left_I(-horizontal_pos, vertical_pos)    # L1: back (negative)
-					dove_Right_II(horizontal_pos, vertical_pos)   # R2: forward (positive)
-					dove_Left_III(-horizontal_pos, vertical_pos)  # L3: back (negative)
-
-					# Group B on ground: R1/R3 push FORWARD, L2 pushes BACK
-					dove_Right_I(horizontal_pos, -10)   # R1: forward (pushes body CCW)
-					dove_Left_II(-horizontal_pos, -10)  # L2: back (pushes body CCW)
-					dove_Right_III(horizontal_pos, -10) # R3: forward (pushes body CCW)
-					time.sleep(timeLast/dpi)
-				elif command == CMD_RIGHT:
-					# RIGHT TURN (CW): Tripod-Gait Rotation
-					# Phase 2: Group A (L1, R2, L3) lifts and swings
-					# Group B (R1, L2, R3) stays on ground and pushes for rotation
-					t = i / num_steps
-					horizontal_pos = int(-speed + (2 * speed * t))  # -speed to +speed
-					vertical_pos = int(3 * speed * (1 - t))          # 3*speed to 0 (descending)
-
-					# Group A in air: L1/L3 swing FORWARD, R2 swings BACK
-					dove_Left_I(horizontal_pos, vertical_pos)     # L1: forward (positive)
-					dove_Right_II(-horizontal_pos, vertical_pos)  # R2: back (negative)
-					dove_Left_III(horizontal_pos, vertical_pos)   # L3: forward (positive)
-
-					# Group B on ground: R1/R3 push BACK, L2 pushes FORWARD
-					dove_Right_I(-horizontal_pos, -10)  # R1: back (pushes body CW)
-					dove_Left_II(horizontal_pos, -10)   # L2: forward (pushes body CW)
-					dove_Right_III(-horizontal_pos, -10) # R3: back (pushes body CW)
-					time.sleep(timeLast/dpi)
-				else:
-					pass
-
-				# Stop at end of step if move_stu == 0 (button released)
-				if move_stu == 0:
-					break
-		elif step_input == 3:
-			# Interpolate second group from +speed to -speed
-			num_steps = dpi
-			for i in range(num_steps + 1):
-				if move_stu and command == MOVE_NO:
-					# First group stays at +speed
-					# Second group interpolates from +speed to -speed
-					dove_Left_I(speed, -10)
-					dove_Right_II(speed, -10)
-					dove_Left_III(speed, -10)
-
-					t = i / num_steps
-					horizontal_pos = int(speed - (2 * speed * t))  # +speed to -speed
-					vertical_pos = int(3 * speed * t)              # 0 to 3*speed
-
-					dove_Right_I(horizontal_pos, vertical_pos)
-					dove_Left_II(horizontal_pos, vertical_pos)
-					dove_Right_III(horizontal_pos, vertical_pos)
-					time.sleep(timeLast/dpi)
-				else:
-					pass
-
-				if command == CMD_LEFT:
-					# LEFT TURN (CCW): Phase 3
-					# Group A (L1, R2, L3) on ground - preparing for push
-					# Group B (R1, L2, R3) lifts and repositions
-					t = i / num_steps
-					horizontal_pos = int(speed - (2 * speed * t))  # +speed to -speed
-					vertical_pos = int(3 * speed * t)              # 0 to 3*speed (ascending)
-
-					# Group A on ground: stays at -speed (L1/L3), +speed (R2)
-					dove_Left_I(-speed, -10)   # L1: back position
-					dove_Right_II(speed, -10)  # R2: forward position
-					dove_Left_III(-speed, -10) # L3: back position
-
-					# Group B in air: R1/R3 swing BACK, L2 swings FORWARD
-					dove_Right_I(horizontal_pos, vertical_pos)   # R1: back (repositioning)
-					dove_Left_II(-horizontal_pos, vertical_pos)  # L2: forward (repositioning)
-					dove_Right_III(horizontal_pos, vertical_pos) # R3: back (repositioning)
-					time.sleep(timeLast/dpi)
-				elif command == CMD_RIGHT:
-					# RIGHT TURN (CW): Phase 3
-					# Group A (L1, R2, L3) on ground - preparing for push
-					# Group B (R1, L2, R3) lifts and repositions
-					t = i / num_steps
-					horizontal_pos = int(speed - (2 * speed * t))  # +speed to -speed
-					vertical_pos = int(3 * speed * t)              # 0 to 3*speed (ascending)
-
-					# Group A on ground: stays at +speed (L1/L3), -speed (R2)
-					dove_Left_I(speed, -10)    # L1: forward position
-					dove_Right_II(-speed, -10) # R2: back position
-					dove_Left_III(speed, -10)  # L3: forward position
-
-					# Group B in air: R1/R3 swing FORWARD, L2 swings BACK
-					dove_Right_I(-horizontal_pos, vertical_pos)  # R1: forward (repositioning)
-					dove_Left_II(horizontal_pos, vertical_pos)   # L2: back (repositioning)
-					dove_Right_III(-horizontal_pos, vertical_pos) # R3: forward (repositioning)
-					time.sleep(timeLast/dpi)
-				else:
-					pass
-
-				# Stop at end of step if move_stu == 0 (button released)
-				if move_stu == 0:
-					break
-		elif step_input == 4:
-			# Continue smoothly from step 3: interpolate from -speed to +speed
-			num_steps = dpi
-			for i in range(num_steps + 1):
-				if move_stu and command == MOVE_NO:
-					t = i / num_steps
-					horizontal_pos = int(-speed + (2 * speed * t))  # -speed to +speed
-					vertical_pos = int(3 * speed * (1 - t))        # 3*speed to 0
-
-					dove_Left_I(-horizontal_pos, -10)
-					dove_Right_II(-horizontal_pos, -10)
-					dove_Left_III(-horizontal_pos, -10)
-
-					dove_Right_I(horizontal_pos, vertical_pos)
-					dove_Left_II(horizontal_pos, vertical_pos)
-					dove_Right_III(horizontal_pos, vertical_pos)
-					time.sleep(timeLast/dpi)
-				else:
-					pass
-
-				if command == CMD_LEFT:
-					# LEFT TURN (CCW): Phase 4
-					# Group B (R1, L2, R3) descends to ground
-					# Group A (L1, R2, L3) pushes on ground for rotation
-					t = i / num_steps
-					horizontal_pos = int(-speed + (2 * speed * t))  # -speed to +speed
-					vertical_pos = int(3 * speed * (1 - t))          # 3*speed to 0 (descending)
-
-					# Group A on ground: L1/L3 push FORWARD, R2 pushes BACK
-					dove_Left_I(horizontal_pos, -10)   # L1: forward (pushes body CCW)
-					dove_Right_II(-horizontal_pos, -10) # R2: back (pushes body CCW)
-					dove_Left_III(horizontal_pos, -10)  # L3: forward (pushes body CCW)
-
-					# Group B in air: descending to new position (R1/R3 back, L2 forward)
-					dove_Right_I(horizontal_pos, vertical_pos)   # R1: lands at back
-					dove_Left_II(-horizontal_pos, vertical_pos)  # L2: lands at forward
-					dove_Right_III(horizontal_pos, vertical_pos) # R3: lands at back
-					time.sleep(timeLast/dpi)
-				elif command == CMD_RIGHT:
-					# RIGHT TURN (CW): Phase 4
-					# Group B (R1, L2, R3) descends to ground
-					# Group A (L1, R2, L3) pushes on ground for rotation
-					t = i / num_steps
-					horizontal_pos = int(-speed + (2 * speed * t))  # -speed to +speed
-					vertical_pos = int(3 * speed * (1 - t))          # 3*speed to 0 (descending)
-
-					# Group A on ground: L1/L3 push BACK, R2 pushes FORWARD
-					dove_Left_I(-horizontal_pos, -10)  # L1: back (pushes body CW)
-					dove_Right_II(horizontal_pos, -10) # R2: forward (pushes body CW)
-					dove_Left_III(-horizontal_pos, -10) # L3: back (pushes body CW)
-
-					# Group B in air: descending to new position (R1/R3 forward, L2 back)
-					dove_Right_I(-horizontal_pos, vertical_pos)  # R1: lands at forward
-					dove_Left_II(horizontal_pos, vertical_pos)   # L2: lands at back
-					dove_Right_III(-horizontal_pos, vertical_pos) # R3: lands at forward
-					time.sleep(timeLast/dpi)
-				else:
-					pass
-
-				# Stop at end of step if move_stu == 0 (button released)
-				if move_stu == 0:
-					break
-	else:
+	Args:
+		step_input: Current step (1-4)
+		speed: Movement amplitude (positive=forward, negative=backward)
+		timeLast: Total time for the movement
+		dpi: Steps per phase (dots per inch - interpolation resolution)
+		command: Movement command (MOVE_NO, CMD_LEFT, CMD_RIGHT)
+	"""
+	# Adjust for backward movement
+	if speed < 0:
 		speed = -speed
-		if step_input == 1:
-			# Backward movement: interpolate from -speed to +speed
-			num_steps = dpi
-			for i in range(num_steps + 1):
-				if move_stu and command == MOVE_NO:
-					t = i / num_steps
-					horizontal_pos = int(-speed + (2 * speed * t))  # -speed to +speed
-					vertical_pos = int(3 * speed * t)               # 0 to 3*speed
+		is_backward = True
+	else:
+		is_backward = False
 
-					dove_Left_I(horizontal_pos, vertical_pos)
-					dove_Right_II(horizontal_pos, vertical_pos)
-					dove_Left_III(horizontal_pos, vertical_pos)
+	num_steps = dpi
+	time_per_step = timeLast / dpi
 
-					dove_Right_I(-speed, -10)  # Stay at -speed
-					dove_Left_II(-speed, -10)
-					dove_Right_III(-speed, -10)
-					time.sleep(timeLast/dpi)
-				else:
-					pass
+	# Define position calculators for each step
+	def calc_step_1(t, cmd):
+		"""Step 1: Group A lifts and moves (ascending arc)"""
+		if cmd == MOVE_NO:
+			h_a = _interpolate_linear(speed if not is_backward else -speed,
+			                          -speed if not is_backward else speed, t)
+			v_a = _interpolate_vertical_arc(speed, t, descending=False)
+			h_b = speed if not is_backward else -speed
+			v_b = -10
+			return (h_a, v_a, h_b, v_b)
+		elif cmd == CMD_LEFT:
+			h_base = _interpolate_linear(speed, -speed, t)
+			v = _interpolate_vertical_arc(speed, t, descending=False)
+			return {'L1_h': -h_base, 'L1_v': v, 'R2_h': h_base, 'R2_v': v, 'L3_h': -h_base, 'L3_v': v,
+			        'R1_h': speed, 'R1_v': -10, 'L2_h': -speed, 'L2_v': -10, 'R3_h': speed, 'R3_v': -10}
+		elif cmd == CMD_RIGHT:
+			h_base = _interpolate_linear(speed, -speed, t)
+			v = _interpolate_vertical_arc(speed, t, descending=False)
+			return {'L1_h': h_base, 'L1_v': v, 'R2_h': -h_base, 'R2_v': v, 'L3_h': h_base, 'L3_v': v,
+			        'R1_h': -speed, 'R1_v': -10, 'L2_h': speed, 'L2_v': -10, 'R3_h': -speed, 'R3_v': -10}
 
-				# Stop at end of step if move_stu == 0 (button released)
-				if move_stu == 0:
-					break
-		elif step_input == 2:
-			# Continue smoothly from step 1 for backward movement
-			num_steps = dpi
-			for i in range(num_steps + 1):
-				if move_stu and command == MOVE_NO:
-					t = i / num_steps
-					horizontal_pos = int(speed - (2 * speed * t))  # +speed to -speed
-					vertical_pos = int(3 * speed * (1 - t))       # 3*speed to 0
+	def calc_step_2(t, cmd):
+		"""Step 2: Group A lands (descending arc)"""
+		if cmd == MOVE_NO:
+			h_a = _interpolate_linear(-speed if not is_backward else speed,
+			                          speed if not is_backward else -speed, t)
+			v_a = _interpolate_vertical_arc(speed, 1-t, descending=True)
+			h_b = -h_a
+			v_b = -10
+			return (h_a, v_a, h_b, v_b)
+		elif cmd == CMD_LEFT:
+			h_base = _interpolate_linear(-speed, speed, t)
+			v = _interpolate_vertical_arc(speed, 1-t, descending=True)
+			return {'L1_h': -h_base, 'L1_v': v, 'R2_h': h_base, 'R2_v': v, 'L3_h': -h_base, 'L3_v': v,
+			        'R1_h': h_base, 'R1_v': -10, 'L2_h': -h_base, 'L2_v': -10, 'R3_h': h_base, 'R3_v': -10}
+		elif cmd == CMD_RIGHT:
+			h_base = _interpolate_linear(-speed, speed, t)
+			v = _interpolate_vertical_arc(speed, 1-t, descending=True)
+			return {'L1_h': h_base, 'L1_v': v, 'R2_h': -h_base, 'R2_v': v, 'L3_h': h_base, 'L3_v': v,
+			        'R1_h': -h_base, 'R1_v': -10, 'L2_h': h_base, 'L2_v': -10, 'R3_h': -h_base, 'R3_v': -10}
 
-					dove_Left_I(-horizontal_pos, vertical_pos)
-					dove_Right_II(-horizontal_pos, vertical_pos)
-					dove_Left_III(-horizontal_pos, vertical_pos)
+	def calc_step_3(t, cmd):
+		"""Step 3: Group B lifts and moves (ascending arc)"""
+		if cmd == MOVE_NO:
+			h_a = speed if not is_backward else -speed
+			v_a = -10
+			h_b = _interpolate_linear(speed if not is_backward else -speed,
+			                          -speed if not is_backward else speed, t)
+			v_b = _interpolate_vertical_arc(speed, t, descending=False)
+			return (h_a, v_a, h_b, v_b)
+		elif cmd == CMD_LEFT:
+			h_base = _interpolate_linear(speed, -speed, t)
+			v = _interpolate_vertical_arc(speed, t, descending=False)
+			return {'L1_h': -speed, 'L1_v': -10, 'R2_h': speed, 'R2_v': -10, 'L3_h': -speed, 'L3_v': -10,
+			        'R1_h': h_base, 'R1_v': v, 'L2_h': -h_base, 'L2_v': v, 'R3_h': h_base, 'R3_v': v}
+		elif cmd == CMD_RIGHT:
+			h_base = _interpolate_linear(speed, -speed, t)
+			v = _interpolate_vertical_arc(speed, t, descending=False)
+			return {'L1_h': speed, 'L1_v': -10, 'R2_h': -speed, 'R2_v': -10, 'L3_h': speed, 'L3_v': -10,
+			        'R1_h': -h_base, 'R1_v': v, 'L2_h': h_base, 'L2_v': v, 'R3_h': -h_base, 'R3_v': v}
 
-					dove_Right_I(horizontal_pos, -10)
-					dove_Left_II(horizontal_pos, -10)
-					dove_Right_III(horizontal_pos, -10)
-					time.sleep(timeLast/dpi)
-				else:
-					pass
+	def calc_step_4(t, cmd):
+		"""Step 4: Group B lands (descending arc)"""
+		if cmd == MOVE_NO:
+			h_a = -speed if not is_backward else speed
+			v_a = -10
+			h_b = _interpolate_linear(-speed if not is_backward else speed,
+			                          speed if not is_backward else -speed, t)
+			v_b = _interpolate_vertical_arc(speed, 1-t, descending=True)
+			return (h_a, v_a, h_b, v_b)
+		elif cmd == CMD_LEFT:
+			h_base = _interpolate_linear(-speed, speed, t)
+			v = _interpolate_vertical_arc(speed, 1-t, descending=True)
+			return {'L1_h': h_base, 'L1_v': -10, 'R2_h': -h_base, 'R2_v': -10, 'L3_h': h_base, 'L3_v': -10,
+			        'R1_h': h_base, 'R1_v': v, 'L2_h': -h_base, 'L2_v': v, 'R3_h': h_base, 'R3_v': v}
+		elif cmd == CMD_RIGHT:
+			h_base = _interpolate_linear(-speed, speed, t)
+			v = _interpolate_vertical_arc(speed, 1-t, descending=True)
+			return {'L1_h': -h_base, 'L1_v': -10, 'R2_h': h_base, 'R2_v': -10, 'L3_h': -h_base, 'L3_v': -10,
+			        'R1_h': -h_base, 'R1_v': v, 'L2_h': h_base, 'L2_v': v, 'R3_h': -h_base, 'R3_v': v}
 
-				# Stop at end of step if move_stu == 0 (button released)
-				if move_stu == 0:
-					break
-		elif step_input == 3:
-			# Backward movement second group: interpolate from -speed to +speed
-			num_steps = dpi
-			for i in range(num_steps + 1):
-				if move_stu and command == MOVE_NO:
-					dove_Left_I(-speed, -10)  # Stay at -speed
-					dove_Right_II(-speed, -10)
-					dove_Left_III(-speed, -10)
+	# Execute the appropriate step
+	calculators = {1: calc_step_1, 2: calc_step_2, 3: calc_step_3, 4: calc_step_4}
 
-					t = i / num_steps
-					horizontal_pos = int(-speed + (2 * speed * t))  # -speed to +speed
-					vertical_pos = int(3 * speed * t)               # 0 to 3*speed
-
-					dove_Right_I(horizontal_pos, vertical_pos)
-					dove_Left_II(horizontal_pos, vertical_pos)
-					dove_Right_III(horizontal_pos, vertical_pos)
-					time.sleep(timeLast/dpi)
-				else:
-					pass
-
-				# Stop at end of step if move_stu == 0 (button released)
-				if move_stu == 0:
-					break
-		elif step_input == 4:
-			# Continue smoothly from step 3 for backward movement
-			num_steps = dpi
-			for i in range(num_steps + 1):
-				if move_stu and command == MOVE_NO:
-					t = i / num_steps
-					horizontal_pos = int(speed - (2 * speed * t))  # +speed to -speed
-					vertical_pos = int(3 * speed * (1 - t))       # 3*speed to 0
-
-					dove_Left_I(horizontal_pos, -10)
-					dove_Right_II(horizontal_pos, -10)
-					dove_Left_III(horizontal_pos, -10)
-
-					dove_Right_I(-horizontal_pos, vertical_pos)
-					dove_Left_II(-horizontal_pos, vertical_pos)
-					dove_Right_III(-horizontal_pos, vertical_pos)
-					time.sleep(timeLast/dpi)
-				else:
-					pass
-
-				# Stop at end of step if move_stu == 0 (button released)
-				if move_stu == 0:
-					break
+	if step_input in calculators:
+		_execute_step_loop(num_steps, time_per_step, calculators[step_input], command)
 
 
 def steady_X():
