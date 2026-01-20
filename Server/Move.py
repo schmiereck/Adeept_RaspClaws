@@ -1908,12 +1908,13 @@ def wakeup():
 	Wake up servos from standby - moves servos to stand position.
 	"""
 	print("⚡ WAKEUP - Moving servos to stand position")
-	global direction_command, turn_command, step_set
+	global direction_command, turn_command, step_set, move_stu
 
 	# Reset movement commands to safe defaults
 	direction_command = 'stand'  # Set to stand to trigger stand() in move_thread
 	turn_command = 'no'
 	step_set = 1  # Reset walk cycle to beginning
+	move_stu = 1  # Re-enable movement (was set to 0 in standby)
 
 	# Move servos to stand position (safe, known position)
 	# This is better than restoring old positions because servos may have been
