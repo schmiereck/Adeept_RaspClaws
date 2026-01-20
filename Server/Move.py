@@ -1589,7 +1589,8 @@ def look_right(wiggle=look_wiggle):
 		pwm.set_pwm(12, 0, Left_Right_input)
 
 
-def home():
+def look_home():
+	"""Reset camera to home position (center)"""
 	global Left_Right_input, Up_Down_input
 	pwm.set_all_pwm(0, 300)
 	Left_Right_input = 300

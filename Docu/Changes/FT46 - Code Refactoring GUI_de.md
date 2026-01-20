@@ -306,6 +306,30 @@ def loop():
 - Betroffene Dateien:
   - **Server/GUIServer.py**: Debug-Ausgaben hinzugefügt zu `handle_camera_command()`
 
+**8. Camera Commands Umbenennung (Konsistenz)**
+- Problem:
+  - Inkonsistente Command-Namen: `up`, `down`, `lookleft`, `lookright`, `home`
+  - Left/Right hatten `look` Prefix, Up/Down/Home nicht
+  - Groß-/Kleinschreibung inkonsistent
+- Lösung:
+  - **Alle Camera Commands folgen jetzt dem gleichen Pattern:**
+    - `up` → `lookUp` (CamelCase + look Prefix)
+    - `down` → `lookDown` (CamelCase + look Prefix)
+    - `lookleft` → `lookLeft` (CamelCase)
+    - `lookright` → `lookRight` (CamelCase)
+    - `home` → `lookHome` (CamelCase + look Prefix)
+  - Konsistentes Naming-Schema: `look[Direction]` / `lookHome`
+  - Funktion `home()` → `look_home()` in Move.py umbenannt
+- Betroffene Dateien:
+  - **Client/GUI.py**: Camera Callbacks aktualisiert (Zeile 244-268)
+    - `send_command('home')` → `send_command('lookHome')`
+  - **Server/GUIServer.py**: `handle_camera_command()` aktualisiert (Zeile 284-297)
+    - `data == 'home'` → `data == 'lookHome'`
+    - `move.home()` → `move.look_home()`
+  - **Server/Move.py**: Funktion umbenannt (Zeile 1592-1596)
+    - `def home():` → `def look_home():`
+    - Docstring hinzugefügt
+
 **Layout-Visualisierung:**
 ```
 LINKS (Movement/Roboter)              RECHTS (Camera/Kamera)

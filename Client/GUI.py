@@ -241,19 +241,19 @@ def call_Turn_stop(event):
 # ==================== Camera Callbacks ====================
 
 def call_headup(event):
-	send_command('up')
+	send_command('lookUp')
 
 
 def call_headdown(event):
-	send_command('down')
+	send_command('lookDown')
 
 
 def call_headleft(event):
-	send_command('lookleft')
+	send_command('lookLeft')
 
 
 def call_headright(event):
-	send_command('lookright')
+	send_command('lookRight')
 
 
 def call_LRstop(event):
@@ -265,7 +265,7 @@ def call_UDstop(event):
 
 
 def call_headhome(event):
-	send_command('home')
+	send_command('lookHome')
 
 
 # ==================== Mode Toggle Callbacks ====================

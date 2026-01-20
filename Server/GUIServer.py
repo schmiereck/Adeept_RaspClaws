@@ -280,22 +280,22 @@ def handle_movement_command(data):
 
 
 def handle_camera_command(data):
-	"""Handle camera movement commands (up, down, left, right, home)"""
-	if data == 'up':
-		print(f"[GUIServer] Camera command: up")
+	"""Handle camera movement commands (lookUp, lookDown, lookLeft, lookRight, home)"""
+	if data == 'lookUp':
+		print(f"[GUIServer] Camera command: lookUp")
 		move.look_up()
-	elif data == 'down':
-		print(f"[GUIServer] Camera command: down")
+	elif data == 'lookDown':
+		print(f"[GUIServer] Camera command: lookDown")
 		move.look_down()
-	elif data == 'home':
-		print(f"[GUIServer] Camera command: home - calling move.home()")
-		move.home()
-		print(f"[GUIServer] move.home() completed")
-	elif data == 'lookleft':
-		print(f"[GUIServer] Camera command: lookleft")
+	elif data == 'lookHome':
+		print(f"[GUIServer] Camera command: lookHome - calling move.look_home()")
+		move.look_home()
+		print(f"[GUIServer] move.look_home() completed")
+	elif data == 'lookLeft':
+		print(f"[GUIServer] Camera command: lookLeft")
 		move.look_left()
-	elif data == 'lookright':
-		print(f"[GUIServer] Camera command: lookright")
+	elif data == 'lookRight':
+		print(f"[GUIServer] Camera command: lookRight")
 		move.look_right()
 	elif data == 'LRstop':
 		pass  # Camera servos don't need explicit stop (they move to position and stay)
