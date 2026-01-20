@@ -690,14 +690,21 @@ def connection_thread():
 	global video_thread_started  # Use the global flag
 
 	try:
+		print("[connection_thread] Starting to receive messages...")
 		while 1:
 			car_info = (tcpClicSock.recv(BUFSIZ)).decode()
 			if not car_info:
+				print("[connection_thread] Empty message received, continuing...")
 				continue
 
-			# DEBUG: Log received messages (except INFO to avoid spam)
+			# DEBUG: Log ALL received messages initially for debugging
 			if not car_info.startswith(STATUS_INFO_PREFIX):
 				print(f"[DEBUG] Received: {car_info[:100]}...")  # First 100 chars
+			else:
+				# Log first INFO message to confirm data flow
+				if not hasattr(connection_thread, '_first_info_logged'):
+					print(f"[DEBUG] First INFO received: {car_info[:50]}...")
+					connection_thread._first_info_logged = True
 
 			# Dispatch message to appropriate handler
 			if STATUS_VIDEO_READY in car_info:
@@ -756,7 +763,9 @@ def connection_thread():
 
 	except Exception as e:
 		# Connection closed or socket error - exit thread gracefully
-		print(f"Connection thread stopped: {e}")
+		print(f"[connection_thread] Connection thread stopped: {e}")
+		import traceback
+		traceback.print_exc()
 
 
 # ==================== Connection Functions ====================
