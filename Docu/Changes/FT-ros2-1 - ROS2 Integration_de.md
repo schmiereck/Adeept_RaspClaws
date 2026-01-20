@@ -378,14 +378,57 @@ docker-compose -f docker-compose.ros2.yml up -d
 
 ---
 
+## Protocol Constants Integration
+
+ROSServer.py verwendet die zentralen Command-Konstanten aus `protocol.py`:
+
+```python
+from protocol import (
+    CMD_FORWARD, CMD_BACKWARD, CMD_LEFT, CMD_RIGHT,
+    CMD_FAST, CMD_SLOW, MOVE_STAND,
+    CMD_LOOK_UP, CMD_LOOK_DOWN, CMD_LOOK_LEFT, CMD_LOOK_RIGHT, CMD_LOOK_HOME,
+    CMD_SMOOTH_CAM, CMD_SMOOTH_CAM_OFF
+)
+```
+
+**Vorteile**:
+- ✅ Konsistente Command-Strings zwischen Client und Server
+- ✅ Vermeidet Tippfehler
+- ✅ IDE Autocomplete-Unterstützung
+- ✅ Einfachere Wartung
+
+**Beispiel Twist-Callback**:
+```python
+def cmd_vel_callback(self, msg):
+    linear_x = msg.linear.x
+    angular_z = msg.angular.z
+
+    if abs(linear_x) > 0.1:
+        if linear_x > 0:
+            move.commandInput(CMD_FORWARD)  # statt 'forward'
+        else:
+            move.commandInput(CMD_BACKWARD)
+    elif abs(angular_z) > 0.1:
+        if angular_z > 0:
+            move.commandInput(CMD_LEFT)
+        else:
+            move.commandInput(CMD_RIGHT)
+    else:
+        move.commandInput(MOVE_STAND)
+```
+
+---
+
 ## Nächste Schritte
 
 ### Phase 1: Basis-Funktionalität (✅ AKTUELL)
 - [x] ROSServer.py erstellt
+- [x] ROSServer.py verwendet protocol.py Konstanten
 - [x] Docker Setup
 - [x] cmd_vel Topic
 - [x] Basis Services
-- [ ] Tests auf Hardware
+- [x] Test-Client (ros2_test_client.py)
+- [ ] Tests auf Hardware mit echtem Roboter
 
 ### Phase 2: Sensor-Integration
 - [ ] Camera Topic (`sensor_msgs/Image`)
@@ -458,6 +501,16 @@ RaspClaws ROS 2 Node
 
 ---
 
-**Version**: 1.0  
-**Status**: 🚧 In Entwicklung  
-**Datum**: 2026-01-18
+## Geänderte Dateien
+
+- **Server/ROSServer.py**: ROS 2 Server mit Topics, Services und protocol.py Integration
+- **ros2_test_client.py**: Python Test-Client für einfache Tests
+- **protocol.py**: Zentrale Command-Konstanten
+- **docker-compose.ros2.yml**: Docker Setup (falls vorhanden)
+
+---
+
+**Feature ID**: FT-ros2-1
+**Version**: 1.1
+**Status**: ✅ Bereit für Hardware-Tests
+**Datum**: 2026-01-20
