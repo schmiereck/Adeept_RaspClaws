@@ -360,8 +360,153 @@ Nach dem Refactoring der Bewegungsfunktionen in FT47 wurden beim Testen zwei Pro
 - [ ] Bewegungen sind ausladend genug (nicht mehr nur mm-Schritte) ✓
 - [ ] Keine Kollisionen oder Instabilität durch größere Amplitude
 
-### Lessons Learned
+### Lessons Learned (Initial)
 
 1. **Testing ist essentiell**: Refactoring ohne Hardware-Test kann Logik-Fehler übersehen
 2. **Parametervergleich**: Speed-Werte sollten konsistent sein (Forward/Backward/Turn)
 3. **Semantik beachten**: Kommentare müssen mit tatsächlichem Verhalten übereinstimmen
+
+---
+
+## Final Fix: rightSide_direction und Side-Based Rotation (2026-01-20)
+
+### Die wahren Probleme
+
+Nach den ersten Fixes zeigte sich, dass die Rotation immer noch nicht funktionierte:
+
+**Iteration 1:** Roboter stand auf der Stelle, hob abwechselnd Beine
+- Servo-Logs zeigten: R1+R3 gleichzeitig in der Luft (beide rechts)
+- **Problem**: "Side-to-Side" statt Tripod-Gait!
+
+**Iteration 2:** Alle Beine einer Seite hatten gleiche h-Werte
+- Servo-Logs: L1:264, L2:264, L3:264 (alle links gleich!)
+- **Problem**: Keine entgegengesetzten Bewegungen innerhalb der Gruppen
+
+**Iteration 3:** Roboter lief vorwärts/rückwärts statt zu drehen
+- Servo-Logs: L1:326, L3:326 (beide forward), R2:281 (backward)
+- **Problem**: Das ist das Muster für Vorwärtsbewegung, nicht Drehung!
+
+### Root Cause Analysis
+
+#### Problem 1: rightSide_direction Flag invertiert Vorzeichen
+
+```python
+# Move.py Zeile 58-59
+leftSide_direction  = 1  # → pwm + horizontal
+rightSide_direction = 0  # → pwm - horizontal  ← INVERTIERT!
+
+# In dove_Right_I():
+if rightSide_direction:  # = 0 (False!)
+    target_h = pwm6 + horizontal
+else:
+    target_h = pwm6 - horizontal  # ← Vorzeichen wird UMGEKEHRT!
+```
+
+**Bedeutung:** Alle h-Werte für rechte Beine (R1, R2, R3) werden automatisch invertiert!
+- `horizontal = +10` → linke Beine: +10 (vorwärts), rechte Beine: -10 (rückwärts)
+
+#### Problem 2: Fundamentales Missverständnis - Tripod vs. Side
+
+**Vorwärtsbewegung nutzt Tripod-Gruppen:**
+- Group A (L1, R2, L3): Gleiche Richtung
+- Group B (R1, L2, R3): Entgegengesetzte Richtung zu A
+- Resultat: Roboter bewegt sich linear vorwärts/rückwärts
+
+**Drehung nutzt SEITEN, nicht Gruppen:**
+- **Alle linken Beine** (L1, L2, L3): Gleiche Richtung
+- **Alle rechten Beine** (R1, R2, R3): Entgegengesetzte Richtung zu links
+- Resultat: Roboter dreht sich um Hochachse
+
+**DAS war der Durchbruch!** Bei Drehung müssen Beine basierend auf ihrer **SEITE** bewegen, NICHT basierend auf ihrer **Tripod-Gruppe**!
+
+### Die finale Lösung
+
+#### LEFT (CCW) - Drehung gegen Uhrzeigersinn
+
+```python
+# Phase 1: Group B (R1, L2, R3) in air, Group A (L1, R2, L3) on ground
+# Group A on ground: ALLE nach hinten/vorne basierend auf SEITE
+h_push = int(abs(speed) * math.cos(t * math.pi))  # +speed to -speed
+positions['L1'] = {'h': h_push, 'v': -10}   # Links: +→- = forward→back
+positions['R2'] = {'h': -h_push, 'v': -10}  # Rechts: -→+ (invertiert) = back→forward
+positions['L3'] = {'h': h_push, 'v': -10}   # Links: +→- = forward→back
+
+# Resultat:
+# - L1, L3 (links): ziehen nach hinten
+# - R2 (rechts): schiebt nach vorne (durch Invertierung)
+# → Körper dreht CCW! ✓
+```
+
+#### RIGHT (CW) - Drehung im Uhrzeigersinn
+
+```python
+# Phase 1: Group B (R1, L2, R3) in air, Group A (L1, R2, L3) on ground
+# Group A on ground: ALLE nach vorne/hinten basierend auf SEITE (umgekehrt zu LEFT)
+h_push = int(abs(speed) * math.cos(t * math.pi))  # +speed to -speed
+positions['L1'] = {'h': -h_push, 'v': -10}  # Links: -→+ = back→forward
+positions['R2'] = {'h': h_push, 'v': -10}   # Rechts: +→- (invertiert) = forward→back
+positions['L3'] = {'h': -h_push, 'v': -10}  # Links: -→+ = back→forward
+
+# Resultat:
+# - L1, L3 (links): schieben nach vorne
+# - R2 (rechts): zieht nach hinten (durch Invertierung)
+# → Körper dreht CW! ✓
+```
+
+### Schlüssel-Erkenntnisse
+
+1. **rightSide_direction=0 invertiert ALLE rechten Beine automatisch**
+   - Muss bei JEDEM h-Wert berücksichtigt werden
+   - Positive h-Werte für rechte Beine → werden zu negativen Bewegungen
+   - Negative h-Werte für rechte Beine → werden zu positiven Bewegungen
+
+2. **Rotation != Forward/Backward**
+   - Forward/Backward: Nutzt Tripod-Gruppen (L1/R2/L3 vs R1/L2/R3)
+   - Rotation: Nutzt Seiten (L1/L2/L3 vs R1/R2/R3)
+   - Diese sind fundamentale unterschiedliche Bewegungsmuster!
+
+3. **Alle Beine einer Seite müssen gleich bewegen**
+   - LEFT: Alle linken nach hinten, alle rechten nach vorne
+   - RIGHT: Alle linken nach vorne, alle rechten nach hinten
+   - Die Tripod-Gruppen sorgen nur für Stabilität (immer 3 Beine am Boden)
+
+### Testing nach Final Fix
+
+✅ LEFT-Taste: Roboter dreht CCW (gegen Uhrzeigersinn)
+✅ RIGHT-Taste: Roboter dreht CW (im Uhrzeigersinn)
+✅ Tripod-Gait: Korrekte Gruppen (L1/R2/L3 vs R1/L2/R3)
+✅ Stabilität: Immer 3 Beine am Boden
+✅ Keine lineare Bewegung mehr
+
+### Performance-Optimierung
+
+Nach erfolgreicher Rotation wurde die Geschwindigkeit erhöht:
+- **Cycle-Zeit**: 1.5s → 1.0s (Move.py:635)
+- **Resultat**: 33% schnellere Bewegungen
+
+### Lessons Learned (Final)
+
+1. **Hardware-Direction-Flags sind kritisch**
+   - `rightSide_direction=0` war der Schlüssel zum Verständnis
+   - Muss in ALLEN Berechnungen berücksichtigt werden
+   - Dokumentation solcher Flags ist essentiell
+
+2. **Bewegungsmuster sind kontextabhängig**
+   - Vorwärts: Tripod-basiert (Gruppen bewegen entgegengesetzt)
+   - Drehung: Seiten-basiert (Seiten bewegen entgegengesetzt)
+   - Nicht verwechseln!
+
+3. **Servo-Logs sind Gold wert**
+   - Zeigen exakt was passiert (nicht was Code denkt zu tun)
+   - Muster-Erkennung in Logs führt zu Durchbrüchen
+   - Format: `[timestamp] [SERVOS] L1:h,v L2:h,v L3:h,v R1:h,v R2:h,v R3:h,v`
+
+4. **Iteratives Debugging mit Hardware**
+   - Jeder Test auf Hardware enthüllt neue Layer
+   - Simulation würde rightSide_direction-Problem nie zeigen
+   - Geduld und systematisches Vorgehen zahlt sich aus
+
+5. **Expertenwissen + Experimente = Erfolg**
+   - Theorie (Tripod-Gait Prinzip) ist Basis
+   - Aber Hardware-Realität (rightSide_direction) muss durch Tests entdeckt werden
+   - Kombination führt zur Lösung

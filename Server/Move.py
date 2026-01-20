@@ -686,6 +686,43 @@ def calculate_target_positions(phase, speed, command):
 
 	elif command == CMD_LEFT:
 		# LEFT TURN (CCW): Tripod-Gait Rotation (FT43)
+		# CRITICAL: For rotation, legs must move based on SIDE (left vs right), NOT group!
+		# Left legs: push forward (positive h), Right legs: pull back (positive h inverted = back)
+		if phase < 0.5:
+			# Phase 1: Group B (R1, L2, R3) in air, Group A (L1, R2, L3) on ground pushing
+			t = phase * 2  # 0.0 to 1.0
+			v = int(3 * abs(speed) * math.sin(t * math.pi))  # Smooth arc
+
+			# Group B in air: swing - right pulls forward, left pulls back
+			h_swing = int(abs(speed) * math.cos((t + 1) * math.pi))  # -speed to +speed
+			positions['R1'] = {'h': h_swing, 'v': v}   # Right: -h to go forward (inverted)
+			positions['L2'] = {'h': -h_swing, 'v': v}  # Left: -h to go back
+			positions['R3'] = {'h': h_swing, 'v': v}   # Right: -h to go forward (inverted)
+
+			# Group A on ground: right pulls back, left pushes forward
+			h_push = int(abs(speed) * math.cos(t * math.pi))  # +speed to -speed
+			positions['L1'] = {'h': -h_push, 'v': -10}  # Left: -→+ = back→forward (push left)
+			positions['R2'] = {'h': h_push, 'v': -10}   # Right: needs +→- inverted = forward→back (pull left)
+			positions['L3'] = {'h': -h_push, 'v': -10}  # Left: -→+ = back→forward (push left)
+		else:
+			# Phase 2: Group A (L1, R2, L3) in air, Group B (R1, L2, R3) on ground pushing
+			t = (phase - 0.5) * 2  # 0.0 to 1.0
+			v = int(3 * abs(speed) * math.sin(t * math.pi))  # Smooth arc
+
+			# Group A in air: swing - right pulls forward, left pulls back
+			h_swing = int(abs(speed) * math.cos((t + 1) * math.pi))  # -speed to +speed
+			positions['L1'] = {'h': -h_swing, 'v': v}  # Left: -h to go back
+			positions['R2'] = {'h': h_swing, 'v': v}   # Right: -h to go forward (inverted)
+			positions['L3'] = {'h': -h_swing, 'v': v}  # Left: -h to go back
+
+			# Group B on ground: right pulls back, left pushes forward
+			h_push = int(abs(speed) * math.cos(t * math.pi))  # +speed to -speed
+			positions['R1'] = {'h': h_push, 'v': -10}   # Right: needs +→- inverted = forward→back (pull left)
+			positions['L2'] = {'h': -h_push, 'v': -10}  # Left: -→+ = back→forward (push left)
+			positions['R3'] = {'h': h_push, 'v': -10}   # Right: needs +→- inverted = forward→back (pull left)
+
+	elif command == CMD_RIGHT:
+		# RIGHT TURN (CW): Tripod-Gait Rotation (mirror of LEFT)
 		# Group A (L1, R2, L3) alternates with Group B (R1, L2, R3)
 		# CRITICAL: For rotation, legs must move based on SIDE (left vs right), NOT group!
 		# Left legs: pull back (negative h), Right legs: push forward (negative h inverted = forward)
@@ -702,9 +739,9 @@ def calculate_target_positions(phase, speed, command):
 
 			# Group A on ground: left pulls back, right pushes forward
 			h_push = int(abs(speed) * math.cos(t * math.pi))  # +speed to -speed
-			positions['L1'] = {'h': h_push, 'v': -10}  # Left: +→- = forward→back (pull left)
-			positions['R2'] = {'h': -h_push, 'v': -10}  # Right: needs -→+ inverted = back→forward (push left)
-			positions['L3'] = {'h': h_push, 'v': -10}  # Left: +→- = forward→back (pull left)
+			positions['L1'] = {'h': h_push, 'v': -10}  # Left: +→- = forward→back (pull right)
+			positions['R2'] = {'h': -h_push, 'v': -10}  # Right: needs -→+ inverted = back→forward (push right)
+			positions['L3'] = {'h': h_push, 'v': -10}  # Left: +→- = forward→back (pull right)
 		else:
 			# Phase 2: Group A (L1, R2, L3) in air, Group B (R1, L2, R3) on ground pushing
 			t = (phase - 0.5) * 2  # 0.0 to 1.0
@@ -718,46 +755,9 @@ def calculate_target_positions(phase, speed, command):
 
 			# Group B on ground: left pulls back, right pushes forward
 			h_push = int(abs(speed) * math.cos(t * math.pi))  # +speed to -speed
-			positions['R1'] = {'h': -h_push, 'v': -10}  # Right: needs -→+ inverted = back→forward (push left)
-			positions['L2'] = {'h': h_push, 'v': -10}  # Left: +→- = forward→back (pull left)
-			positions['R3'] = {'h': -h_push, 'v': -10}  # Right: needs -→+ inverted = back→forward (push left)
-
-	elif command == CMD_RIGHT:
-		# RIGHT TURN (CW): Tripod-Gait Rotation (mirror of LEFT)
-		# CRITICAL: For rotation, legs must move based on SIDE (left vs right), NOT group!
-		# Left legs: push forward (positive h), Right legs: pull back (positive h inverted = back)
-		if phase < 0.5:
-			# Phase 1: Group B (R1, L2, R3) in air, Group A (L1, R2, L3) on ground pushing
-			t = phase * 2  # 0.0 to 1.0
-			v = int(3 * abs(speed) * math.sin(t * math.pi))  # Smooth arc
-
-			# Group B in air: swing - right pulls forward, left pulls back
-			h_swing = int(abs(speed) * math.cos((t + 1) * math.pi))  # -speed to +speed
-			positions['R1'] = {'h': h_swing, 'v': v}   # Right: -h to go forward (inverted)
-			positions['L2'] = {'h': -h_swing, 'v': v}  # Left: -h to go back
-			positions['R3'] = {'h': h_swing, 'v': v}   # Right: -h to go forward (inverted)
-
-			# Group A on ground: right pulls back, left pushes forward
-			h_push = int(abs(speed) * math.cos(t * math.pi))  # +speed to -speed
-			positions['L1'] = {'h': -h_push, 'v': -10}  # Left: -→+ = back→forward (push right)
-			positions['R2'] = {'h': h_push, 'v': -10}   # Right: needs +→- inverted = forward→back (pull right)
-			positions['L3'] = {'h': -h_push, 'v': -10}  # Left: -→+ = back→forward (push right)
-		else:
-			# Phase 2: Group A (L1, R2, L3) in air, Group B (R1, L2, R3) on ground pushing
-			t = (phase - 0.5) * 2  # 0.0 to 1.0
-			v = int(3 * abs(speed) * math.sin(t * math.pi))  # Smooth arc
-
-			# Group A in air: swing - right pulls forward, left pulls back
-			h_swing = int(abs(speed) * math.cos((t + 1) * math.pi))  # -speed to +speed
-			positions['L1'] = {'h': -h_swing, 'v': v}  # Left: -h to go back
-			positions['R2'] = {'h': h_swing, 'v': v}   # Right: -h to go forward (inverted)
-			positions['L3'] = {'h': -h_swing, 'v': v}  # Left: -h to go back
-
-			# Group B on ground: right pulls back, left pushes forward
-			h_push = int(abs(speed) * math.cos(t * math.pi))  # +speed to -speed
-			positions['R1'] = {'h': h_push, 'v': -10}   # Right: needs +→- inverted = forward→back (pull right)
-			positions['L2'] = {'h': -h_push, 'v': -10}  # Left: -→+ = back→forward (push right)
-			positions['R3'] = {'h': h_push, 'v': -10}   # Right: needs +→- inverted = forward→back (pull right)
+			positions['R1'] = {'h': -h_push, 'v': -10}  # Right: needs -→+ inverted = back→forward (push right)
+			positions['L2'] = {'h': h_push, 'v': -10}  # Left: +→- = forward→back (pull right)
+			positions['R3'] = {'h': -h_push, 'v': -10}  # Right: needs -→+ inverted = back→forward (push right)
 
 	return positions
 
