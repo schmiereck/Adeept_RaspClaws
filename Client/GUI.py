@@ -65,6 +65,7 @@ ACCEL_X, ACCEL_Y, ACCEL_Z = 0.0, 0.0, 0.0
 MPU_AVAILABLE = False
 
 video_thread_started = False  # Track if video thread was started (global)
+shutdown_requested = False  # Flag to signal application shutdown
 
 ########>>>>>VIDEO<<<<<########
 
@@ -146,7 +147,12 @@ fps_threading.start()									 #Thread starts
 
 def send_command(command):
 	"""Send a command to the server"""
-	tcpClicSock.send(command.encode())
+	try:
+		if tcpClicSock:
+			tcpClicSock.send(command.encode())
+	except Exception as e:
+		print(f"Error sending command '{command}': {e}")
+		# Socket is probably closed, ignore the error
 
 
 def send_movement_command(command, state_var_name, state_value=1):
@@ -323,12 +329,12 @@ def call_servo_standby(event):
 	global servo_standby_state
 	try:
 		if not servo_standby_state:
-			tcpClicSock.send('servo_standby'.encode())
+			send_command('servo_standby')
 			Btn_ServoStandby.config(bg='#FF6D00', fg='#000000', text='Servo Wake [M]')
 			servo_standby_state = True
 			print("🔋 Servos in STANDBY mode - low power")
 		else:
-			tcpClicSock.send('servo_wakeup'.encode())
+			send_command('servo_wakeup')
 			Btn_ServoStandby.config(bg=color_btn, fg=color_text, text='Servo Standby [M]')
 			servo_standby_state = False
 			print("⚡ Servos AWAKE - ready to move")
@@ -341,12 +347,12 @@ def call_camera_pause(event):
 	global camera_pause_state
 	try:
 		if not camera_pause_state:
-			tcpClicSock.send('camera_pause'.encode())
+			send_command('camera_pause')
 			Btn_CameraPause.config(bg='#FF6D00', fg='#000000', text='Camera Resume [,]')
 			camera_pause_state = True
 			print("📷 Camera PAUSED - saving power")
 		else:
-			tcpClicSock.send('camera_resume'.encode())
+			send_command('camera_resume')
 			Btn_CameraPause.config(bg=color_btn, fg=color_text, text='Camera Pause [,]')
 			camera_pause_state = False
 			print("📷 Camera RESUMED")
@@ -499,135 +505,140 @@ def connection_thread():
 	global GYRO_X, GYRO_Y, GYRO_Z, ACCEL_X, ACCEL_Y, ACCEL_Z  # MPU6050 data
 	global video_thread_started  # Use the global flag
 
-	while 1:
-		car_info = (tcpClicSock.recv(BUFSIZ)).decode()
-		if not car_info:
-			continue
+	try:
+		while 1:
+			car_info = (tcpClicSock.recv(BUFSIZ)).decode()
+			if not car_info:
+				continue
 
-		# Handle VIDEO_READY signal from server
-		elif 'VIDEO_READY' in car_info:
-			if not video_thread_started:
-				print("✅ Server signals: Video stream is ready")
-				video_threading = thread.Thread(target=run_open, daemon=True)
-				video_threading.start()
-				video_thread_started = True
-				print("✓ Video thread started")
-			continue
+			# Handle VIDEO_READY signal from server
+			elif 'VIDEO_READY' in car_info:
+				if not video_thread_started:
+					print("✅ Server signals: Video stream is ready")
+					video_threading = thread.Thread(target=run_open, daemon=True)
+					video_threading.start()
+					video_thread_started = True
+					print("✓ Video thread started")
+				continue
 
-		elif 'VIDEO_TIMEOUT' in car_info:
-			print("⚠ Video server failed to start - no video stream available")
-			continue
+			elif 'VIDEO_TIMEOUT' in car_info:
+				print("⚠ Video server failed to start - no video stream available")
+				continue
 
-		elif car_info.startswith('INFO:'):
-			# Process CPU/RAM/Battery info from server
-			try:
-				info_data = car_info[5:].strip()  # Remove 'INFO:' prefix
+			elif car_info.startswith('INFO:'):
+				# Process CPU/RAM/Battery info from server
+				try:
+					info_data = car_info[5:].strip()  # Remove 'INFO:' prefix
 
-				# Split by '|' to separate system info, servo positions, and MPU data
-				parts = info_data.split('|')
-				system_info = parts[0].strip()
-				servo_info = parts[1].strip() if len(parts) > 1 else None
-				mpu_info = parts[2].strip() if len(parts) > 2 else None
+					# Split by '|' to separate system info, servo positions, and MPU data
+					parts = info_data.split('|')
+					system_info = parts[0].strip()
+					servo_info = parts[1].strip() if len(parts) > 1 else None
+					mpu_info = parts[2].strip() if len(parts) > 2 else None
 
-				info_get = system_info.split()
-				if len(info_get) >= 4:
-					# New format: CPU_TEMP CPU_USE RAM_USE BATTERY_VOLTAGE
-					CPU_TEP, CPU_USE, RAM_USE, BATTERY_VOLTAGE = info_get[0], info_get[1], info_get[2], info_get[3]
-					CPU_TEP_lab.config(text='CPU Temp: %s℃'%CPU_TEP)
-					CPU_USE_lab.config(text='CPU Usage: %s'%CPU_USE)
-					RAM_lab.config(text='RAM Usage: %s'%RAM_USE)
+					info_get = system_info.split()
+					if len(info_get) >= 4:
+						# New format: CPU_TEMP CPU_USE RAM_USE BATTERY_VOLTAGE
+						CPU_TEP, CPU_USE, RAM_USE, BATTERY_VOLTAGE = info_get[0], info_get[1], info_get[2], info_get[3]
+						CPU_TEP_lab.config(text='CPU Temp: %s℃'%CPU_TEP)
+						CPU_USE_lab.config(text='CPU Usage: %s'%CPU_USE)
+						RAM_lab.config(text='RAM Usage: %s'%RAM_USE)
 
-					# Update battery display with color coding
-					battery_volt = float(BATTERY_VOLTAGE)
-					if battery_volt == 0.0:
-						# Battery monitoring not available
-						BATTERY_lab.config(text='Battery: N/A', bg='#757575', fg=color_text)
-					else:
-						# Calculate percentage (6.0V = 0%, 8.4V = 100%)
-						Vref = 8.4
-						WarningThreshold = 6.0
-						battery_percent = ((battery_volt - WarningThreshold) / (Vref - WarningThreshold)) * 100
-						battery_percent = max(0, min(100, battery_percent))  # Clamp to 0-100%
-
-						# Color coding: green > 60%, orange 30-60%, red < 30%
-						if battery_percent >= 60:
-							bg_color = '#4CAF50'  # Green
-						elif battery_percent >= 30:
-							bg_color = '#FF9800'  # Orange
+						# Update battery display with color coding
+						battery_volt = float(BATTERY_VOLTAGE)
+						if battery_volt == 0.0:
+							# Battery monitoring not available
+							BATTERY_lab.config(text='Battery: N/A', bg='#757575', fg=color_text)
 						else:
-							bg_color = '#F44336'  # Red
+							# Calculate percentage (6.0V = 0%, 8.4V = 100%)
+							Vref = 8.4
+							WarningThreshold = 6.0
+							battery_percent = ((battery_volt - WarningThreshold) / (Vref - WarningThreshold)) * 100
+							battery_percent = max(0, min(100, battery_percent))  # Clamp to 0-100%
 
-						BATTERY_lab.config(text='Battery: %.1fV (%.0f%%)'%(battery_volt, battery_percent),
-						                   bg=bg_color, fg='#FFFFFF')
+							# Color coding: green > 60%, orange 30-60%, red < 30%
+							if battery_percent >= 60:
+								bg_color = '#4CAF50'  # Green
+							elif battery_percent >= 30:
+								bg_color = '#FF9800'  # Orange
+							else:
+								bg_color = '#F44336'  # Red
 
-				elif len(info_get) >= 3:
-					# Old format without battery (backwards compatibility)
-					CPU_TEP, CPU_USE, RAM_USE = info_get[0], info_get[1], info_get[2]
-					CPU_TEP_lab.config(text='CPU Temp: %s℃'%CPU_TEP)
-					CPU_USE_lab.config(text='CPU Usage: %s'%CPU_USE)
-					RAM_lab.config(text='RAM Usage: %s'%RAM_USE)
-					BATTERY_lab.config(text='Battery: N/A', bg='#757575', fg=color_text)
+							BATTERY_lab.config(text='Battery: %.1fV (%.0f%%)'%(battery_volt, battery_percent),
+							                   bg=bg_color, fg='#FFFFFF')
 
-				# Parse MPU6050 data (format: "G:x,y,z A:x,y,z" or "MPU:N/A")
-				if mpu_info:
-					parse_mpu_data(mpu_info)
+					elif len(info_get) >= 3:
+						# Old format without battery (backwards compatibility)
+						CPU_TEP, CPU_USE, RAM_USE = info_get[0], info_get[1], info_get[2]
+						CPU_TEP_lab.config(text='CPU Temp: %s℃'%CPU_TEP)
+						CPU_USE_lab.config(text='CPU Usage: %s'%CPU_USE)
+						RAM_lab.config(text='RAM Usage: %s'%RAM_USE)
+						BATTERY_lab.config(text='Battery: N/A', bg='#757575', fg=color_text)
 
-				# Log servo positions to terminal with timestamp (only once, at the end)
-				if servo_info:
-					timestamp = int(time.time() * 1000)  # Milliseconds since epoch
-					print(f"[{timestamp}] [SERVOS] {servo_info}")
+					# Parse MPU6050 data (format: "G:x,y,z A:x,y,z" or "MPU:N/A")
+					if mpu_info:
+						parse_mpu_data(mpu_info)
 
-			except Exception as e:
-				print(f"⚠ Error processing INFO: {e}")
-				pass
+					# Log servo positions to terminal with timestamp (only once, at the end)
+					if servo_info:
+						timestamp = int(time.time() * 1000)  # Milliseconds since epoch
+						print(f"[{timestamp}] [SERVOS] {servo_info}")
 
-		elif 'steadyCamera' == car_info:
-			steadyMode = 1
-			SmoothMode = 1
-			Btn_Steady.config(bg='#FF6D00', fg='#000000')
+				except Exception as e:
+					print(f"⚠ Error processing INFO: {e}")
+					pass
 
-		elif 'steadyCameraOff' == car_info:
-			steadyMode = 0
-			SmoothMode = 0
-			Btn_Steady.config(bg=color_btn, fg=color_text)
+			elif 'steadyCamera' == car_info:
+				steadyMode = 1
+				SmoothMode = 1
+				Btn_Steady.config(bg='#FF6D00', fg='#000000')
 
-
-		elif 'smoothCam' in car_info:
-			SmoothCamMode = 1
-			Btn_SmoothCam.config(bg='#FF6D00', fg='#000000')
-
-		elif 'smoothCamOff' in car_info:
-			SmoothCamMode = 0
-			Btn_SmoothCam.config(bg=color_btn, fg=color_text)
+			elif 'steadyCameraOff' == car_info:
+				steadyMode = 0
+				SmoothMode = 0
+				Btn_Steady.config(bg=color_btn, fg=color_text)
 
 
-		elif 'Switch_3_on' in car_info:
-			Switch_3 = 1
-			Btn_Switch_3.config(bg='#4CAF50')
+			elif 'smoothCam' in car_info:
+				SmoothCamMode = 1
+				Btn_SmoothCam.config(bg='#FF6D00', fg='#000000')
 
-		elif 'Switch_2_on' in car_info:
-			Switch_2 = 1
-			Btn_Switch_2.config(bg='#4CAF50')
+			elif 'smoothCamOff' in car_info:
+				SmoothCamMode = 0
+				Btn_SmoothCam.config(bg=color_btn, fg=color_text)
 
-		elif 'Switch_1_on' in car_info:
-			Switch_1 = 1
-			Btn_Switch_1.config(bg='#4CAF50')
 
-		elif 'Switch_3_off' in car_info:
-			Switch_3 = 0
-			Btn_Switch_3.config(bg=color_btn)
+			elif 'Switch_3_on' in car_info:
+				Switch_3 = 1
+				Btn_Switch_3.config(bg='#4CAF50')
 
-		elif 'Switch_2_off' in car_info:
-			Switch_2 = 0
-			Btn_Switch_2.config(bg=color_btn)
+			elif 'Switch_2_on' in car_info:
+				Switch_2 = 1
+				Btn_Switch_2.config(bg='#4CAF50')
 
-		elif 'Switch_1_off' in car_info:
-			Switch_1 = 0
-			Btn_Switch_1.config(bg=color_btn)
+			elif 'Switch_1_on' in car_info:
+				Switch_1 = 1
+				Btn_Switch_1.config(bg='#4CAF50')
+
+			elif 'Switch_3_off' in car_info:
+				Switch_3 = 0
+				Btn_Switch_3.config(bg=color_btn)
+
+			elif 'Switch_2_off' in car_info:
+				Switch_2 = 0
+				Btn_Switch_2.config(bg=color_btn)
+
+			elif 'Switch_1_off' in car_info:
+				Switch_1 = 0
+				Btn_Switch_1.config(bg=color_btn)
 
 
 		# Note: Removed generic print(car_info) here - it caused duplicate log output
 		# Specific messages are already handled by their respective elif blocks
+
+	except Exception as e:
+		# Connection closed or socket error - exit thread gracefully
+		print(f"Connection thread stopped: {e}")
 
 
 # ==================== Connection Functions ====================
@@ -733,7 +744,7 @@ def connect_click():	   #Call this function to connect with the server
 
 
 def loop():					  #GUI
-	global tcpClicSock,root,E1,connect,l_ip_4,l_ip_5,color_btn,color_text,Btn14,CPU_TEP_lab,CPU_USE_lab,RAM_lab,BATTERY_lab,color_text,Btn_Steady,Btn_Switch_1,Btn_Switch_2,Btn_Switch_3,Btn_SmoothCam,canvas_mpu,color_bg   #1 The value of tcpClicSock changes in the function loop(),would also changes in global so the other functions could use it.
+	global tcpClicSock,root,E1,connect,l_ip_4,l_ip_5,color_btn,color_text,Btn14,CPU_TEP_lab,CPU_USE_lab,RAM_lab,BATTERY_lab,color_text,Btn_Steady,Btn_Switch_1,Btn_Switch_2,Btn_Switch_3,Btn_SmoothCam,canvas_mpu,color_bg,shutdown_requested   #1 The value of tcpClicSock changes in the function loop(),would also changes in global so the other functions could use it.
 	while True:
 		color_bg='#000000'		#Set background color
 		color_text='#E1F5FE'	  #Set text color
@@ -747,6 +758,62 @@ def loop():					  #GUI
 		root.title('Adeept RaspClaws (schmiereck)')	  #Main window title
 		root.geometry('565x680')  #1 Main window size, middle of the English letter x.
 		root.config(bg=color_bg)  #Set the background color of root window
+
+		# Define cleanup function for proper shutdown
+		def on_closing():
+			"""Clean shutdown when window is closed"""
+			global tcpClicSock, footage_socket, footage_process, shutdown_requested
+
+			shutdown_requested = True  # Signal that shutdown was requested
+			print("Shutting down GUI...")
+
+			try:
+				# Close TCP socket
+				if tcpClicSock and tcpClicSock != '':
+					print("Closing TCP socket...")
+					tcpClicSock.close()
+			except Exception as e:
+				print(f"Error closing TCP socket: {e}")
+
+			try:
+				# Close footage socket
+				if footage_socket is not None:
+					print("Closing footage socket...")
+					footage_socket.close()
+			except Exception as e:
+				print(f"Error closing footage socket: {e}")
+
+			try:
+				# Terminate the Footage-GUI process if running
+				if footage_process is not None and footage_process.poll() is None:
+					print("Terminating Footage-GUI process...")
+					footage_process.terminate()
+					try:
+						footage_process.wait(timeout=2)
+						print("✓ Footage-GUI process terminated")
+					except:
+						print("Force killing Footage-GUI process...")
+						footage_process.kill()
+			except Exception as e:
+				print(f"Error terminating footage process: {e}")
+
+			try:
+				# Close all OpenCV windows
+				cv2.destroyAllWindows()
+			except Exception as e:
+				print(f"Error closing OpenCV windows: {e}")
+
+			# Destroy the root window
+			print("Closing GUI window...")
+			root.destroy()
+
+			# Exit the application completely
+			print("✓ Application shutdown complete")
+			import sys
+			sys.exit(0)
+
+		# Register the cleanup function to be called when window is closed
+		root.protocol("WM_DELETE_WINDOW", on_closing)
 		try:
 			logo =tk.PhotoImage(file = 'logo.png')		 #Define the picture of logo,but only supports '.png' and '.gif'
 			l_logo=tk.Label(root,image = logo,bg=color_bg) #Set a label to show the logo picture
@@ -909,10 +976,15 @@ def loop():					  #GUI
 		update_mpu_canvas()
 
 
-		global stat
+		global stat, shutdown_requested
 		if stat==0:			  # Ensure the mainloop runs only once
 			root.mainloop()  # Run the mainloop()
 			stat=1		   # Change the value to '1' so the mainloop() would not run again.
+
+		# If shutdown was requested, break the while loop
+		if shutdown_requested:
+			print("Exiting application loop...")
+			break
 
 
 if __name__ == '__main__':
