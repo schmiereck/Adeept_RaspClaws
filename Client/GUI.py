@@ -709,16 +709,16 @@ def connection_thread():
 			elif 'smoothCamOff' in car_info:
 				handle_smooth_cam(enabled=False)
 
-			elif car_info == 'servoStandby':
+			elif 'servoStandby' in car_info:
 				handle_servo_standby_status(active=True)
 
-			elif car_info == 'servoWakeup':
+			elif 'servoWakeup' in car_info:
 				handle_servo_standby_status(active=False)
 
-			elif car_info == 'cameraPaused':
+			elif 'cameraPaused' in car_info:
 				handle_camera_pause_status(paused=True)
 
-			elif car_info == 'cameraResumed':
+			elif 'cameraResumed' in car_info:
 				handle_camera_pause_status(paused=False)
 
 			elif 'Switch_1_on' in car_info:

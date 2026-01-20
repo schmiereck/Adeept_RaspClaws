@@ -195,47 +195,57 @@ def info_get():
 def info_send_client():
     # Use the existing tcpCliSock connection instead of creating a new one
 
-    # Send VIDEO_READY signal multiple times at the start
-    # This ensures the client receives it even if it's not ready immediately
-    print("INFO_SEND_CLIENT: Starting to send VIDEO_READY signals...")
-    sys.stdout.flush()
-    success_count = 0
-    for i in range(10):  # Try 10 times over 10 seconds (increased from 5)
-        try:
-            tcpCliSock.send('VIDEO_READY\n'.encode())
-            success_count += 1
-            print(f"✅ Sent VIDEO_READY signal (attempt {i+1}/10, success #{success_count})")
-            sys.stdout.flush()
-            time.sleep(1)
-        except Exception as e:
-            print(f"⚠ Failed to send VIDEO_READY (attempt {i+1}/10): {e}")
-            sys.stdout.flush()
-            # Don't break - continue trying!
-            time.sleep(1)
-
-    print(f"INFO_SEND_CLIENT: Finished VIDEO_READY phase ({success_count}/10 successful)")
+    # Send initial status immediately (don't wait for VIDEO_READY to finish!)
+    print("INFO_SEND_CLIENT: Sending initial status...")
     sys.stdout.flush()
 
-    # Send current power management status to synchronize GUI buttons
-    time.sleep(0.2)
     try:
+        # Send Power Management status first
         if servo_standby_active:
             tcpCliSock.send('servoStandby\n'.encode())
-            print("Sent initial servo standby status: ACTIVE")
+            print("✓ Sent servo standby status: ACTIVE")
         else:
             tcpCliSock.send('servoWakeup\n'.encode())
-            print("Sent initial servo standby status: INACTIVE")
-
-        time.sleep(0.1)
+            print("✓ Sent servo standby status: INACTIVE")
 
         if camera_paused_active:
             tcpCliSock.send('cameraPaused\n'.encode())
-            print("Sent initial camera pause status: PAUSED")
+            print("✓ Sent camera pause status: PAUSED")
         else:
             tcpCliSock.send('cameraResumed\n'.encode())
-            print("Sent initial camera pause status: ACTIVE")
+            print("✓ Sent camera pause status: ACTIVE")
+
+        # Send first INFO message immediately
+        battery_voltage = get_battery_voltage()
+        servo_positions = move.get_servo_positions_info()
+        mpu_data = move.get_mpu6050_data()
+        info_data = 'INFO:' + get_cpu_tempfunc() + ' ' + get_cpu_use() + ' ' + get_ram_info() + ' ' + battery_voltage + ' | ' + servo_positions + ' | ' + mpu_data + '\n'
+        tcpCliSock.send(info_data.encode())
+        print("✓ Sent initial INFO data")
+
     except Exception as e:
-        print(f"⚠ Failed to send power management status: {e}")
+        print(f"⚠ Failed to send initial status: {e}")
+
+    sys.stdout.flush()
+
+    # Send VIDEO_READY signals (reduced to 5 times with shorter delays)
+    print("INFO_SEND_CLIENT: Starting VIDEO_READY signals...")
+    sys.stdout.flush()
+    success_count = 0
+    for i in range(5):  # Reduced from 10 to 5
+        try:
+            tcpCliSock.send('VIDEO_READY\n'.encode())
+            success_count += 1
+            print(f"✅ VIDEO_READY {i+1}/5")
+            sys.stdout.flush()
+            time.sleep(0.5)  # Reduced from 1.0 to 0.5 seconds
+        except Exception as e:
+            print(f"⚠ Failed to send VIDEO_READY {i+1}/5: {e}")
+            sys.stdout.flush()
+            time.sleep(0.5)
+
+    print(f"INFO_SEND_CLIENT: Finished VIDEO_READY phase ({success_count}/5 successful)")
+    sys.stdout.flush()
 
     # Then continue with regular info sending
     while 1:
