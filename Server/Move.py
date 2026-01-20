@@ -1892,6 +1892,9 @@ def standby():
 	global move_stu
 	move_stu = 0  # Stop any ongoing movement
 
+	# Pause the RobotM thread to stop all movement
+	rm.pause()
+
 	# Stop PWM signals on all channels
 	for i in range(16):
 		pwm.set_pwm(i, 0, 0)  # Fixed: set_pwm requires 3 args (channel, on, off)
@@ -1909,5 +1912,8 @@ def wakeup():
 	# Restore all servos to their last known positions
 	for i in range(16):
 		pwm.set_pwm(i, 0, servo_current_pos[i])
+
+	# Resume the RobotM thread to allow movement again
+	rm.resume()
 
 	print("✓ All servos restored - robot ready")
