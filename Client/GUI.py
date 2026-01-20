@@ -511,6 +511,8 @@ def handle_video_ready():
 	global video_thread_started
 	if not video_thread_started:
 		print("✅ Server signals: Video stream is ready")
+		print("   Waiting 3s for SSH tunnel to establish video port...")
+		time.sleep(3.0)  # Give SSH tunnel time to forward port 5555
 		video_threading = thread.Thread(target=run_open, daemon=True)
 		video_threading.start()
 		video_thread_started = True
@@ -692,6 +694,10 @@ def connection_thread():
 			car_info = (tcpClicSock.recv(BUFSIZ)).decode()
 			if not car_info:
 				continue
+
+			# DEBUG: Log received messages (except INFO to avoid spam)
+			if not car_info.startswith(STATUS_INFO_PREFIX):
+				print(f"[DEBUG] Received: {car_info[:100]}...")  # First 100 chars
 
 			# Dispatch message to appropriate handler
 			if STATUS_VIDEO_READY in car_info:

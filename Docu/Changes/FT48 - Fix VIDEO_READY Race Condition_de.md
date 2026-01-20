@@ -22,7 +22,7 @@ channel 5: open failed: connect failed: Connection refused
 
 ## Root Cause Analysis
 
-### Race Condition
+### Issue 1: Race Condition (Server vs. Client)
 
 Es gab eine Race Condition zwischen Client und Server beim VIDEO_READY Signaling:
 
@@ -56,9 +56,38 @@ t=2.6     (VIDEO_READY Phase beendet)  Bereit zu empfangen ❌
 
 Der Client startet den `connection_thread` zu spät und verpasst alle VIDEO_READY Signale.
 
-### Kein Timeout
+### Issue 2: Kein Timeout
 
 Zusätzlich gab es keinen Client-seitigen Timeout. Wenn VIDEO_READY verpasst wurde, wartete die GUI ewig und gab keine Fehlermeldung aus.
+
+### Issue 3: SSH-Tunnel Timing (Port 5555)
+
+**Wichtigste Root Cause:** Der SSH-Tunnel braucht Zeit, um Port 5555 (Video) zu forwarden.
+
+```bash
+# start_ssh_tunnel.bat
+ssh -L 10223:localhost:10223 -L 5555:localhost:5555 pi@192.168.2.126
+```
+
+**Timing-Problem:**
+```
+Zeit:     SSH Tunnel                    GUI Client
+------------------------------------------------------
+t=0.0     ssh startet                   -
+t=0.5     Port 10223 forwarded ✓        -
+t=1.0     Port 5555 startet...          GUI startet
+t=1.5     Port 5555 noch nicht ready    GUI verbindet zu 10223 ✓
+t=2.0     Port 5555 noch nicht ready    VIDEO_READY empfangen
+t=2.1     Port 5555 noch nicht ready    Footage-GUI.py startet
+t=2.2     Port 5555 noch nicht ready    Footage versucht Port 5555 ❌
+                                          → "Connection refused"
+t=3.0     Port 5555 ready ✓             Footage gibt nach 8 Retries auf
+```
+
+**SSH-Fehler:** `channel 5: open failed: connect failed: Connection refused`
+- Bedeutet: SSH-Tunnel kann Port 5555 noch nicht durchleiten
+- Erscheint im SSH-Tunnel Fenster während der Aufbauphase
+- Ist normal und verschwindet, wenn Tunnel vollständig aufgebaut ist
 
 ## Lösung
 
@@ -207,13 +236,24 @@ Waiting for video server to initialize...
   - Hilfreiche Diagnose-Meldungen
 - **Geändert:** `start_connection_threads()` (~Zeile 824)
   - Startet zusätzlichen Watchdog-Thread
+- **Geändert:** `handle_video_ready()` (~Zeile 509)
+  - **3s Delay vor Footage-GUI Start** (SSH-Tunnel Zeit geben)
+  - Kritisch für SSH-Tunnel Port 5555 Setup
+
+### Client/Footage-GUI.py
+- **Geändert:** Retry-Mechanismus
+  - 8 Retries → **15 Retries** (8s → 45s)
+  - Längeres Zeitfenster für SSH-Tunnel Aufbau
+  - Bessere Fehlermeldungen bei Timeout
 
 ## Statistik
 
 | Metrik | Vorher | Nachher | Verbesserung |
 |--------|--------|---------|--------------|
 | VIDEO_READY Fenster | 2.5s | 10s | **4x größer** |
-| Initialer Delay | 0s | 2s | **Race Condition vermieden** |
+| Initialer Delay (Server) | 0s | 2s | **Race Condition vermieden** |
+| Delay vor Footage-GUI | 0s | 3s | **SSH-Tunnel Zeit** |
+| Footage Retries | 8 (~18s) | 15 (~45s) | **2.5x mehr Zeit** |
 | Client Timeout | ∞ (kein) | 15s | **Feedback statt Hängen** |
 | Gesamt-Zeitfenster | 2.5s | 12s | **4.8x größer** |
 
@@ -261,9 +301,17 @@ Waiting for video server to initialize...
    - Client-Systeme können unterschiedlich langsam sein
 
 4. **SSH-Tunnel sind speziell:**
-   - "Connection refused" Fehler sind normal beim Start
-   - Video-Port braucht Zeit zum Initialisieren
-   - Muss im Client-Code berücksichtigt werden
+   - "Connection refused" Fehler sind **normal beim Start**
+   - Video-Port (5555) braucht **länger** als Control-Port (10223) zum Initialisieren
+   - **3s Delay** vor Video-Client Start ist essentiell
+   - "channel 5: open failed" verschwindet von selbst nach ~5-10s
+   - Bei zweitem GUI-Start funktioniert es meist (Tunnel ist jetzt bereit)
+
+5. **Multi-Port Forwarding:**
+   - Verschiedene Ports können unterschiedlich schnell aufgebaut werden
+   - Port 10223 (Control) → schnell verfügbar (~0.5s)
+   - Port 5555 (Video/ZMQ) → langsam verfügbar (~3-5s)
+   - Client muss Delays zwischen den Port-Nutzungen haben
 
 ---
 

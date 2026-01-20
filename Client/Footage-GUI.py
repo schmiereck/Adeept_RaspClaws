@@ -17,8 +17,9 @@ footage_socket = context.socket(zmq.SUB)  # Changed from PAIR to SUB
 footage_socket.setsockopt(zmq.RCVHWM, 1)
 
 # Retry mechanism with exponential backoff
-max_retries = 8
-retry_delays = [0.5, 0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 5.0]  # Progressive delays in seconds
+# Increased retries to handle SSH tunnel startup delays
+max_retries = 15
+retry_delays = [0.5, 0.5, 1.0, 1.0, 1.5, 2.0, 2.0, 3.0, 3.0, 4.0, 4.0, 5.0, 5.0, 5.0, 5.0]  # Total ~45s
 connected = False
 
 for attempt in range(max_retries):
@@ -47,11 +48,12 @@ for attempt in range(max_retries):
 			print(f"   Retrying in {delay}s...")
 			time.sleep(delay)
 		else:
-			print(f"✗ Failed to connect after {max_retries} attempts")
-			print("   Please check:")
-			print("   - Server is running")
-			print("   - SSH tunnel is active (if used)")
-			print("   - Port 5555 is accessible")
+			print(f"✗ Failed to connect after {max_retries} attempts (~45s)")
+			print("   This is usually caused by:")
+			print("   - SSH tunnel not ready yet (try starting GUI again)")
+			print("   - Server video stream not running")
+			print("   - Port 5555 blocked by firewall")
+			print("   → Exiting video window. Main GUI will continue to work.")
 			sys.exit(1)
 
 if connected:
