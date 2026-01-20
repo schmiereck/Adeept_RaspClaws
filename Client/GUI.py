@@ -463,8 +463,9 @@ def update_mpu_canvas():
 		                       fill='#2196F3', outline='#1976D2', width=2)
 
 		# Scale accel values to canvas coordinates
-		# Accel range: typically ±2g (±19.6 m/s²), we map to ±max_range pixels
-		accel_scale = max_range / 19.6
+		# Accel range: ±1g (±9.81 m/s²) for tilt indication, we map to ±max_range pixels
+		# This gives better sensitivity for tilt display (45° = ~50% deflection)
+		accel_scale = max_range / 9.81
 		accel_x_pos = int(ACCEL_Y * accel_scale)  # Accel Y → Canvas X
 		accel_y_pos = int(-ACCEL_X * accel_scale)  # Accel X → Canvas Y (inverted)
 
@@ -487,8 +488,8 @@ def update_mpu_canvas():
 		                       fill='#FF9800', outline='#F57C00', width=2)
 
 		# Draw labels
-		canvas_mpu.create_text(10, 10, text="Gyro", fill='#2196F3', anchor='nw', font=('Arial', 8, 'bold'))
-		canvas_mpu.create_text(10, 25, text="Accel", fill='#FF9800', anchor='nw', font=('Arial', 8, 'bold'))
+		canvas_mpu.create_text(10, 10, text="Gyro (°/s)", fill='#2196F3', anchor='nw', font=('Arial', 8, 'bold'))
+		canvas_mpu.create_text(10, 25, text="Accel (tilt)", fill='#FF9800', anchor='nw', font=('Arial', 8, 'bold'))
 
 		# Draw axis labels
 		canvas_mpu.create_text(width - 5, center_y - 5, text="Y+", fill='#616161', anchor='se', font=('Arial', 7))
@@ -771,26 +772,35 @@ def get_server_address():
 
 
 def establish_connection(server_ip, server_port):
-	"""Try to establish connection with server"""
+	"""Try to establish connection with server with retry and exponential backoff"""
 	global tcpClicSock, ip_stu
 
 	ADDR = (server_ip, server_port)
 	tcpClicSock = socket(AF_INET, SOCK_STREAM)
 
-	for i in range(1, 6):  # Try 5 times if disconnected
+	max_retries = 8
+	retry_delays = [0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0]  # Progressive delays
+
+	for attempt in range(max_retries):
 		if ip_stu == 1:
-			print(f"Connecting to server @ {server_ip}:{server_port}...")
-			print("Connecting")
+			print(f"Connecting to server @ {server_ip}:{server_port} (attempt {attempt + 1}/{max_retries})...")
+			update_connection_status(f'Connecting {attempt + 1}/{max_retries}...', '#2196F3')
 
 			try:
 				tcpClicSock.connect(ADDR)
-				print("Connected")
+				print("✓ Connected to server")
+				update_connection_status('Connected', '#4CAF50')
 				return True
-			except:
-				print(f"Cannot connect to server, try {i}/5 time(s)")
-				update_connection_status(f'Try {i}/5 time(s)', '#EF6C00')
-				time.sleep(1)
-				continue
+			except Exception as e:
+				print(f"✗ Connection attempt {attempt + 1} failed: {e}")
+				if attempt < max_retries - 1:
+					delay = retry_delays[attempt]
+					print(f"   Retrying in {delay}s...")
+					update_connection_status(f'Retry in {delay}s...', '#EF6C00')
+					time.sleep(delay)
+				else:
+					print(f"✗ Failed to connect after {max_retries} attempts")
+					update_connection_status('Connection failed', '#F44336')
 		else:
 			break
 
