@@ -1,31 +1,31 @@
 # Agent Development Environment Documentation
 
-## Projektübersicht
+## Project Overview
 
-**Adeept_RaspClaws** - Roboter-Steuerungssoftware bestehend aus:
-- **Client**: Windows GUI (Tkinter) zur Fernsteuerung
-- **Server**: Raspberry Pi Server für Robotersteuerung und Video-Streaming
+**Adeept_RaspClaws** - Robot control software consisting of:
+- **Client**: Windows GUI (Tkinter) for remote control
+- **Server**: Raspberry Pi server for robot control and video streaming
 
 GitHub Repository: https://github.com/schmiereck/Adeept_RaspClaws.git
 
 ---
 
-## 1. Entwicklungsumgebungen
+## 1. Development Environments
 
-### 1.1 Windows Entwicklungsrechner
+### 1.1 Windows Development Machine
 
-**Betriebssystem**: Windows (PowerShell v5.1)
+**Operating System**: Windows (PowerShell v5.1)
 
 **IDE**: IntelliJ IDEA 2025.3
 
 **Python Version**: Python 3.7.9 (64-bit)
 
-**Projekt-Verzeichnis**:
+**Project Directory**:
 ```
 C:\Users\SCMJ178\IdeaProjects\Adeept_RaspClaws\
 ```
 
-**Virtuelles Environment**:
+**Virtual Environment**:
 ```
 C:\Users\SCMJ178\IdeaProjects\Adeept_RaspClaws\.venv\
 ```
@@ -35,7 +35,7 @@ C:\Users\SCMJ178\IdeaProjects\Adeept_RaspClaws\.venv\
 C:\Users\SCMJ178\IdeaProjects\Adeept_RaspClaws\.venv\Scripts\python.exe
 ```
 
-**Wichtige Python Packages**:
+**Important Python Packages**:
 ```
 opencv-python==4.12.0.88
 numpy==1.21.6
@@ -43,142 +43,142 @@ pyzmq
 tkinter (standard library)
 ```
 
-**Installation der Dependencies**:
+**Installing Dependencies**:
 ```powershell
 pip install -r requirements.txt
 ```
 
 ### 1.2 Raspberry Pi Server
 
-**Betriebssystem**: Debian GNU/Linux (Raspberry Pi OS)
+**Operating System**: Debian GNU/Linux (Raspberry Pi OS)
 - Kernel: 6.12.47+rpt-rpi-v8 #1 SMP PREEMPT Debian 1:6.12.47-1+rpt1
 
 **Python Version**: Python 3.13
 
 **Hostname**: raspberrypi
 
-**Standard User**: pi
+**Default User**: pi
 
-**Projekt-Verzeichnis auf Pi**:
+**Project Directory on Pi**:
 ```
 /home/pi/adeept_raspclaws/
 ```
 
-**Altes Projekt-Verzeichnis (Backup)**:
+**Old Project Directory (Backup)**:
 ```
 /home/pi/adeept_raspclaws-original/
 ```
 
 **Git Branch**: master
 
-**Wichtige Hinweise**:
-- ⚠️ Verzeichnisnamen sind nun **groß** geschrieben: `Server/` statt `server/`
-- ⚠️ Hauptdatei heißt jetzt `GUIServer.py` (früher `server.py`)
-- Link für Abwärtskompatibilität: `/home/pi/adeept_raspclaws/server/server.py` → `GUIServer.py`
+**Important Notes**:
+- ⚠️ Directory names are now **capitalized**: `Server/` instead of `server/`
+- ⚠️ Main file is now called `GUIServer.py` (formerly `server.py`)
+- Backward compatibility link: `/home/pi/adeept_raspclaws/server/server.py` → `GUIServer.py`
 
 **Hardware**:
-- Kamera: OV5647 (libcamera v0.6.0+rpt20251202)
-- PCA9685 PWM Controller: Adresse **0x40** (früher 0x5F)
+- Camera: OV5647 (libcamera v0.6.0+rpt20251202)
+- PCA9685 PWM Controller: Address **0x40** (formerly 0x5F)
 - I²C Bus: busnum=1
-- **ADS7830 ADC**: Adresse **0x48** (Batterie-Überwachung, 8-Kanal 8-Bit)
-- WS2812 LEDs: 16 LEDs (über SPI, optional)
-- MPU6050: Gyroskop/Accelerometer (optional)
+- **ADS7830 ADC**: Address **0x48** (battery monitoring, 8-channel 8-bit)
+- WS2812 LEDs: 16 LEDs (via SPI, optional)
+- MPU6050: Gyroscope/Accelerometer (optional)
 
-**I²C Geräte Check**:
+**I²C Device Check**:
 ```bash
 sudo i2cdetect -y 1
 ```
-Erwartete Adressen:
+Expected addresses:
 - 0x40: PCA9685 PWM Controller
-- 0x48: ADS7830 ADC (Batterie-Überwachung)
+- 0x48: ADS7830 ADC (battery monitoring)
 - 0x68: MPU6050 (optional)
 
 ---
 
-## 2. Netzwerk-Konfiguration
+## 2. Network Configuration
 
-### 2.1 Standard-Betrieb (Direktverbindung)
+### 2.1 Standard Operation (Direct Connection)
 
-**Raspberry Pi IP**: 192.168.2.126 (oder variabel)
+**Raspberry Pi IP**: 192.168.2.126 (or variable)
 
-**Client IP**: 192.168.2.107 (oder variabel)
+**Client IP**: 192.168.2.107 (or variable)
 
 **Router Gateway**: 192.168.2.1
 
 **WLAN**: speedport.ip
 
 **Ports**:
-- TCP 10223: Hauptverbindung (Client ↔ Server Kommandos)
-- TCP 5555: Video-Stream (ZMQ PUB/SUB)
-- Optional: TCP 8080 (Web-Interface)
+- TCP 10223: Main connection (Client ↔ Server commands)
+- TCP 5555: Video stream (ZMQ PUB/SUB)
+- Optional: TCP 8080 (Web interface)
 
-**IP.txt Konfiguration** (Client):
+**IP.txt Configuration** (Client):
 ```
 192.168.2.126
 ```
 
-### 2.2 SSH Tunnel (für Rechner mit Firewall-Einschränkungen)
+### 2.2 SSH Tunnel (for machines with firewall restrictions)
 
-**Problem**: Manche Entwicklungs-Rechner haben Firewall-Einschränkungen ohne Admin-Rechte.
+**Problem**: Some development machines have firewall restrictions without admin rights.
 
-**Lösung**: SSH Tunnel mit Port-Forwarding
+**Solution**: SSH tunnel with port forwarding
 
-**Tunnel-Befehl**:
+**Tunnel Command**:
 ```powershell
 ssh -L 10223:localhost:10223 -L 5555:localhost:5555 pi@192.168.2.126
 ```
 
-**IP.txt Konfiguration** (für SSH Tunnel):
+**IP.txt Configuration** (for SSH tunnel):
 ```
 127.0.0.1
 ```
 
-**Automatisierung**: `Client/start_ssh_tunnel.bat` (interaktiv, Passwort erforderlich)
+**Automation**: `Client/start_ssh_tunnel.bat` (interactive, password required)
 
-⚠️ **Wichtig**: SSH Tunnel muss manuell gestartet werden und läuft interaktiv (Passwort-Eingabe erforderlich). SSH-Keys können für passwortlose Authentifizierung konfiguriert werden (siehe `Docu/Changes/FT5 - SSH Keys Setup_en.md`).
+⚠️ **Important**: SSH tunnel must be started manually and runs interactively (password entry required). SSH keys can be configured for passwordless authentication (see `Docu/Changes/FT5 - SSH Keys Setup_en.md`).
 
-**Fehlermeldung "channel 5: open failed"**:
-- Diese Meldung kann auftreten, wenn der Server noch nicht bereit ist oder der Video-Stream noch nicht initialisiert wurde
-- Normal bei Verbindungsaufbau, solange die GUI sich dann verbindet
+**Error Message "channel 5: open failed"**:
+- This message may occur when the server is not ready yet or the video stream has not been initialized
+- Normal during connection setup, as long as the GUI connects afterwards
 
 ---
 
-## 3. Server-Betrieb auf Raspberry Pi
+## 3. Server Operation on Raspberry Pi
 
 ### 3.1 Systemd Service
 
 **Service Name**: `robot_server.service`
 
-**Service-Konfiguration**: `/etc/systemd/system/robot_server.service` (vermutlich)
+**Service Configuration**: `/etc/systemd/system/robot_server.service` (presumably)
 
-**Befehle**:
+**Commands**:
 ```bash
-# Service starten
+# Start service
 sudo systemctl start robot_server.service
 
-# Service stoppen
+# Stop service
 sudo systemctl stop robot_server.service
 
-# Service neu starten
+# Restart service
 sudo systemctl restart robot_server.service
 
-# Status prüfen
+# Check status
 sudo systemctl status robot_server.service
 
-# Logs anzeigen
+# Show logs
 sudo journalctl -u robot_server.service -n 100 --no-pager
 
-# Logs live verfolgen
+# Follow logs live
 sudo journalctl -u robot_server.service -f
 ```
 
-**Start-Kommando** (manuell):
+**Start Command** (manual):
 ```bash
 sudo python3 /home/pi/adeept_raspclaws/server/server.py
 ```
-(Der Link `server.py` zeigt auf `GUIServer.py`)
+(The link `server.py` points to `GUIServer.py`)
 
-### 3.2 Projekt-Update vom Git
+### 3.2 Project Update from Git
 
 ```bash
 cd /home/pi/adeept_raspclaws
@@ -186,68 +186,68 @@ git pull
 sudo systemctl restart robot_server.service
 ```
 
-**Branch wechseln**:
+**Switch Branch**:
 ```bash
-git branch  # Aktuellen Branch anzeigen
-git checkout master  # Auf master wechseln
+git branch  # Show current branch
+git checkout master  # Switch to master
 ```
 
 ---
 
-## 4. Client-Betrieb (Windows GUI)
+## 4. Client Operation (Windows GUI)
 
-### 4.1 Start der GUI
+### 4.1 Starting the GUI
 
 **In IntelliJ**:
 - Run Configuration: `GUI.py`
-- Debug Mode: Zeigt Ausgaben
-- Run Mode: Seit IntelliJ-Neustart funktioniert auch Run Mode
+- Debug Mode: Shows output
+- Run Mode: Also works since IntelliJ restart
 
-**Im Terminal**:
+**In Terminal**:
 ```powershell
 cd C:\Users\SCMJ178\IdeaProjects\Adeept_RaspClaws\Client
 ..\..venv\Scripts\python.exe GUI.py
 ```
 
-### 4.2 IP-Konfiguration
+### 4.2 IP Configuration
 
-**Datei**: `Client/IP.txt`
+**File**: `Client/IP.txt`
 
-Für **direkte Verbindung**:
+For **direct connection**:
 ```
 192.168.2.126
 ```
 
-Für **SSH Tunnel**:
+For **SSH tunnel**:
 ```
 127.0.0.1
 ```
 
-**Wichtig**: Die GUI liest die IP aus dieser Datei beim Start.
+**Important**: The GUI reads the IP from this file at startup.
 
-### 4.3 Video-Stream (Footage-GUI)
+### 4.3 Video Stream (Footage-GUI)
 
-Der Video-Stream wird als **separater Prozess** gestartet:
-- Automatischer Start durch `GUI.py`
-- Verwendet `Footage-GUI.py`
-- Zeigt Kamera-Feed in separatem Fenster
+The video stream is started as a **separate process**:
+- Automatically started by `GUI.py`
+- Uses `Footage-GUI.py`
+- Displays camera feed in separate window
 
-**Hinweis**: Der Server sendet mehrfach `VIDEO_READY` Signale (10x über 10 Sekunden) um sicherzustellen, dass der Client bereit ist.
+**Note**: The server sends `VIDEO_READY` signals multiple times (10x over 10 seconds) to ensure the client is ready.
 
 ---
 
-## 5. Architektur und Kommunikation
+## 5. Architecture and Communication
 
-### 5.1 Kommunikationsfluss
+### 5.1 Communication Flow
 
 ```
 ┌─────────────────┐         TCP 10223          ┌─────────────────┐
 │  Windows Client │ ◄────────────────────────► │  Raspberry Pi   │
-│    (GUI.py)     │     Kommandos + Info       │ (GUIServer.py)  │
+│    (GUI.py)     │     Commands + Info        │ (GUIServer.py)  │
 └─────────────────┘                            └─────────────────┘
          │                                              │
          │          ZMQ PUB/SUB (Port 5555)            │
-         │          Video-Frames (JPEG)                 │
+         │          Video Frames (JPEG)                │
          ▼                                              ▼
 ┌─────────────────┐                            ┌─────────────────┐
 │ Footage-GUI.py  │ ◄────────────────────────► │    FPV.py       │
@@ -255,218 +255,218 @@ Der Video-Stream wird als **separater Prozess** gestartet:
 └─────────────────┘                            └─────────────────┘
 ```
 
-### 5.2 Threading-Modell (Server)
+### 5.2 Threading Model (Server)
 
 **GUIServer.py**:
-1. **Main Thread**: Socket-Verbindung und Kommando-Verarbeitung
-2. **FPV Thread**: Video-Capture und Streaming (läuft kontinuierlich, auch ohne Client)
-3. **Info Thread**: Sendet System-Informationen (CPU, RAM, Temp) an Client
+1. **Main Thread**: Socket connection and command processing
+2. **FPV Thread**: Video capture and streaming (runs continuously, even without client)
+3. **Info Thread**: Sends system information (CPU, RAM, Temp) to client
 
-**Wichtig**: FPV Thread wird **einmal beim Server-Start** gestartet und läuft permanent. Bei Client-Reconnect wird **kein** neuer Thread gestartet.
+**Important**: FPV thread is started **once at server startup** and runs permanently. No new thread is started on client reconnect.
 
-### 5.3 Reconnection-Handling
+### 5.3 Reconnection Handling
 
-**Problem behoben**: Client kann sich mehrfach verbinden/trennen ohne Server-Neustart.
+**Problem Fixed**: Client can connect/disconnect multiple times without server restart.
 
-**Lösung**:
-- FPV Thread läuft kontinuierlich (ZMQ PUB/SUB erlaubt mehrere Subscriber)
-- Socket wird nach Disconnect korrekt geschlossen
-- 2 Sekunden Wartezeit vor neuem Accept
-- LED Status-Anzeige (blau = verbunden, atmend = wartend)
+**Solution**:
+- FPV thread runs continuously (ZMQ PUB/SUB allows multiple subscribers)
+- Socket is properly closed after disconnect
+- 2 second wait before new accept
+- LED status display (blue = connected, breathing = waiting)
 
 ---
 
-## 6. Features und Funktionen
+## 6. Features and Functions
 
-### 6.1 Bewegungssteuerung
+### 6.1 Movement Control
 
-**Befehle**:
-- `forward`, `backward`: Vorwärts/Rückwärts
-- `left`, `right`: Links/Rechts drehen
-- `DS`: Direction Stop (Stehen bleiben)
-- `TS`: Turn Stop (Drehung stoppen)
+**Commands**:
+- `forward`, `backward`: Forward/backward
+- `left`, `right`: Turn left/right
+- `DS`: Direction Stop (stand still)
+- `TS`: Turn Stop (stop turning)
 
-**Geschwindigkeit**:
-- `fast`: Schneller Modus
-- `slow`: Langsamer Modus
+**Speed**:
+- `fast`: Fast mode
+- `slow`: Slow mode
 
 **Smooth Mode**:
-- `smooth`: Sanftes Anfahren/Stoppen für Bewegung
-- `smoothOff`: Smooth Mode aus
+- `smooth`: Smooth acceleration/deceleration for movement
+- `smoothOff`: Smooth mode off
 
-Dokumentation: `Docu/Changes/FT20 - SmoothMode Analyse_de.md`
+Documentation: `Docu/Changes/FT20 - SmoothMode Analyse_de.md`
 
-### 6.2 Kamera-Steuerung
+### 6.2 Camera Control
 
-**Bewegung**:
-- `up`, `down`: Kamera nach oben/unten
-- `lookleft`, `lookright`: Kamera nach links/rechts
-- `home`: Kamera in Neutral-Position
+**Movement**:
+- `up`, `down`: Camera up/down
+- `lookleft`, `lookright`: Camera left/right
+- `home`: Camera to neutral position
 
-**Modi**:
-- `steadyCamera`: Kamera-Stabilisierung an
-- `steadyCameraOff`: Kamera-Stabilisierung aus
-- `smoothCam`: Sanfte Kamera-Bewegungen
-- `smoothCamOff`: Sanfte Kamera-Bewegungen aus
+**Modes**:
+- `steadyCamera`: Camera stabilization on
+- `steadyCameraOff`: Camera stabilization off
+- `smoothCam`: Smooth camera movements
+- `smoothCamOff`: Smooth camera movements off
 
-Dokumentation: `Docu/Changes/FT31 - SmoothCam Implementation_de.md`
+Documentation: `Docu/Changes/FT31 - SmoothCam Implementation_de.md`
 
 ### 6.3 Computer Vision Features
 
-- `findColor`: Farberkennung aktivieren
-- `motionGet`: Bewegungserkennung (Watchdog)
-- `CVFL`: Find Line Mode (Linienverfolgung)
-- `stopCV`: Alle CV-Features stoppen
+- `findColor`: Enable color detection
+- `motionGet`: Motion detection (watchdog)
+- `CVFL`: Find Line Mode (line following)
+- `stopCV`: Stop all CV features
 
-**Farbe setzen**:
+**Set Color**:
 ```python
-command = {'data': [r, g, b]}  # RGB Werte
+command = {'data': [r, g, b]}  # RGB values
 ```
 
-### 6.4 LED-Steuerung (WS2812)
+### 6.4 LED Control (WS2812)
 
-- `police`: Polizei-Licht Effekt
-- `policeOff`: Zurück zu normalem Atem-Effekt
+- `police`: Police light effect
+- `policeOff`: Return to normal breathing effect
 
-**Status-Farben**:
-- Blau (64,128,255): Client verbunden
-- Atmend (70,70,255): Wartet auf Client
-- Grün: Accesspoint-Modus aktiv
+**Status Colors**:
+- Blue (64,128,255): Client connected
+- Breathing (70,70,255): Waiting for client
+- Green: Access point mode active
 
-⚠️ **Hinweis**: WS2812 LEDs sind optional. Server läuft auch ohne funktionierende LEDs im Mock-Mode.
+⚠️ **Note**: WS2812 LEDs are optional. Server runs without functioning LEDs in mock mode.
 
-### 6.5 System-Information
+### 6.5 System Information
 
-**Client empfängt alle 1-3 Sekunden**:
+**Client receives every 1-3 seconds**:
 ```
 INFO:<CPU_TEMP> <CPU_USAGE> <RAM_USAGE> <BATTERY_VOLTAGE>
 ```
 
-Beispiel: `INFO:58.0 4.3 42.6 7.8`
-- CPU Temperatur: 58.0°C
-- CPU Auslastung: 4.3%
-- RAM Auslastung: 42.6%
-- Batteriespannung: 7.8V
+Example: `INFO:58.0 4.3 42.6 7.8`
+- CPU Temperature: 58.0°C
+- CPU Usage: 4.3%
+- RAM Usage: 42.6%
+- Battery Voltage: 7.8V
 
-**GUI Anzeige**:
-- CPU Temp, CPU Usage, RAM Usage: Immer sichtbar
-- **Battery**: Mit Farb-Codierung (Grün/Orange/Rot) basierend auf Ladezustand
-  - Grün: ≥ 60% (≥ 7.44V)
+**GUI Display**:
+- CPU Temp, CPU Usage, RAM Usage: Always visible
+- **Battery**: With color coding (Green/Orange/Red) based on charge level
+  - Green: ≥ 60% (≥ 7.44V)
   - Orange: 30-60% (6.72V - 7.44V)
-  - Rot: < 30% (< 6.72V)
-  - Grau: "N/A" wenn Hardware nicht verfügbar
+  - Red: < 30% (< 6.72V)
+  - Gray: "N/A" when hardware not available
 
-Dokumentation: `Docu/Changes/FT33 - Battery Monitor_de.md` / `Docu/Changes/FT33 - Battery Monitor_en.md`
+Documentation: `Docu/Changes/FT33 - Battery Monitor_de.md` / `Docu/Changes/FT33 - Battery Monitor_en.md`
 
 ---
 
-## 7. Tastatur-Shortcuts (GUI)
+## 7. Keyboard Shortcuts (GUI)
 
-Siehe Dokumentation:
-- Deutsch: `Docu/KEYBOARD_SHORTCUTS.md`
+See documentation:
+- German: `Docu/KEYBOARD_SHORTCUTS.md`
 - English: `Docu/KEYBOARD_SHORTCUTS_EN.md`
 
-**Wichtigste Shortcuts**:
-- `W/A/S/D`: Bewegung
-- `Pfeiltasten`: Kamera-Steuerung
-- `Q`: Programm beenden
+**Most Important Shortcuts**:
+- `W/A/S/D`: Movement
+- `Arrow Keys`: Camera control
+- `Q`: Exit program
 
 ---
 
-## 8. Bekannte Probleme und Lösungen
+## 8. Known Issues and Solutions
 
-### 8.1 PCA9685 Adresse geändert
+### 8.1 PCA9685 Address Changed
 
-**Problem**: Hardware verwendet Adresse 0x40, nicht 0x5F
+**Problem**: Hardware uses address 0x40, not 0x5F
 
-**Lösung**: In `RPIservo.py` und `GUIServer.py` geändert
+**Solution**: Changed in `RPIservo.py` and `GUIServer.py`
 
-Dokumentation: `Docu/Changes/FT6 - PCA9685 Fix_en.md`
+Documentation: `Docu/Changes/FT6 - PCA9685 Fix_en.md`
 
-### 8.2 Reconnection Problem (GELÖST)
+### 8.2 Reconnection Problem (SOLVED)
 
-**Problem**: Video-Stream funktionierte nicht beim zweiten Connect
+**Problem**: Video stream did not work on second connect
 
-**Lösung**: FPV Thread läuft kontinuierlich, nicht pro Client
+**Solution**: FPV thread runs continuously, not per client
 
-Dokumentation: `Docu/Changes/FT13 - Reconnection Fix_de.md`, `Docu/Changes/FT12 - FPV Thread Fix_de.md`
+Documentation: `Docu/Changes/FT13 - Reconnection Fix_de.md`, `Docu/Changes/FT12 - FPV Thread Fix_de.md`
 
 ### 8.3 ZMQ Video Stream Binding
 
-**Problem**: Video Stream musste für direkte Verbindung und SSH Tunnel funktionieren
+**Problem**: Video stream had to work for direct connection and SSH tunnel
 
-**Lösung**: Server bindet auf `tcp://*:5555` (alle Interfaces), Client verbindet sich auf die IP aus IP.txt
+**Solution**: Server binds to `tcp://*:5555` (all interfaces), client connects to IP from IP.txt
 
-Dokumentation: `Docu/Changes/FT14 - ZMQ PubSub Fix_de.md`
+Documentation: `Docu/Changes/FT14 - ZMQ PubSub Fix_de.md`
 
-### 8.4 CPU Last Optimierung
+### 8.4 CPU Load Optimization
 
-**Problem**: Server hatte 99% CPU Last
+**Problem**: Server had 99% CPU load
 
-**Lösung**: Strategische `time.sleep(0.01)` in Haupt-Loops eingefügt
+**Solution**: Strategic `time.sleep(0.01)` inserted in main loops
 
-Dokumentation: `Docu/Changes/FT32 - CPU Optimization_de.md`
+Documentation: `Docu/Changes/FT32 - CPU Optimization_de.md`
 
 ### 8.5 LED Problem
 
-**Problem**: WS2812 LEDs funktionierten nicht (SPI nicht verfügbar)
+**Problem**: WS2812 LEDs did not work (SPI not available)
 
-**Lösung**: Mock-Mode implementiert, Server läuft ohne LEDs
+**Solution**: Mock mode implemented, server runs without LEDs
 
-Dokumentation: `Docu/Changes/FT19 - LED Problem_en.md`
+Documentation: `Docu/Changes/FT19 - LED Problem_en.md`
 
 ### 8.6 Connection Error Handling
 
-**Problem**: Verschiedene Socket-Fehler bei Disconnect
+**Problem**: Various socket errors on disconnect
 
-**Lösung**: Umfassendes Exception Handling für alle Socket-Fehlertypen
+**Solution**: Comprehensive exception handling for all socket error types
 
-Dokumentation: `Docu/Changes/FT15 - Connection Error Handling_de.md`
+Documentation: `Docu/Changes/FT15 - Connection Error Handling_de.md`
 
 ---
 
 ## 9. Change History
 
-Alle Feature-Änderungen sind dokumentiert unter `Docu/Changes/`:
+All feature changes are documented under `Docu/Changes/`:
 
-**Wichtige Features** (Auswahl):
-1. **FT1-FT4**: Connection und Video Stream Fixes
+**Important Features** (selection):
+1. **FT1-FT4**: Connection and Video Stream Fixes
 2. **FT5**: SSH Keys Setup
-3. **FT6**: PCA9685 Fix (I2C Adresse 0x40)
+3. **FT6**: PCA9685 Fix (I2C address 0x40)
 4. **FT12-FT15**: Reconnection, FPV Thread, ZMQ PubSub Fixes
 5. **FT16-FT18**: Servo Tester Tool
 6. **FT19**: LED Problem Fix
-7. **FT20**: SmoothMode Analyse
-8. **FT21-FT30**: Smooth Movement Implementierung und Optimierungen
+7. **FT20**: SmoothMode Analysis
+8. **FT21-FT30**: Smooth Movement Implementation and Optimizations
 9. **FT31**: SmoothCam Implementation
 10. **FT32**: CPU Optimization
 11. **FT33**: Battery Monitor
-12. **FT34-FT46**: Weitere Bugfixes, Refactorings und Verbesserungen
+12. **FT34-FT46**: Additional bugfixes, refactorings and improvements
 
-Viele Änderungen existieren in Deutsch (_de) und Englisch (_en).
+Many changes exist in German (_de) and English (_en).
 
-Vollständige Liste: Siehe `Docu/Changes/` Verzeichnis.
+Complete list: See `Docu/Changes/` directory.
 
 ---
 
-## 10. Entwicklungs-Workflow
+## 10. Development Workflow
 
-### 10.1 Typischer Workflow
+### 10.1 Typical Workflow
 
-1. **Änderungen auf Windows entwickeln**:
+1. **Develop changes on Windows**:
    ```powershell
    cd C:\Users\SCMJ178\IdeaProjects\Adeept_RaspClaws
-   # Änderungen machen, testen mit lokaler GUI
+   # Make changes, test with local GUI
    ```
 
-2. **Committen und Pushen**:
+2. **Commit and Push**:
    ```powershell
    git add .
-   git commit -m "Beschreibung"
+   git commit -m "Description"
    git push origin master
    ```
 
-3. **Auf Raspberry Pi aktualisieren**:
+3. **Update on Raspberry Pi**:
    ```bash
    ssh pi@192.168.2.126
    cd /home/pi/adeept_raspclaws
@@ -474,182 +474,182 @@ Vollständige Liste: Siehe `Docu/Changes/` Verzeichnis.
    sudo systemctl restart robot_server.service
    ```
 
-4. **Logs prüfen**:
+4. **Check logs**:
    ```bash
    sudo journalctl -u robot_server.service -f
    ```
 
 ### 10.2 Testing
 
-**Ohne Hardware** (Mock Mode):
-- Server läuft auch ohne PCA9685, WS2812, Kamera
-- Ideal für Logik-Tests
+**Without Hardware** (Mock Mode):
+- Server runs even without PCA9685, WS2812, camera
+- Ideal for logic tests
 
-**Mit Hardware**:
-- Vollständiger Test aller Features
-- Kamera-Feed verifizieren
-- Servo-Bewegungen testen
+**With Hardware**:
+- Complete test of all features
+- Verify camera feed
+- Test servo movements
 
-### 10.3 Debug-Tipps
+### 10.3 Debug Tips
 
-**Client-Seite**:
-- Debug Mode in IntelliJ zeigt alle Ausgaben
-- `print()` Statements werden in Run-Fenster angezeigt
+**Client Side**:
+- Debug mode in IntelliJ shows all output
+- `print()` statements are displayed in run window
 
-**Server-Seite**:
-- `journalctl` für systemd Service Logs
-- `sys.stdout.flush()` nach wichtigen Prints verwenden
-- Fehler werden als Systemd-Logs gespeichert
+**Server Side**:
+- `journalctl` for systemd service logs
+- Use `sys.stdout.flush()` after important prints
+- Errors are saved as systemd logs
 
-**Netzwerk-Tests**:
+**Network Tests**:
 ```powershell
-# Test ob Port offen
+# Test if port is open
 Test-NetConnection -ComputerName 192.168.2.126 -Port 10223
 
-# Ping Test
+# Ping test
 ping 192.168.2.126
 
-# Port-Listening prüfen (Windows)
+# Check port listening (Windows)
 netstat -ano | findstr :10223
 ```
 
 ---
 
-## 11. Wichtige Dateien
+## 11. Important Files
 
-### 11.1 Konfigurationsdateien
+### 11.1 Configuration Files
 
-- `Client/IP.txt`: Server IP-Adresse
-- `requirements.txt`: Python Dependencies
-- `setup.py`: Package-Setup (falls vorhanden)
+- `Client/IP.txt`: Server IP address
+- `requirements.txt`: Python dependencies
+- `setup.py`: Package setup (if present)
 
-### 11.2 Hauptprogramme
+### 11.2 Main Programs
 
 **Client**:
-- `Client/GUI.py`: Hauptprogramm mit Tkinter GUI
-- `Client/Footage-GUI.py`: Video-Fenster (separater Prozess)
-- `Client/ip_utils.py`: IP-Konfiguration Utilities
+- `Client/GUI.py`: Main program with Tkinter GUI
+- `Client/Footage-GUI.py`: Video window (separate process)
+- `Client/ip_utils.py`: IP configuration utilities
 
 **Server**:
-- `Server/GUIServer.py`: Hauptserver (ehemals server.py)
-- `Server/FPV.py`: Video-Capture und Streaming
-- `Server/Move.py`: Bewegungssteuerung
-- `Server/RPIservo.py`: Servo-Controller (PCA9685)
-- `Server/RobotLight.py`: LED-Steuerung (WS2812)
-- `Server/Switch.py`: GPIO Switches
-- `Server/Voltage.py`: Batterie-Überwachung
-- **`Server/ServoTester.py`**: Servo-Test-Tool mit GUI (standalone)
+- `Server/GUIServer.py`: Main server (formerly server.py)
+- `Server/FPV.py`: Video capture and streaming
+- `Server/Move.py`: Movement control
+- `Server/RPIservo.py`: Servo controller (PCA9685)
+- `Server/RobotLight.py`: LED control (WS2812)
+- `Server/Switch.py`: GPIO switches
+- `Server/Voltage.py`: Battery monitoring
+- **`Server/ServoTester.py`**: Servo test tool with GUI (standalone)
 
 **Tools**:
-- `Server/ServoTester.py`: Standalone GUI zum Testen einzelner Servos
-  - Schieberegler für alle 8 Servo-Kanäle
-  - SSH-fähig (X11-Forwarding)
-  - Mock-Mode für Entwicklung ohne Hardware
-  - Dokumentation: `Docu/Changes/FT16 - Servo Tester_de.md` / `Docu/Changes/FT16 - Servo Tester_en.md`
+- `Server/ServoTester.py`: Standalone GUI for testing individual servos
+  - Sliders for all 8 servo channels
+  - SSH-capable (X11 forwarding)
+  - Mock mode for development without hardware
+  - Documentation: `Docu/Changes/FT16 - Servo Tester_de.md` / `Docu/Changes/FT16 - Servo Tester_en.md`
 
-### 11.3 Dokumentation
+### 11.3 Documentation
 
-Alle Dokumente unter `Docu/`:
-- Englische Versionen enden mit `_en.md`
-- Deutsche Versionen ohne Suffix oder mit `_de.md`
-- Features History unter `Docu/Changes/`
-  - Dort wird für jedes neue Feature eine "FT<nr> - <description>_<language>.md" Datei erstellt. Diese wird bei Änderungen an dem Feature geupdated.
+All documents under `Docu/`:
+- English versions end with `_en.md`
+- German versions without suffix or with `_de.md`
+- Feature history under `Docu/Changes/`
+  - For each new feature, a "FT<nr> - <description>_<language>.md" file is created, which is updated when the feature changes.
 
-Für ein neues Feature wird eine neue FT-Datei angelegt.
-Hinweis: Du musst nicht jeden Bugfix in den FT Dateien eintragen. Dort sollen eher die Features in ihrer Funktionalität beschrieben werden.
-
----
-
-## 12. Zukünftige Entwicklung
-
-### 12.1 ROS 2 Integration (Geplant)
-
-**Vorbereitung**:
-- Server-Architektur ist bereits modular
-- Move.py kann als ROS2 Node adaptiert werden
-- FPV Stream kann als ROS2 Topic publiziert werden
-
-**Vorschlag**:
-- Separate ROS2 Bridge Node erstellen
-- Bestehende Socket-Kommunikation beibehalten (für Legacy-Clients)
-- Parallele ROS2 Topics hinzufügen
-
-### 12.2 Verbesserungsideen
-
-- [ ] Web-basierte GUI (Flask/FastAPI)
-- [ ] Gamepad/Controller Support
-- [ ] Autonomous Navigation Modi
-- [ ] Verbesserte Computer Vision (Object Detection)
-- [ ] Video-Recording Funktion
-- [ ] Telemetrie-Logging
-- [ ] Multi-Client Support
+For a new feature, create a new FT file.
+Note: You don't need to document every bugfix in the FT files. They should describe features and their functionality.
 
 ---
 
-## 13. Troubleshooting Checkliste
+## 12. Future Development
 
-### Client startet nicht
+### 12.1 ROS 2 Integration (Planned)
 
-- [ ] Virtuelles Environment aktiviert?
-- [ ] OpenCV installiert? (`pip install opencv-python`)
-- [ ] ZMQ installiert? (`pip install pyzmq`)
-- [ ] IP.txt korrekt konfiguriert?
+**Preparation**:
+- Server architecture is already modular
+- Move.py can be adapted as ROS2 node
+- FPV stream can be published as ROS2 topic
 
-### Kein Video-Stream
+**Proposal**:
+- Create separate ROS2 bridge node
+- Keep existing socket communication (for legacy clients)
+- Add parallel ROS2 topics
 
-- [ ] Server läuft? (`sudo systemctl status robot_server.service`)
-- [ ] SSH Tunnel aktiv? (falls verwendet)
-- [ ] Kamera angeschlossen? (Raspberry Pi)
-- [ ] Port 5555 erreichbar?
-- [ ] "VIDEO_READY" Signal im Log? (GUI Output)
-- [ ] "channel 5: open failed" im SSH Tunnel → Normal, sollte verschwinden
+### 12.2 Improvement Ideas
 
-### Steuerung funktioniert nicht
-
-- [ ] TCP Port 10223 erreichbar?
-- [ ] Server empfängt Kommandos? (journalctl Logs prüfen)
-- [ ] PCA9685 erkannt? (i2cdetect -y 1)
-- [ ] Bewegungs-Kommandos im Server-Log sichtbar?
-
-### Zweiter Connect funktioniert nicht
-
-- [ ] Aktuelle Version vom Git? (Reconnection Fix)
-- [ ] Server-Logs prüfen: Zeigt "waiting for connection"?
-- [ ] 2 Sekunden Wartezeit nach Disconnect?
-
-### Hohe CPU Last
-
-- [ ] Aktuelle Version? (CPU Optimization Fix)
-- [ ] FPV Thread läuft nur einmal?
-- [ ] Sleep Statements in Loops vorhanden?
+- [ ] Web-based GUI (Flask/FastAPI)
+- [ ] Gamepad/Controller support
+- [ ] Autonomous navigation modes
+- [ ] Improved computer vision (object detection)
+- [ ] Video recording function
+- [ ] Telemetry logging
+- [ ] Multi-client support
 
 ---
 
-## 14. Kontakte und Ressourcen
+## 13. Troubleshooting Checklist
 
-**Original Hersteller**: Adeept
+### Client Won't Start
+
+- [ ] Virtual environment activated?
+- [ ] OpenCV installed? (`pip install opencv-python`)
+- [ ] ZMQ installed? (`pip install pyzmq`)
+- [ ] IP.txt correctly configured?
+
+### No Video Stream
+
+- [ ] Server running? (`sudo systemctl status robot_server.service`)
+- [ ] SSH tunnel active? (if used)
+- [ ] Camera connected? (Raspberry Pi)
+- [ ] Port 5555 reachable?
+- [ ] "VIDEO_READY" signal in log? (GUI output)
+- [ ] "channel 5: open failed" in SSH tunnel → Normal, should disappear
+
+### Control Not Working
+
+- [ ] TCP port 10223 reachable?
+- [ ] Server receiving commands? (check journalctl logs)
+- [ ] PCA9685 detected? (i2cdetect -y 1)
+- [ ] Movement commands visible in server log?
+
+### Second Connect Not Working
+
+- [ ] Latest version from git? (Reconnection fix)
+- [ ] Check server logs: Shows "waiting for connection"?
+- [ ] 2 second wait after disconnect?
+
+### High CPU Load
+
+- [ ] Latest version? (CPU optimization fix)
+- [ ] FPV thread running only once?
+- [ ] Sleep statements in loops present?
+
+---
+
+## 14. Contacts and Resources
+
+**Original Manufacturer**: Adeept
 - Website: www.adeept.com
 - E-mail: support@adeept.com
 
 **GitHub Repository**: https://github.com/schmiereck/Adeept_RaspClaws.git
 
-**Entwickler**: schmiereck
+**Developer**: schmiereck
 
-**Original Autor** (Adeept Basis-Code): William (2018/08/22)
+**Original Author** (Adeept base code): William (2018/08/22)
 
 ---
 
-## 15. Versions-Historie
+## 15. Version History
 
-| Datum | Version | Änderung |
+| Date | Version | Changes |
 |-------|---------|----------|
 | 2026-01-17 | 2.0 | Reconnection Fix, CPU Optimization, Smooth Cam |
 | 2026-01-16 | 1.5 | PCA9685 Fix (0x40), SSH Tunnel Support |
-| 2026-01-16 | 1.4 | ZMQ PUB/SUB Fix, Video Stream Stabilisierung |
+| 2026-01-16 | 1.4 | ZMQ PUB/SUB Fix, Video Stream Stabilization |
 | 2018-08-22 | 1.0 | Original Adeept Release |
 
 ---
 
-**Letzte Aktualisierung**: 2026-01-18
+**Last Update**: 2026-01-20
 
-**Status**: ✅ Produktiv - Client kann mehrfach verbinden, Video-Stream stabil
+**Status**: ✅ Production - Client can connect multiple times, video stream stable

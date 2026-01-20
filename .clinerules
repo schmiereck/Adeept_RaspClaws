@@ -1,0 +1,45 @@
+# Claude Code Rules for Adeept RaspClaws Project
+
+## Project Overview
+- **Adeept RaspClaws** - Hexapod robot control system (6-legged robot)
+- Client-Server architecture: Windows GUI (Client) ↔ Raspberry Pi (Server)
+- Main languages: Python 3.7+ (Client), Python 3.13 (Server)
+
+## Documentation
+- **Full documentation**: Read `AGENTS.md` for development environment, architecture, network setup, troubleshooting
+- **Feature history**: See `Docu/Changes/` directory (FT1-FT46 feature documentation)
+- **Keyboard shortcuts**: `Docu/KEYBOARD_SHORTCUTS.md`
+
+## Important Files
+- **Protocol constants**: `protocol.py` - ALL command strings are defined here as constants
+  - Use constants (e.g., `CMD_FORWARD`) instead of string literals
+  - Import: `from protocol import *`
+- **Client**: `Client/GUI.py` (Tkinter GUI), `Client/Footage-GUI.py` (Video window)
+- **Server**: `Server/GUIServer.py` (main server), `Server/Move.py` (movement control), `Server/FPV.py` (video streaming)
+
+## Code Guidelines
+- **Always use protocol constants** from `protocol.py` for commands and status messages
+- **Prefer editing existing files** over creating new ones
+- **No emojis** in code unless explicitly requested
+- **Read files before editing** - use Read tool first
+- **Test before committing** - especially movement and servo commands
+
+## Git Workflow
+- Main branch: `master`
+- Old main branch: `master-old` (use for PRs if needed)
+- Commit format: Descriptive messages with `Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>`
+
+## Feature Documentation
+- For new features: Create `Docu/Changes/FT<nr> - <description>_<language>.md`
+- Languages: `_de` (German), `_en` (English)
+- Update existing FT files when modifying features (not for every bugfix, just major changes)
+
+## Network Configuration
+- Server IP: Configurable in `Client/IP.txt`
+- Ports: TCP 10223 (commands), ZMQ 5555 (video stream)
+- SSH tunnel support available for firewall-restricted environments
+
+## Hardware Notes
+- PCA9685 PWM Controller: I2C address **0x40** (not 0x5F!)
+- ADS7830 ADC: I2C address **0x48** (battery monitoring)
+- Mock mode available for development without hardware
