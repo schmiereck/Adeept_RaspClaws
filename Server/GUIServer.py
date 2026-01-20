@@ -48,6 +48,10 @@ rm.pause()
 SmoothMode = 0
 steadyMode = 0
 
+# Power Management Status
+servo_standby_active = False
+camera_paused_active = False
+
 # Battery monitoring using ADS7830
 battery_available = False
 adc = None
@@ -211,6 +215,27 @@ def info_send_client():
 
     print(f"INFO_SEND_CLIENT: Finished VIDEO_READY phase ({success_count}/10 successful)")
     sys.stdout.flush()
+
+    # Send current power management status to synchronize GUI buttons
+    time.sleep(0.2)
+    try:
+        if servo_standby_active:
+            tcpCliSock.send('servoStandby\n'.encode())
+            print("Sent initial servo standby status: ACTIVE")
+        else:
+            tcpCliSock.send('servoWakeup\n'.encode())
+            print("Sent initial servo standby status: INACTIVE")
+
+        time.sleep(0.1)
+
+        if camera_paused_active:
+            tcpCliSock.send('cameraPaused\n'.encode())
+            print("Sent initial camera pause status: PAUSED")
+        else:
+            tcpCliSock.send('cameraResumed\n'.encode())
+            print("Sent initial camera pause status: ACTIVE")
+    except Exception as e:
+        print(f"⚠ Failed to send power management status: {e}")
 
     # Then continue with regular info sending
     while 1:
@@ -408,26 +433,38 @@ def process_client_command(data):
 
 def handle_power_management_command(data):
 	"""Handle servo standby/wakeup and camera pause/resume commands"""
-	global fps_threading
+	global fps_threading, servo_standby_active, camera_paused_active
 
 	if data == 'servo_standby':
 		print("🔋 SERVO STANDBY - Stopping PWM signals")
 		move.standby()  # Call standby in Move module
+		servo_standby_active = True
+		# Send status update to client
+		tcpCliSock.send('servoStandby\n'.encode())
 		return True
 
 	elif data == 'servo_wakeup':
 		print("⚡ SERVO WAKEUP - Restoring servo positions")
 		move.wakeup()  # Call wakeup in Move module
+		servo_standby_active = False
+		# Send status update to client
+		tcpCliSock.send('servoWakeup\n'.encode())
 		return True
 
 	elif data == 'camera_pause':
 		print("📷 CAMERA PAUSE - Stopping video stream")
 		FPV.pause_stream()
+		camera_paused_active = True
+		# Send status update to client
+		tcpCliSock.send('cameraPaused\n'.encode())
 		return True
 
 	elif data == 'camera_resume':
 		print("📷 CAMERA RESUME - Restarting video stream")
 		FPV.resume_stream()
+		camera_paused_active = False
+		# Send status update to client
+		tcpCliSock.send('cameraResumed\n'.encode())
 		return True
 
 	return False

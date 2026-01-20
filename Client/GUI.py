@@ -631,6 +631,36 @@ def handle_switch(switch_num, enabled):
 		Btn_Switch_3.config(bg='#4CAF50' if enabled else color_btn)
 
 
+def handle_servo_standby_status(active):
+	"""Handle servo standby status update from server"""
+	global servo_standby_state, Btn_ServoStandby
+
+	servo_standby_state = active
+	if active:
+		# Servo is in standby - show "Wake" button
+		Btn_ServoStandby.config(bg='#FF6D00', fg='#000000', text='Servo Wake [M]')
+		print("🔋 Servo Standby ACTIVE (synced from server)")
+	else:
+		# Servo is awake - show "Standby" button
+		Btn_ServoStandby.config(bg=color_btn, fg=color_text, text='Servo Standby [M]')
+		print("⚡ Servo Standby INACTIVE (synced from server)")
+
+
+def handle_camera_pause_status(paused):
+	"""Handle camera pause status update from server"""
+	global camera_pause_state, Btn_CameraPause
+
+	camera_pause_state = paused
+	if paused:
+		# Camera is paused - show "Resume" button
+		Btn_CameraPause.config(bg='#FF6D00', fg='#000000', text='Camera Resume [,]')
+		print("📷 Camera Pause ACTIVE (synced from server)")
+	else:
+		# Camera is active - show "Pause" button
+		Btn_CameraPause.config(bg=color_btn, fg=color_text, text='Camera Pause [,]')
+		print("📷 Camera Pause INACTIVE (synced from server)")
+
+
 # ==================== Connection Thread ====================
 def connection_thread():
 	"""Main connection thread - receives and processes messages from server"""
@@ -666,6 +696,18 @@ def connection_thread():
 
 			elif 'smoothCamOff' in car_info:
 				handle_smooth_cam(enabled=False)
+
+			elif car_info == 'servoStandby':
+				handle_servo_standby_status(active=True)
+
+			elif car_info == 'servoWakeup':
+				handle_servo_standby_status(active=False)
+
+			elif car_info == 'cameraPaused':
+				handle_camera_pause_status(paused=True)
+
+			elif car_info == 'cameraResumed':
+				handle_camera_pause_status(paused=False)
 
 			elif 'Switch_1_on' in car_info:
 				handle_switch(1, enabled=True)
