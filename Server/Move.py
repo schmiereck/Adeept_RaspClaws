@@ -1893,7 +1893,9 @@ def standby():
 	move_stu = 0  # Stop any ongoing movement
 
 	# Pause the RobotM thread to stop all movement
+	print(f"[STANDBY] Pausing RobotM thread (current state: {rm.threading_flag})")
 	rm.pause()
+	print(f"[STANDBY] RobotM thread paused (new state: {rm.threading_flag})")
 
 	# Stop PWM signals on all channels
 	for i in range(16):
@@ -1914,6 +1916,8 @@ def wakeup():
 		pwm.set_pwm(i, 0, servo_current_pos[i])
 
 	# Resume the RobotM thread to allow movement again
+	print(f"[WAKEUP] Resuming RobotM thread (current state: {rm.threading_flag})")
 	rm.resume()
+	print(f"[WAKEUP] RobotM thread resumed (new state: {rm.threading_flag})")
 
 	print("✓ All servos restored - robot ready")
