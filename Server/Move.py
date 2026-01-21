@@ -711,85 +711,10 @@ def calculate_target_positions(phase, speed, command):
 	elif command == CMD_RIGHT:
 		positions = _get_turn_leg_positions(phase, speed, is_left_turn=False)
 	elif command == CMD_FORWARD_LEFT_ARC:
-		# FORWARD LEFT ARC: Combine forward movement with a left turn bias
-		# Left legs (L1, L2, L3) move less forward / more backward (turn left)
-		# Right legs (R1, R2, R3) move more forward / less backward (turn left)
-		turn_bias = 0.5 # Adjust this value to control the arc tightness
-		if phase < 0.5:
-			# Group 1 (L1, R2, L3) in air, Group 2 (R1, L2, R3) on ground
-			t = phase * 2  # 0.0 to 1.0
-			v_air = int(3 * abs(speed) * math.sin(t * math.pi))
-			v_ground = -10
-
-			# Horizontal for legs in air (L1, R2, L3) - swing forward/outward
-			h_swing_base = int(abs(speed) * math.cos(t * math.pi))
-			positions['L1'] = {'h': -h_swing_base * (1 - turn_bias), 'v': v_air} # Left leg, less forward swing
-			positions['R2'] = {'h': h_swing_base * (1 + turn_bias), 'v': v_air} # Right leg, more forward swing
-			positions['L3'] = {'h': -h_swing_base * (1 - turn_bias), 'v': v_air} # Left leg, less forward swing
-
-			# Horizontal for legs on ground (R1, L2, R3) - push backward/inward
-			h_push_base = -h_swing_base
-			positions['R1'] = {'h': h_push_base * (1 + turn_bias), 'v': v_ground} # Right leg, more push
-			positions['L2'] = {'h': -h_push_base * (1 - turn_bias), 'v': v_ground} # Left leg, less push
-			positions['R3'] = {'h': h_push_base * (1 + turn_bias), 'v': v_ground} # Right leg, more push
-		else:
-			# Group 2 (R1, L2, R3) in air, Group 1 (L1, R2, L3) on ground
-			t = (phase - 0.5) * 2  # 0.0 to 1.0
-			v_air = int(3 * abs(speed) * math.sin(t * math.pi))
-			v_ground = -10
-
-			# Horizontal for legs in air (R1, L2, R3) - swing forward/outward
-			h_swing_base = int(abs(speed) * math.cos(t * math.pi))
-			positions['R1'] = {'h': h_swing_base * (1 + turn_bias), 'v': v_air}
-			positions['L2'] = {'h': -h_swing_base * (1 - turn_bias), 'v': v_air}
-			positions['R3'] = {'h': h_swing_base * (1 + turn_bias), 'v': v_air}
-
-			# Horizontal for legs on ground (L1, R2, L3) - push backward/inward
-			h_push_base = -h_swing_base
-			positions['L1'] = {'h': -h_push_base * (1 - turn_bias), 'v': v_ground}
-			positions['R2'] = {'h': h_push_base * (1 + turn_bias), 'v': v_ground}
-			positions['L3'] = {'h': -h_push_base * (1 - turn_bias), 'v': v_ground}
+		positions = _get_arc_leg_positions(phase, speed, is_left_arc=True)
 
 	elif command == CMD_FORWARD_RIGHT_ARC:
-		# FORWARD RIGHT ARC: Combine forward movement with a right turn bias
-		# Left legs (L1, L2, L3) move more forward / less backward (turn right)
-		# Right legs (R1, R2, R3) move less forward / more backward (turn right)
-		turn_bias = 0.5 # Adjust this value to control the arc tightness
-		if phase < 0.5:
-			# Group 1 (L1, R2, L3) in air, Group 2 (R1, L2, R3) on ground
-			t = phase * 2  # 0.0 to 1.0
-			v_air = int(3 * abs(speed) * math.sin(t * math.pi))
-			v_ground = -10
-
-			# Horizontal for legs in air (L1, R2, L3) - swing forward/outward
-			h_swing_base = int(abs(speed) * math.cos(t * math.pi))
-			positions['L1'] = {'h': -h_swing_base * (1 + turn_bias), 'v': v_air} # Left leg, more forward swing
-			positions['R2'] = {'h': h_swing_base * (1 - turn_bias), 'v': v_air} # Right leg, less forward swing
-			positions['L3'] = {'h': -h_swing_base * (1 + turn_bias), 'v': v_air} # Left leg, more forward swing
-
-			# Horizontal for legs on ground (R1, L2, R3) - push backward/inward
-			h_push_base = -h_swing_base
-			positions['R1'] = {'h': h_push_base * (1 - turn_bias), 'v': v_ground} # Right leg, less push
-			positions['L2'] = {'h': -h_push_base * (1 + turn_bias), 'v': v_ground} # Left leg, more push
-			positions['R3'] = {'h': h_push_base * (1 - turn_bias), 'v': v_ground} # Right leg, less push
-		else:
-			# Group 2 (R1, L2, R3) in air, Group 1 (L1, R2, L3) on ground
-			t = (phase - 0.5) * 2  # 0.0 to 1.0
-			v_air = int(3 * abs(speed) * math.sin(t * math.pi))
-			v_ground = -10
-
-			# Horizontal for legs in air (R1, L2, R3) - swing forward/outward
-			h_swing_base = int(abs(speed) * math.cos(t * math.pi))
-			positions['R1'] = {'h': h_swing_base * (1 - turn_bias), 'v': v_air}
-			positions['L2'] = {'h': -h_swing_base * (1 + turn_bias), 'v': v_air}
-			positions['R3'] = {'h': h_swing_base * (1 - turn_bias), 'v': v_air}
-
-			# Horizontal for legs on ground (L1, R2, L3) - push backward/inward
-			h_push_base = -h_swing_base
-			positions['L1'] = {'h': -h_push_base * (1 + turn_bias), 'v': v_ground}
-			positions['R2'] = {'h': h_push_base * (1 - turn_bias), 'v': v_ground}
-			positions['L3'] = {'h': -h_push_base * (1 + turn_bias), 'v': v_ground}
-
+		positions = _get_arc_leg_positions(phase, speed, is_left_arc=False)
 	return positions
 
 
@@ -996,6 +921,67 @@ def _interpolate_vertical_arc(speed, t, descending=False):
 	else:
 		# Ascending arc: 0 → 3*speed → 0 (full sine wave)
 		return int(3 * abs(speed) * math.sin(t * math.pi))
+
+
+def _get_arc_leg_positions(phase, speed, is_left_arc):
+	"""
+	Calculate target horizontal and vertical positions for all legs during an arc movement.
+
+	Args:
+		phase: Current phase in cycle (0.0 to 1.0)
+		speed: Movement amplitude (absolute value used)
+		is_left_arc: True for a forward-left arc, False for a forward-right arc
+
+	Returns:
+		Dictionary with target positions for each leg: {'L1': {'h': ..., 'v': ...}, ...}
+	"""
+	positions = {}
+	turn_bias = 0.5  # Adjust this value to control the arc tightness
+
+	# Determine bias factors based on arc direction
+	if is_left_arc:
+		left_bias_factor = 1 - turn_bias
+		right_bias_factor = 1 + turn_bias
+	else: # Right arc
+		left_bias_factor = 1 + turn_bias
+		right_bias_factor = 1 - turn_bias
+
+	if phase < 0.5:
+		# First half of the cycle
+		t = phase * 2  # Normalize to 0.0 to 1.0
+		v_air = int(3 * abs(speed) * math.sin(t * math.pi))
+		v_ground = -10
+
+		# Horizontal swing for legs in air (Group 1: L1, R2, L3)
+		h_swing_base = int(abs(speed) * math.cos(t * math.pi))
+		positions['L1'] = {'h': -h_swing_base * left_bias_factor, 'v': v_air}
+		positions['R2'] = {'h': h_swing_base * right_bias_factor, 'v': v_air}
+		positions['L3'] = {'h': -h_swing_base * left_bias_factor, 'v': v_air}
+
+		# Horizontal push for legs on ground (Group 2: R1, L2, R3)
+		h_push_base = -h_swing_base
+		positions['R1'] = {'h': h_push_base * right_bias_factor, 'v': v_ground}
+		positions['L2'] = {'h': -h_push_base * left_bias_factor, 'v': v_ground}
+		positions['R3'] = {'h': h_push_base * right_bias_factor, 'v': v_ground}
+	else:
+		# Second half of the cycle
+		t = (phase - 0.5) * 2  # Normalize to 0.0 to 1.0
+		v_air = int(3 * abs(speed) * math.sin(t * math.pi))
+		v_ground = -10
+
+		# Horizontal swing for legs in air (Group 2: R1, L2, R3)
+		h_swing_base = int(abs(speed) * math.cos(t * math.pi))
+		positions['R1'] = {'h': h_swing_base * right_bias_factor, 'v': v_air}
+		positions['L2'] = {'h': -h_swing_base * left_bias_factor, 'v': v_air}
+		positions['R3'] = {'h': h_swing_base * right_bias_factor, 'v': v_air}
+
+		# Horizontal push for legs on ground (Group 1: L1, R2, L3)
+		h_push_base = -h_swing_base
+		positions['L1'] = {'h': -h_push_base * left_bias_factor, 'v': v_ground}
+		positions['R2'] = {'h': h_push_base * right_bias_factor, 'v': v_ground}
+		positions['L3'] = {'h': -h_push_base * left_bias_factor, 'v': v_ground}
+
+	return positions
 
 
 def _get_turn_leg_positions(phase, speed, is_left_turn):
