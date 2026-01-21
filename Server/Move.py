@@ -623,7 +623,7 @@ def move_smooth(speed_left, speed_right, cycle_steps=30):
 		phase = step / cycle_steps
 
 		# Calculate target positions for this phase
-		target_positions = calculate_target_positions(phase, speed)
+		target_positions = calculate_target_positions(phase, speed_left, speed_right)
 
 		# Interpolate from current to target (smooth transition)
 		# Use ease-in/ease-out interpolation for smooth, non-jerky movements
@@ -692,73 +692,39 @@ def _calculate_gait_phase(phase, speed):
 	return air_group, ground_group, t, v_air, v_ground
 
 
-def calculate_target_positions(speed_left, speed_right):
-
+def calculate_target_positions(phase, speed_left, speed_right):
 	"""
-
-	Calculate target horizontal and vertical positions for all legs based on side speeds.
-
+	Calculate target horizontal and vertical positions for all legs based on phase and side speeds.
 	This single function handles all movement types (forward, backward, turn, arc).
 
-
-
 	Args:
-
-		speed_left: Movement amplitude for the left legs.
-
-		speed_right: Movement amplitude for the right legs.
-
-
+		phase (float): Current phase of the walk cycle (0.0 to 1.0).
+		speed_left (int): Movement amplitude for the left legs.
+		speed_right (int): Movement amplitude for the right legs.
 
 	Returns:
-
-		Dictionary with target positions for each leg: {'L1': {'h': ..., 'v': ...}, ...}
-
+		dict: Dictionary with target positions for each leg: {'L1': {'h': ..., 'v': ...}, ...}
 	"""
-
 	positions = {}
-
 	# The overall speed determines the leg lift height.
-
 	speed = max(abs(speed_left), abs(speed_right))
-
-	phase = (time.time() * 1.0) % 1.0  # Simple phase calculation based on time
-
-
 
 	air_group, ground_group, t, v_air, v_ground = _calculate_gait_phase(phase, speed)
 
-
-
 	# Calculate horizontal movement for each side
-
 	h_left_air = int(speed_left * math.cos(t * math.pi))
-
 	h_left_ground = -h_left_air
 
-
-
 	h_right_air = int(speed_right * math.cos(t * math.pi))
-
 	h_right_ground = -h_right_air
 
-
-
 	# Assign positions to all legs
-
 	for leg in ['L1', 'L2', 'L3', 'R1', 'R2', 'R3']:
-
 		is_left = leg.startswith('L')
-
 		if leg in air_group:
-
 			positions[leg] = {'h': h_left_air if is_left else h_right_air, 'v': v_air}
-
-		else: # in ground_group
-
+		else:  # in ground_group
 			positions[leg] = {'h': h_left_ground if is_left else h_right_ground, 'v': v_ground}
-
-			
 
 	return positions
 
@@ -1008,94 +974,6 @@ def _execute_step_loop(num_steps, time_per_step, position_calculator, command):
 
 
 # ==================== Main Movement Functions ====================
-
-def dove_smooth(phase, speed, timeLast, command):
-	"""
-	Smooth continuous leg movement using sine/cosine curves.
-
-	Uses generic helper functions to reduce code duplication.
-
-	Args:
-		phase: Current phase (0.0 to 1.0) of the walking cycle
-		speed: Movement amplitude (horizontal range)
-		timeLast: Time per cycle
-		command: Movement command (MOVE_NO, CMD_LEFT, CMD_RIGHT)
-
-	Phase mapping:
-		0.0 - 0.5: Group A (L1, R2, L3) in air, Group B (R1, L2, R3) on ground
-		0.5 - 1.0: Group B in air, Group A on ground
-	"""
-	import math
-
-	# Determine which half of the cycle we're in
-	if phase < 0.5:
-		# First half: Group A in air, Group B on ground
-		t = phase * 2  # Normalize to 0.0-1.0
-
-		# Calculate base horizontal position (cosine for smooth curve)
-		h_base = int(abs(speed) * math.cos(t * math.pi))  # +speed → -speed
-
-		# Calculate vertical position (sine arc)
-		v_air = _interpolate_vertical_arc(speed, t, descending=False)
-		v_ground = -10  # On ground
-
-		# Apply direction sign to horizontal position
-		if speed > 0:
-			h_air = h_base
-			h_ground = -h_base
-		else:
-			h_air = -h_base
-			h_ground = h_base
-
-		# Calculate turn-specific positions if needed
-		if command == CMD_LEFT or command == CMD_RIGHT:
-			L1_h, R2_h, L3_h, R1_h, L2_h, R3_h = _calculate_turn_positions_deprecated(h_base, command)
-			# Group A in air with turn positions
-			dove_Left_I(L1_h, v_air)
-			dove_Right_II(R2_h, v_air)
-			dove_Left_III(L3_h, v_air)
-			# Group B on ground with turn positions
-			dove_Right_I(R1_h, v_ground)
-			dove_Left_II(L2_h, v_ground)
-			dove_Right_III(R3_h, v_ground)
-		else:
-			# Forward/backward: both groups move same horizontal direction
-			_apply_tripod_group_positions(h_air, v_air, h_ground, v_ground)
-
-	else:
-		# Second half: Group B in air, Group A on ground
-		t = (phase - 0.5) * 2  # Normalize to 0.0-1.0
-
-		# Calculate base horizontal position
-		h_base = int(abs(speed) * math.cos(t * math.pi))  # +speed → -speed
-
-		# Calculate vertical position
-		v_air = _interpolate_vertical_arc(speed, t, descending=False)
-		v_ground = -10  # On ground
-
-		# Apply direction sign
-		if speed > 0:
-			h_air = h_base
-			h_ground = -h_base
-		else:
-			h_air = -h_base
-			h_ground = h_base
-
-		# Calculate turn-specific positions if needed
-		if command == CMD_LEFT or command == CMD_RIGHT:
-			L1_h, R2_h, L3_h, R1_h, L2_h, R3_h = _calculate_turn_positions_deprecated(h_base, command)
-			# Group A on ground with turn positions
-			dove_Left_I(L1_h, v_ground)
-			dove_Right_II(R2_h, v_ground)
-			dove_Left_III(L3_h, v_ground)
-			# Group B in air with turn positions
-			dove_Right_I(R1_h, v_air)
-			dove_Left_II(L2_h, v_air)
-			dove_Right_III(R3_h, v_air)
-		else:
-			# Forward/backward: Group A on ground, Group B in air
-			_apply_tripod_group_positions(h_ground, v_ground, h_air, v_air)
-
 
 def dove(step_input, speed, timeLast, dpi, command):
 	"""
