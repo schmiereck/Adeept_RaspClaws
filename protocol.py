@@ -123,6 +123,6 @@ GUI_TO_MOVE_COMMAND_MAP = {
     CMD_TURN_STOP: MOVE_NO,
     CMD_STRAFE_LEFT: CMD_LEFT,  # Strafe left
     CMD_STRAFE_RIGHT: CMD_RIGHT,  # Strafe right
-    CMD_FORWARD_LEFT_ARC: CMD_LEFT,  # Forward left arc
-    CMD_FORWARD_RIGHT_ARC: CMD_RIGHT,  # Forward right arc
+    CMD_FORWARD_LEFT_ARC: CMD_FORWARD_LEFT_ARC,  # Forward left arc
+    CMD_FORWARD_RIGHT_ARC: CMD_FORWARD_RIGHT_ARC,  # Forward right arc
 }
