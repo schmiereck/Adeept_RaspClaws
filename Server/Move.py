@@ -978,27 +978,63 @@ def _get_arc_leg_positions(phase, speed, is_left_arc):
 def _get_turn_leg_positions(phase, speed, is_left_turn):
 	"""
 	Calculate target horizontal and vertical positions for all legs during a turn.
+	This uses a specific gait pattern for turning that is different from forward movement.
 	"""
 	positions = {}
-	air_group, ground_group, t, v_air, v_ground = _calculate_gait_phase(phase, speed)
+	v_ground = -10
 
-	# Horizontal positions for turning
-	h_swing = int(abs(speed) * math.cos((t + 1) * math.pi))  # -speed to +speed
-	h_push = int(abs(speed) * math.cos(t * math.pi))       # +speed to -speed
+	if phase < 0.5:
+		# Phase 1: Group B (R1, L2, R3) in air, Group A (L1, R2, L3) on ground
+		t = phase * 2
+		v_air = int(3 * abs(speed) * math.sin(t * math.pi))
+		h_swing = int(abs(speed) * math.cos((t + 1) * math.pi))  # -speed to +speed
+		h_push = int(abs(speed) * math.cos(t * math.pi))       # +speed to -speed
 
-	# Define leg-specific horizontal multipliers for turning
-	# Left turn: left legs move back (-1), right legs move forward (+1)
-	# Right turn: left legs move forward (+1), right legs move back (-1)
-	turn_factors = {
-		'L1': -1 if is_left_turn else 1, 'L2': -1 if is_left_turn else 1, 'L3': -1 if is_left_turn else 1,
-		'R1': 1 if is_left_turn else -1, 'R2': 1 if is_left_turn else -1, 'R3': 1 if is_left_turn else -1,
-	}
+		# Air group (B)
+		if is_left_turn:
+			positions['R1'] = {'h': h_swing, 'v': v_air}
+			positions['L2'] = {'h': -h_swing, 'v': v_air}
+			positions['R3'] = {'h': h_swing, 'v': v_air}
+		else: # Right turn
+			positions['R1'] = {'h': -h_swing, 'v': v_air}
+			positions['L2'] = {'h': h_swing, 'v': v_air}
+			positions['R3'] = {'h': -h_swing, 'v': v_air}
 
-	for leg in air_group:
-		positions[leg] = {'h': h_swing * turn_factors[leg], 'v': v_air}
-	for leg in ground_group:
-		# Ground legs push in the opposite horizontal direction of the swing
-		positions[leg] = {'h': -h_push * turn_factors[leg], 'v': v_ground}
+		# Ground group (A)
+		if is_left_turn:
+			positions['L1'] = {'h': -h_push, 'v': v_ground}
+			positions['R2'] = {'h': h_push, 'v': v_ground}
+			positions['L3'] = {'h': -h_push, 'v': v_ground}
+		else: # Right turn
+			positions['L1'] = {'h': h_push, 'v': v_ground}
+			positions['R2'] = {'h': -h_push, 'v': v_ground}
+			positions['L3'] = {'h': h_push, 'v': v_ground}
+	else:
+		# Phase 2: Group A (L1, R2, L3) in air, Group B (R1, L2, R3) on ground
+		t = (phase - 0.5) * 2
+		v_air = int(3 * abs(speed) * math.sin(t * math.pi))
+		h_swing = int(abs(speed) * math.cos((t + 1) * math.pi))  # -speed to +speed
+		h_push = int(abs(speed) * math.cos(t * math.pi))       # +speed to -speed
+
+		# Air group (A)
+		if is_left_turn:
+			positions['L1'] = {'h': -h_swing, 'v': v_air}
+			positions['R2'] = {'h': h_swing, 'v': v_air}
+			positions['L3'] = {'h': -h_swing, 'v': v_air}
+		else: # Right turn
+			positions['L1'] = {'h': h_swing, 'v': v_air}
+			positions['R2'] = {'h': -h_swing, 'v': v_air}
+			positions['L3'] = {'h': h_swing, 'v': v_air}
+
+		# Ground group (B)
+		if is_left_turn:
+			positions['R1'] = {'h': h_push, 'v': v_ground}
+			positions['L2'] = {'h': -h_push, 'v': v_ground}
+			positions['R3'] = {'h': h_push, 'v': v_ground}
+		else: # Right turn
+			positions['R1'] = {'h': -h_push, 'v': v_ground}
+			positions['L2'] = {'h': h_push, 'v': v_ground}
+			positions['R3'] = {'h': -h_push, 'v': v_ground}
 
 	return positions
 
