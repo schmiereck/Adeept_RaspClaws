@@ -1235,11 +1235,11 @@ def create_camera_control_buttons(root, color_text, color_btn):
 	Btn_home = tk.Button(root, width=8, text='Home', fg=color_text, bg=color_btn, relief='ridge')
 	
 	# Position camera buttons on the RIGHT side
-	Btn_up.place(x=400, y=195)      # Up
-	Btn_down.place(x=400, y=265)    # Down
-	Btn_left.place(x=330, y=230)    # Left
-	Btn_right.place(x=470, y=230)   # Right
-	Btn_home.place(x=400, y=230)    # Home
+	Btn_up.place(x=400, y=195 + 70)      # Up
+	Btn_down.place(x=400, y=265 + 70)    # Down
+	Btn_left.place(x=330, y=230 + 70)    # Left
+	Btn_right.place(x=470, y=230 + 70)   # Right
+	Btn_home.place(x=400, y=230 + 70)    # Home
 
 	# Keyboard bindings
 	root.bind('<KeyPress-i>', call_headup)
