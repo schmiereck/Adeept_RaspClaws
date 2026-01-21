@@ -382,11 +382,13 @@ def handle_arc_factor_command(data):
 	if data.startswith(CMD_SET_ARC_FACTOR):
 		try:
 			arc_factor_str = data[len(CMD_SET_ARC_FACTOR):]
+			# Handle potential concatenated commands or newlines by taking the first part
+			arc_factor_str = arc_factor_str.split()[0]
 			arc_factor = float(arc_factor_str)
 			print(f"[GUIServer] Setting arc factor to {arc_factor}")
 			move.set_arc_factor(arc_factor)
 			return True
-		except ValueError:
+		except (ValueError, IndexError):  # IndexError if split is empty
 			print(f"[GUIServer] Invalid arc factor value: {data}")
 			return False
 	return False
