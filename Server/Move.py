@@ -692,7 +692,6 @@ def _calculate_gait_phase(phase, speed):
 	return air_group, ground_group, t, v_air, v_ground
 
 
-def _get_arc_leg_positions(phase, speed, is_left_arc):
 def calculate_target_positions(speed_left, speed_right):
 
 	"""
