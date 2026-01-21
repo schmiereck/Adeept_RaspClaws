@@ -723,12 +723,11 @@ def calculate_target_positions(phase, speed, command):
 
 	elif command == CMD_LEFT:
 		positions = _get_turn_leg_positions(phase, speed, is_left_turn=True)
-
 	elif command == CMD_RIGHT:
 		positions = _get_turn_leg_positions(phase, speed, is_left_turn=False)
+
 	elif command == CMD_FORWARD_LEFT_ARC:
 		positions = _get_arc_leg_positions(phase, speed, is_left_arc=True)
-
 	elif command == CMD_FORWARD_RIGHT_ARC:
 		positions = _get_arc_leg_positions(phase, speed, is_left_arc=False)
 	return positions
@@ -1173,7 +1172,7 @@ def dove_smooth(phase, speed, timeLast, command):
 
 		# Calculate turn-specific positions if needed
 		if command == CMD_LEFT or command == CMD_RIGHT:
-			L1_h, R2_h, L3_h, R1_h, L2_h, R3_h = _calculate_turn_positions(h_base, command)
+			L1_h, R2_h, L3_h, R1_h, L2_h, R3_h = _calculate_turn_positions_deprecated(h_base, command)
 			# Group A in air with turn positions
 			dove_Left_I(L1_h, v_air)
 			dove_Right_II(R2_h, v_air)
@@ -1207,7 +1206,7 @@ def dove_smooth(phase, speed, timeLast, command):
 
 		# Calculate turn-specific positions if needed
 		if command == CMD_LEFT or command == CMD_RIGHT:
-			L1_h, R2_h, L3_h, R1_h, L2_h, R3_h = _calculate_turn_positions(h_base, command)
+			L1_h, R2_h, L3_h, R1_h, L2_h, R3_h = _calculate_turn_positions_deprecated(h_base, command)
 			# Group A on ground with turn positions
 			dove_Left_I(L1_h, v_ground)
 			dove_Right_II(R2_h, v_ground)
