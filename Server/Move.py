@@ -623,7 +623,7 @@ def move_smooth(speed_left, speed_right, cycle_steps=30):
 		phase = step / cycle_steps
 
 		# Calculate target positions for this phase
-		target_positions = calculate_target_positions(phase, speed, command)
+		target_positions = calculate_target_positions(phase, speed)
 
 		# Interpolate from current to target (smooth transition)
 		# Use ease-in/ease-out interpolation for smooth, non-jerky movements
