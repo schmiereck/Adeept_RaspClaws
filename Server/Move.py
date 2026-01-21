@@ -706,80 +706,10 @@ def calculate_target_positions(phase, speed, command):
 			positions['R3'] = {'h': h2, 'v': v2}
 
 	elif command == CMD_LEFT:
-		# LEFT TURN (CCW): Tripod-Gait Rotation (FT43)
-		# CRITICAL: For rotation, legs must move based on SIDE (left vs right), NOT group!
-		# Left legs: push forward (positive h), Right legs: pull back (positive h inverted = back)
-		if phase < 0.5:
-			# Phase 1: Group B (R1, L2, R3) in air, Group A (L1, R2, L3) on ground pushing
-			t = phase * 2  # 0.0 to 1.0
-			v = int(3 * abs(speed) * math.sin(t * math.pi))
-
-			# Group B in air: swing - right pulls forward, left pulls back
-			h_swing = int(abs(speed) * math.cos((t + 1) * math.pi))  # -speed to +speed
-			positions['R1'] = {'h': h_swing, 'v': v}   # Right: -h to go forward (inverted)
-			positions['L2'] = {'h': -h_swing, 'v': v}  # Left: -h to go back
-			positions['R3'] = {'h': h_swing, 'v': v}   # Right: -h to go forward (inverted)
-
-			# Group A on ground: right pulls back, left pushes forward
-			h_push = int(abs(speed) * math.cos(t * math.pi))  # +speed to -speed
-			positions['L1'] = {'h': -h_push, 'v': -10}  # Left: -→+ = back→forward (push left)
-			positions['R2'] = {'h': h_push, 'v': -10}   # Right: needs +→- inverted = forward→back (pull left)
-			positions['L3'] = {'h': -h_push, 'v': -10}  # Left: -→+ = back→forward (push left)
-		else:
-			# Phase 2: Group A (L1, R2, L3) in air, Group B (R1, L2, R3) on ground pushing
-			t = (phase - 0.5) * 2  # 0.0 to 1.0
-			v = int(3 * abs(speed) * math.sin(t * math.pi))
-
-			# Group A in air: swing - right pulls forward, left pulls back
-			h_swing = int(abs(speed) * math.cos((t + 1) * math.pi))  # -speed to +speed
-			positions['L1'] = {'h': -h_swing, 'v': v}  # Left: -h to go back
-			positions['R2'] = {'h': h_swing, 'v': v}   # Right: -h to go forward (inverted)
-			positions['L3'] = {'h': -h_swing, 'v': v}  # Left: -h to go back
-
-			# Group B on ground: right pulls back, left pushes forward
-			h_push = int(abs(speed) * math.cos(t * math.pi))  # +speed to -speed
-			positions['R1'] = {'h': h_push, 'v': -10}   # Right: needs +→- inverted = forward→back (pull left)
-			positions['L2'] = {'h': -h_push, 'v': -10}  # Left: -→+ = back→forward (push left)
-			positions['R3'] = {'h': h_push, 'v': -10}   # Right: needs +→- inverted = forward→back (pull left)
+		positions = _get_turn_leg_positions(phase, speed, is_left_turn=True)
 
 	elif command == CMD_RIGHT:
-		# RIGHT TURN (CW): Tripod-Gait Rotation (mirror of LEFT)
-		# Group A (L1, R2, L3) alternates with Group B (R1, L2, R3)
-		# CRITICAL: For rotation, legs must move based on SIDE (left vs right), NOT group!
-		# Left legs: pull back (negative h), Right legs: push forward (negative h inverted = forward)
-		if phase < 0.5:
-			# Phase 1: Group B (R1, L2, R3) in air, Group A (L1, R2, L3) on ground pushing
-			t = phase * 2  # 0.0 to 1.0
-			v = int(3 * abs(speed) * math.sin(t * math.pi))
-
-			# Group B in air: swing - left pulls forward, right pulls back
-			h_swing = int(abs(speed) * math.cos((t + 1) * math.pi))  # -speed to +speed
-			positions['R1'] = {'h': -h_swing, 'v': v}  # Right: needs +h to go back (inverted)
-			positions['L2'] = {'h': h_swing, 'v': v}   # Left: +h to go forward
-			positions['R3'] = {'h': -h_swing, 'v': v}  # Right: needs +h to go back (inverted)
-
-			# Group A on ground: left pulls back, right pushes forward
-			h_push = int(abs(speed) * math.cos(t * math.pi))  # +speed to -speed
-			positions['L1'] = {'h': h_push, 'v': -10}  # Left: +→- = forward→back (pull right)
-			positions['R2'] = {'h': -h_push, 'v': -10}  # Right: needs -→+ inverted = back→forward (push right)
-			positions['L3'] = {'h': h_push, 'v': -10}  # Left: +→- = forward→back (pull right)
-		else:
-			# Phase 2: Group A (L1, R2, L3) in air, Group B (R1, L2, R3) on ground pushing
-			t = (phase - 0.5) * 2  # 0.0 to 1.0
-			v = int(3 * abs(speed) * math.sin(t * math.pi))
-
-			# Group A in air: swing - left pulls forward, right pulls back
-			h_swing = int(abs(speed) * math.cos((t + 1) * math.pi))  # -speed to +speed
-			positions['L1'] = {'h': h_swing, 'v': v}  # Left: +h to go forward
-			positions['R2'] = {'h': -h_swing, 'v': v}  # Right: needs +h to go back (inverted)
-			positions['L3'] = {'h': h_swing, 'v': v}  # Left: +h to go forward
-
-			# Group B on ground: left pulls back, right pushes forward
-			h_push = int(abs(speed) * math.cos(t * math.pi))  # +speed to -speed
-			positions['R1'] = {'h': -h_push, 'v': -10}  # Right: needs -→+ inverted = back→forward (push right)
-			positions['L2'] = {'h': h_push, 'v': -10}  # Left: +→- = forward→back (pull right)
-			positions['R3'] = {'h': -h_push, 'v': -10}  # Right: needs -→+ inverted = back→forward (push right)
-
+		positions = _get_turn_leg_positions(phase, speed, is_left_turn=False)
 	elif command == CMD_FORWARD_LEFT_ARC:
 		# FORWARD LEFT ARC: Combine forward movement with a left turn bias
 		# Left legs (L1, L2, L3) move less forward / more backward (turn left)
@@ -1068,30 +998,95 @@ def _interpolate_vertical_arc(speed, t, descending=False):
 		return int(3 * abs(speed) * math.sin(t * math.pi))
 
 
-def _calculate_turn_positions(base_h, command):
+def _get_turn_leg_positions(phase, speed, is_left_turn):
 	"""
-	Calculate horizontal positions for LEFT/RIGHT turn movements.
-
-	For turns, the two tripod groups move in opposite directions:
-	- LEFT turn: L1/L3 go back (negative), R2 goes forward (positive)
-	             R1/R3 go forward (positive), L2 goes back (negative)
-	- RIGHT turn: Mirror of LEFT
+	Calculate target horizontal and vertical positions for all legs during a turn.
 
 	Args:
-		base_h: Base horizontal position (unsigned)
-		command: CMD_LEFT or CMD_RIGHT
+		phase: Current phase in cycle (0.0 to 1.0)
+		speed: Movement amplitude (absolute value used)
+		is_left_turn: True for left turn (CCW), False for right turn (CW)
 
 	Returns:
-		Tuple of (L1_h, R2_h, L3_h, R1_h, L2_h, R3_h)
+		Dictionary with target positions for each leg: {'L1': {'h': ..., 'v': ...}, ...}
+	"""
+	positions = {}
+
+	if phase < 0.5:
+		# Phase 1: Group B (R1, L2, R3) in air, Group A (L1, R2, L3) on ground pushing
+		t = phase * 2  # Normalize to 0.0 to 1.0
+		v = int(3 * abs(speed) * math.sin(t * math.pi))
+
+		# Swing legs (Group B in air)
+		h_swing_base = int(abs(speed) * math.cos((t + 1) * math.pi))  # -speed to +speed
+		if is_left_turn:
+			# Left turn: Right legs pull forward (+h), Left legs pull back (-h)
+			positions['R1'] = {'h': h_swing_base, 'v': v}   # Right: -h to go forward (inverted)
+			positions['L2'] = {'h': -h_swing_base, 'v': v}  # Left: -h to go back
+			positions['R3'] = {'h': h_swing_base, 'v': v}   # Right: -h to go forward (inverted)
+		else:
+			# Right turn: Left legs pull forward (+h), Right legs pull back (-h)
+			positions['R1'] = {'h': -h_swing_base, 'v': v}  # Right: needs +h to go back (inverted)
+			positions['L2'] = {'h': h_swing_base, 'v': v}   # Left: +h to go forward
+			positions['R3'] = {'h': -h_swing_base, 'v': v}  # Right: needs +h to go back (inverted)
+
+		# Push legs (Group A on ground)
+		h_push_base = int(abs(speed) * math.cos(t * math.pi))  # +speed to -speed
+		if is_left_turn:
+			# Left turn: Left legs push forward (-h -> +h), Right legs pull back (+h -> -h)
+			positions['L1'] = {'h': -h_push_base, 'v': -10}  # Left: -→+ = back→forward (push left)
+			positions['R2'] = {'h': h_push_base, 'v': -10}   # Right: needs +→- inverted = forward→back (pull left)
+			positions['L3'] = {'h': -h_push_base, 'v': -10}  # Left: -→+ = back→forward (push left)
+		else:
+			# Right turn: Right legs push forward (-h -> +h), Left legs pull back (+h -> -h)
+			positions['L1'] = {'h': h_push_base, 'v': -10}  # Left: +→- = forward→back (pull right)
+			positions['R2'] = {'h': -h_push_base, 'v': -10}  # Right: needs -→+ inverted = back→forward (push right)
+			positions['L3'] = {'h': h_push_base, 'v': -10}  # Left: +→- = forward→back (pull right)
+	else:
+		# Phase 2: Group A (L1, R2, L3) in air, Group B (R1, L2, R3) on ground pushing
+		t = (phase - 0.5) * 2  # Normalize to 0.0 to 1.0
+		v = int(3 * abs(speed) * math.sin(t * math.pi))
+
+		# Swing legs (Group A in air)
+		h_swing_base = int(abs(speed) * math.cos((t + 1) * math.pi))  # -speed to +speed
+		if is_left_turn:
+			# Left turn: Right legs pull forward (+h), Left legs pull back (-h)
+			positions['L1'] = {'h': -h_swing_base, 'v': v}  # Left: -h to go back
+			positions['R2'] = {'h': h_swing_base, 'v': v}   # Right: -h to go forward (inverted)
+			positions['L3'] = {'h': -h_swing_base, 'v': v}  # Left: -h to go back
+		else:
+			# Right turn: Left legs pull forward (+h), Right legs pull back (-h)
+			positions['L1'] = {'h': h_swing_base, 'v': v}  # Left: +h to go forward
+			positions['R2'] = {'h': -h_swing_base, 'v': v}  # Right: needs +h to go back (inverted)
+			positions['L3'] = {'h': h_swing_base, 'v': v}  # Left: +h to go forward
+
+		# Push legs (Group B on ground)
+		h_push_base = int(abs(speed) * math.cos(t * math.pi))  # +speed to -speed
+		if is_left_turn:
+			# Left turn: Right legs pull back (+h -> -h), Left legs push forward (-h -> +h)
+			positions['R1'] = {'h': h_push_base, 'v': -10}   # Right: needs +→- inverted = forward→back (pull left)
+			positions['L2'] = {'h': -h_push_base, 'v': -10}  # Left: -→+ = back→forward (push left)
+			positions['R3'] = {'h': h_push_base, 'v': -10}   # Right: needs +→- inverted = forward→back (pull left)
+		else:
+			# Right turn: Left legs pull back (+h -> -h), Right legs push forward (-h -> +h)
+			positions['R1'] = {'h': -h_push_base, 'v': -10}  # Right: needs -→+ inverted = back→forward (push right)
+			positions['L2'] = {'h': h_push_base, 'v': -10}  # Left: +→- = forward→back (pull right)
+			positions['R3'] = {'h': -h_push_base, 'v': -10}  # Right: needs -→+ inverted = back→forward (push right)
+
+	return positions
+
+
+def _calculate_turn_positions_deprecated(base_h, command):
+	"""
+	DEPRECATED: Calculate horizontal positions for LEFT/RIGHT turn movements.
+	This function is kept for backwards compatibility with the dove() function,
+	but new code should use _get_turn_leg_positions.
 	"""
 	if command == CMD_LEFT:
-		# LEFT turn (CCW): L1/L3 back, R2 forward, R1/R3 forward, L2 back
 		return (-base_h, base_h, -base_h, base_h, -base_h, base_h)
 	elif command == CMD_RIGHT:
-		# RIGHT turn (CW): Mirror of LEFT
 		return (base_h, -base_h, base_h, -base_h, base_h, -base_h)
 	else:
-		# No turn: all same horizontal position
 		return (base_h, base_h, base_h, base_h, base_h, base_h)
 
 
