@@ -34,14 +34,9 @@ CMD_FORWARD_RIGHT_ARC = 'forwardRightArc'
 MOVE_STAND = 'stand'  # Stand still position
 MOVE_NO = 'no'  # No movement command
 
-# Speed commands
-CMD_FAST = 'fast'
-CMD_SLOW = 'slow'
+# Speed and arc commands
 CMD_SET_SPEED = 'setSpeed:'  # Set movement speed (format: "setSpeed:35")
-
-# Smooth movement mode
-CMD_SMOOTH = 'smooth'
-CMD_SMOOTH_OFF = 'smoothOff'
+CMD_SET_ARC_FACTOR = 'setArcFactor:'  # Set arc factor (format: "setArcFactor:0.7")
 
 
 # ==================== Camera Commands ====================

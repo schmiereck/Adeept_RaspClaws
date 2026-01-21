@@ -59,6 +59,8 @@ ip_adr = ''
 footage_socket = None
 speed_slider_widget = None
 speed_value_label_widget = None
+arc_factor_slider_widget = None
+arc_factor_value_label_widget = None
 current_speed = 35  # Default movement speed
 
 Switch_3 = 0
@@ -196,6 +198,21 @@ def on_speed_change(value):
 	# Send speed command to server
 	send_command(f'{CMD_SET_SPEED}{speed}')
 	print(f"[Speed] Set to {speed}")
+
+
+def on_arc_factor_change(value):
+	"""Handle arc factor slider value change"""
+	global arc_factor_value_label_widget
+
+	arc_factor = float(value)
+
+	# Update value label
+	if arc_factor_value_label_widget:
+		arc_factor_value_label_widget.config(text=f'{arc_factor:.2f}')
+
+	# Send arc factor command to server
+	send_command(f'{CMD_SET_ARC_FACTOR}{arc_factor}')
+	print(f"[ArcFactor] Set to {arc_factor:.2f}")
 
 
 # ==================== Movement Callbacks ====================
@@ -1101,20 +1118,44 @@ def create_movement_buttons(root, color_text, color_btn):
 	"""Create movement control buttons"""
 	# Switch buttons (Port 1, 2, 3)
 	global Btn_Switch_1, Btn_Switch_2, Btn_Switch_3
+	global speed_slider_widget, speed_value_label_widget
+	global arc_factor_slider_widget, arc_factor_value_label_widget
 
-	Btn_Switch_1 = tk.Button(root, width=8, text='Port 1', fg=color_text, bg=color_btn, relief='ridge')
-	Btn_Switch_2 = tk.Button(root, width=8, text='Port 2', fg=color_text, bg=color_btn, relief='ridge')
-	Btn_Switch_3 = tk.Button(root, width=8, text='Port 3', fg=color_text, bg=color_btn, relief='ridge')
+	# Speed control slider
+	speed_label = tk.Label(root, text='Speed:', fg=color_text, bg='#212121', width=6)
+	speed_label.place(x=30, y=115)
 
-	Btn_Switch_1.place(x=30, y=265)
-	Btn_Switch_2.place(x=100, y=265)
-	Btn_Switch_3.place(x=170, y=265)
+	speed_slider = tk.Scale(root, from_=10, to=100, orient=tk.HORIZONTAL,
+							length=200, fg=color_text, bg='#37474F',
+							troughcolor='#263238', highlightthickness=0,
+							command=lambda val: on_speed_change(val))
+	speed_slider.set(35)  # Default speed
+	speed_slider.place(x=30, y=140)
 
-	Btn_Switch_1.bind('<ButtonPress-1>', call_Switch_1)
-	Btn_Switch_2.bind('<ButtonPress-1>', call_Switch_2)
-	Btn_Switch_3.bind('<ButtonPress-1>', call_Switch_3)
+	speed_value_label = tk.Label(root, text='35', fg=color_text, bg='#212121', width=3)
+	speed_value_label.place(x=240, y=145)
 
-	# Movement buttons (Forward, Backward, Left, Right)
+	speed_slider_widget = speed_slider
+	speed_value_label_widget = speed_value_label
+
+	# Arc Factor control slider
+	arc_factor_label = tk.Label(root, text='Arc Factor:', fg=color_text, bg='#212121', width=10)
+	arc_factor_label.place(x=30, y=180)
+
+	arc_factor_slider = tk.Scale(root, from_=0.0, to=1.0, resolution=0.05, orient=tk.HORIZONTAL,
+								 length=200, fg=color_text, bg='#37474F',
+								 troughcolor='#263238', highlightthickness=0,
+								 command=lambda val: on_arc_factor_change(val))
+	arc_factor_slider.set(0.7)  # Default arc factor
+	arc_factor_slider.place(x=30, y=205)
+
+	arc_factor_value_label = tk.Label(root, text='0.70', fg=color_text, bg='#212121', width=4)
+	arc_factor_value_label.place(x=240, y=210)
+
+	arc_factor_slider_widget = arc_factor_slider
+	arc_factor_value_label_widget = arc_factor_value_label
+
+	# Movement buttons (Forward, Backward, Left, Right) - Repositioned
 	Btn0 = tk.Button(root, width=8, text='Forward', fg=color_text, bg=color_btn, relief='ridge')
 	Btn1 = tk.Button(root, width=8, text='Backward', fg=color_text, bg=color_btn, relief='ridge')
 	Btn_LeftSide = tk.Button(root, width=8, text='Arc Left', fg=color_text, bg=color_btn, relief='ridge')
@@ -1122,13 +1163,25 @@ def create_movement_buttons(root, color_text, color_btn):
 	Btn3 = tk.Button(root, width=8, text='Right', fg=color_text, bg=color_btn, relief='ridge')
 	Btn_RightSide = tk.Button(root, width=8, text='Arc Right', fg=color_text, bg=color_btn, relief='ridge')
 
-	# Position movement buttons
-	Btn0.place(x=100, y=195)    # Forward (center top)
-	Btn_LeftSide.place(x=30, y=195) # Left Side (left top, above Left)
-	Btn_RightSide.place(x=170, y=195) # Right Side (right top, above Right)
-	Btn1.place(x=100, y=230)    # Backward (center middle)
-	Btn2.place(x=30, y=230)     # Left (left middle)
-	Btn3.place(x=170, y=230)    # Right (right middle)
+	Btn0.place(x=100, y=265)    # Forward (center top)
+	Btn_LeftSide.place(x=30, y=265) # Left Side (left top, above Left)
+	Btn_RightSide.place(x=170, y=265) # Right Side (right top, above Right)
+	Btn1.place(x=100, y=300)    # Backward (center middle)
+	Btn2.place(x=30, y=300)     # Left (left middle)
+	Btn3.place(x=170, y=300)    # Right (right middle)
+
+	# Switch buttons (Port 1, 2, 3) - Repositioned
+	Btn_Switch_1 = tk.Button(root, width=8, text='Port 1', fg=color_text, bg=color_btn, relief='ridge')
+	Btn_Switch_2 = tk.Button(root, width=8, text='Port 2', fg=color_text, bg=color_btn, relief='ridge')
+	Btn_Switch_3 = tk.Button(root, width=8, text='Port 3', fg=color_text, bg=color_btn, relief='ridge')
+
+	Btn_Switch_1.place(x=30, y=345)
+	Btn_Switch_2.place(x=100, y=345)
+	Btn_Switch_3.place(x=170, y=345)
+
+	Btn_Switch_1.bind('<ButtonPress-1>', call_Switch_1)
+	Btn_Switch_2.bind('<ButtonPress-1>', call_Switch_2)
+	Btn_Switch_3.bind('<ButtonPress-1>', call_Switch_3)
 
 	# Bind keyboard events
 	root.bind('<KeyPress-w>', call_forward)
@@ -1171,25 +1224,6 @@ def create_movement_buttons(root, color_text, color_btn):
 	Btn1.bind('<ButtonRelease-1>', call_FB_stop)
 	Btn2.bind('<ButtonRelease-1>', call_Turn_stop)
 	Btn3.bind('<ButtonRelease-1>', call_Turn_stop)
-
-	# Speed control slider
-	speed_label = tk.Label(root, text='Speed:', fg=color_text, bg='#212121', width=6)
-	speed_label.place(x=30, y=115)
-
-	speed_slider = tk.Scale(root, from_=10, to=60, orient=tk.HORIZONTAL,
-	                        length=200, fg=color_text, bg='#37474F',
-	                        troughcolor='#263238', highlightthickness=0,
-	                        command=lambda val: on_speed_change(val))
-	speed_slider.set(35)  # Default speed
-	speed_slider.place(x=30, y=140)
-
-	speed_value_label = tk.Label(root, text='35', fg=color_text, bg='#212121', width=3)
-	speed_value_label.place(x=240, y=145)
-
-	# Store references globally for updates
-	global speed_slider_widget, speed_value_label_widget
-	speed_slider_widget = speed_slider
-	speed_value_label_widget = speed_value_label
 
 
 def create_camera_control_buttons(root, color_text, color_btn):
@@ -1236,13 +1270,13 @@ def create_feature_buttons(root, color_text, color_btn):
 
 	# Steady mode button
 	Btn_Steady = tk.Button(root, width=10, text='Steady [Z]', fg=color_text, bg=color_btn, relief='ridge')
-	Btn_Steady.place(x=30, y=330)
+	Btn_Steady.place(x=30, y=410)
 	root.bind('<KeyPress-z>', call_steady)
 	Btn_Steady.bind('<ButtonPress-1>', call_steady)
 
 	# SmoothCam button
 	Btn_SmoothCam = tk.Button(root, width=10, text='Smooth-Cam [N]', fg=color_text, bg=color_btn, relief='ridge')
-	Btn_SmoothCam.place(x=115, y=330)
+	Btn_SmoothCam.place(x=115, y=410)
 	root.bind('<KeyPress-n>', call_SmoothCam)
 	Btn_SmoothCam.bind('<ButtonPress-1>', call_SmoothCam)
 

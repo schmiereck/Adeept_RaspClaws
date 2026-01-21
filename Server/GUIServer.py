@@ -381,6 +381,23 @@ def handle_speed_command(data):
 	return False  # Command not handled
 
 
+def handle_arc_factor_command(data):
+	"""
+	Handle arc factor control command.
+	"""
+	if data.startswith(CMD_SET_ARC_FACTOR):
+		try:
+			arc_factor_str = data[len(CMD_SET_ARC_FACTOR):]
+			arc_factor = float(arc_factor_str)
+			print(f"[GUIServer] Setting arc factor to {arc_factor}")
+			move.set_arc_factor(arc_factor)
+			return True
+		except ValueError:
+			print(f"[GUIServer] Invalid arc factor value: {data}")
+			return False
+	return False
+
+
 def handle_led_command(data):
 	"""Handle LED commands (police, policeOff)"""
 	global ws2812
@@ -435,6 +452,8 @@ def process_client_command(data):
 		return
 	# Note: handle_computer_vision_command removed - CV features not needed
 	if handle_speed_command(data):
+		return
+	if handle_arc_factor_command(data):
 		return
 	if handle_led_command(data):
 		return

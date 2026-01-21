@@ -1352,16 +1352,32 @@ def set_movement_speed(speed):
 	Set the movement speed for walking and turning.
 
 	Args:
-		speed: Movement speed (10-60 range)
+		speed: Movement speed (10-100 range)
 		       - 10: Very slow, careful movements
 		       - 35: Default speed (balanced)
-		       - 60: Fast movements (may be less stable)
+		       - 100: Fast movements (may be less stable)
 	"""
 	global movement_speed
 	# Clamp to valid range
-	speed = max(10, min(60, int(speed)))
+	speed = max(10, min(100, int(speed)))
 	movement_speed = speed
 	print(f"[Move] Movement speed set to {movement_speed}")
+
+
+def set_arc_factor(factor):
+	"""
+	Set the arc factor for curve movements.
+
+	Args:
+		factor: Arc factor (0.0 to 1.0 range)
+		       - 0.0: Straight movement
+		       - 1.0: Pivot turn on inner leg
+	"""
+	global arc_factor
+	# Clamp to valid range
+	factor = max(0.0, min(1.0, float(factor)))
+	arc_factor = factor
+	print(f"[Move] Arc factor set to {arc_factor}")
 
 
 # ==================== Helper Functions for Movement ====================
