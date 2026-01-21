@@ -656,6 +656,54 @@ def move_smooth(speed, command, cycle_steps=30):
 	abort_current_movement = False
 
 
+def _get_forward_backward_leg_positions(phase, speed):
+	"""
+	Calculate target horizontal and vertical positions for all legs during forward/backward movement.
+
+	Args:
+		phase: Current phase in cycle (0.0 to 1.0)
+		speed: Movement amplitude (negative = forward, positive = backward)
+
+	Returns:
+		Dictionary with target positions for each leg: {'L1': {'h': ..., 'v': ...}, ...}
+	"""
+	positions = {}
+
+	if phase < 0.5:
+		# Group 1 (L1, R2, L3) in air
+		t = phase * 2  # 0.0 to 1.0
+		h1 = int(speed * math.cos(t * math.pi))
+		v1 = int(3 * abs(speed) * math.sin(t * math.pi))
+
+		# Group 2 (R1, L2, R3) on ground
+		h2 = -h1
+		v2 = -10
+
+		positions['L1'] = {'h': h1, 'v': v1}
+		positions['R2'] = {'h': h1, 'v': v1}
+		positions['L3'] = {'h': h1, 'v': v1}
+		positions['R1'] = {'h': h2, 'v': v2}
+		positions['L2'] = {'h': h2, 'v': v2}
+		positions['R3'] = {'h': h2, 'v': v2}
+	else:
+		# Group 2 (R1, L2, R3) in air
+		t = (phase - 0.5) * 2  # 0.0 to 1.0
+		h2 = int(speed * math.cos(t * math.pi))
+		v2 = int(3 * abs(speed) * math.sin(t * math.pi))
+
+		# Group 1 (L1, R2, L3) on ground
+		h1 = -h2
+		v1 = -10
+
+		positions['L1'] = {'h': h1, 'v': v1}
+		positions['R2'] = {'h': h1, 'v': v1}
+		positions['L3'] = {'h': h1, 'v': v1}
+		positions['R1'] = {'h': h2, 'v': v2}
+		positions['L2'] = {'h': h2, 'v': v2}
+		positions['R3'] = {'h': h2, 'v': v2}
+
+	return positions
+
 def calculate_target_positions(phase, speed, command):
 	"""
 	Calculate target horizontal and vertical positions for all legs at given phase.
@@ -671,39 +719,7 @@ def calculate_target_positions(phase, speed, command):
 	positions = {}
 
 	if command == MOVE_NO:
-		# Forward/backward movement
-		if phase < 0.5:
-			# Group 1 (L1, R2, L3) in air
-			t = phase * 2  # 0.0 to 1.0
-			h1 = int(speed * math.cos(t * math.pi))
-			v1 = int(3 * abs(speed) * math.sin(t * math.pi))
-
-			# Group 2 (R1, L2, R3) on ground
-			h2 = -h1
-			v2 = -10
-
-			positions['L1'] = {'h': h1, 'v': v1}
-			positions['R2'] = {'h': h1, 'v': v1}
-			positions['L3'] = {'h': h1, 'v': v1}
-			positions['R1'] = {'h': h2, 'v': v2}
-			positions['L2'] = {'h': h2, 'v': v2}
-			positions['R3'] = {'h': h2, 'v': v2}
-		else:
-			# Group 2 (R1, L2, R3) in air
-			t = (phase - 0.5) * 2  # 0.0 to 1.0
-			h2 = int(speed * math.cos(t * math.pi))
-			v2 = int(3 * abs(speed) * math.sin(t * math.pi))
-
-			# Group 1 (L1, R2, L3) on ground
-			h1 = -h2
-			v1 = -10
-
-			positions['L1'] = {'h': h1, 'v': v1}
-			positions['R2'] = {'h': h1, 'v': v1}
-			positions['L3'] = {'h': h1, 'v': v1}
-			positions['R1'] = {'h': h2, 'v': v2}
-			positions['L2'] = {'h': h2, 'v': v2}
-			positions['R3'] = {'h': h2, 'v': v2}
+		positions = _get_forward_backward_leg_positions(phase, speed)
 
 	elif command == CMD_LEFT:
 		positions = _get_turn_leg_positions(phase, speed, is_left_turn=True)
