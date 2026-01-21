@@ -656,51 +656,57 @@ def move_smooth(speed, command, cycle_steps=30):
 	abort_current_movement = False
 
 
+def _calculate_gait_phase(phase, speed):
+	"""
+	Determines which leg group is in the air/on the ground based on the phase
+	and calculates the basic timing and vertical positions.
+
+	Args:
+		phase: Current phase in the cycle (0.0 to 1.0)
+		speed: Movement amplitude
+
+	Returns:
+		A tuple containing:
+		- air_group (list of leg names in the air)
+		- ground_group (list of leg names on the ground)
+		- t (normalized time within the half-cycle, 0.0 to 1.0)
+		- v_air (vertical position for air legs)
+		- v_ground (vertical position for ground legs)
+	"""
+	group_a = ['L1', 'R2', 'L3']
+	group_b = ['R1', 'L2', 'R3']
+
+	if phase < 0.5:
+		air_group = group_a
+		ground_group = group_b
+		t = phase * 2
+	else:
+		air_group = group_b
+		ground_group = group_a
+		t = (phase - 0.5) * 2
+
+	v_air = int(3 * abs(speed) * math.sin(t * math.pi))
+	v_ground = -10
+
+	return air_group, ground_group, t, v_air, v_ground
+
+
 def _get_forward_backward_leg_positions(phase, speed):
 	"""
 	Calculate target horizontal and vertical positions for all legs during forward/backward movement.
-
-	Args:
-		phase: Current phase in cycle (0.0 to 1.0)
-		speed: Movement amplitude (negative = forward, positive = backward)
-
-	Returns:
-		Dictionary with target positions for each leg: {'L1': {'h': ..., 'v': ...}, ...}
 	"""
 	positions = {}
+	air_group, ground_group, t, v_air, v_ground = _calculate_gait_phase(phase, speed)
 
-	if phase < 0.5:
-		# Group 1 (L1, R2, L3) in air
-		t = phase * 2  # 0.0 to 1.0
-		h1 = int(speed * math.cos(t * math.pi))
-		v1 = int(3 * abs(speed) * math.sin(t * math.pi))
+	# Horizontal positions for forward/backward movement
+	h_air = int(speed * math.cos(t * math.pi))
+	h_ground = -h_air
 
-		# Group 2 (R1, L2, R3) on ground
-		h2 = -h1
-		v2 = -10
-
-		positions['L1'] = {'h': h1, 'v': v1}
-		positions['R2'] = {'h': h1, 'v': v1}
-		positions['L3'] = {'h': h1, 'v': v1}
-		positions['R1'] = {'h': h2, 'v': v2}
-		positions['L2'] = {'h': h2, 'v': v2}
-		positions['R3'] = {'h': h2, 'v': v2}
-	else:
-		# Group 2 (R1, L2, R3) in air
-		t = (phase - 0.5) * 2  # 0.0 to 1.0
-		h2 = int(speed * math.cos(t * math.pi))
-		v2 = int(3 * abs(speed) * math.sin(t * math.pi))
-
-		# Group 1 (L1, R2, L3) on ground
-		h1 = -h2
-		v1 = -10
-
-		positions['L1'] = {'h': h1, 'v': v1}
-		positions['R2'] = {'h': h1, 'v': v1}
-		positions['L3'] = {'h': h1, 'v': v1}
-		positions['R1'] = {'h': h2, 'v': v2}
-		positions['L2'] = {'h': h2, 'v': v2}
-		positions['R3'] = {'h': h2, 'v': v2}
+	# Assign positions to the correct leg groups
+	for leg in air_group:
+		positions[leg] = {'h': h_air, 'v': v_air}
+	for leg in ground_group:
+		positions[leg] = {'h': h_ground, 'v': v_ground}
 
 	return positions
 
@@ -941,60 +947,30 @@ def _interpolate_vertical_arc(speed, t, descending=False):
 def _get_arc_leg_positions(phase, speed, is_left_arc):
 	"""
 	Calculate target horizontal and vertical positions for all legs during an arc movement.
-
-	Args:
-		phase: Current phase in cycle (0.0 to 1.0)
-		speed: Movement amplitude (absolute value used)
-		is_left_arc: True for a forward-left arc, False for a forward-right arc
-
-	Returns:
-		Dictionary with target positions for each leg: {'L1': {'h': ..., 'v': ...}, ...}
 	"""
 	positions = {}
+	air_group, ground_group, t, v_air, v_ground = _calculate_gait_phase(phase, speed)
+
 	turn_bias = 0.5  # Adjust this value to control the arc tightness
+	left_bias_factor = 1 - turn_bias if is_left_arc else 1 + turn_bias
+	right_bias_factor = 1 + turn_bias if is_left_arc else 1 - turn_bias
 
-	# Determine bias factors based on arc direction
-	if is_left_arc:
-		left_bias_factor = 1 - turn_bias
-		right_bias_factor = 1 + turn_bias
-	else: # Right arc
-		left_bias_factor = 1 + turn_bias
-		right_bias_factor = 1 - turn_bias
+	# Horizontal positions for arc movement
+	h_swing = int(abs(speed) * math.cos(t * math.pi))
+	h_push = -h_swing
 
-	if phase < 0.5:
-		# First half of the cycle
-		t = phase * 2  # Normalize to 0.0 to 1.0
-		v_air = int(3 * abs(speed) * math.sin(t * math.pi))
-		v_ground = -10
+	# Define leg-specific horizontal multipliers
+	bias_factors = {
+		'L1': left_bias_factor, 'L2': left_bias_factor, 'L3': left_bias_factor,
+		'R1': right_bias_factor, 'R2': right_bias_factor, 'R3': right_bias_factor,
+	}
+	# Left legs move with negative horizontal component in this gait
+	swing_direction = {'L1': -1, 'L2': -1, 'L3': -1, 'R1': 1, 'R2': 1, 'R3': 1}
 
-		# Horizontal swing for legs in air (Group 1: L1, R2, L3)
-		h_swing_base = int(abs(speed) * math.cos(t * math.pi))
-		positions['L1'] = {'h': -h_swing_base * left_bias_factor, 'v': v_air}
-		positions['R2'] = {'h': h_swing_base * right_bias_factor, 'v': v_air}
-		positions['L3'] = {'h': -h_swing_base * left_bias_factor, 'v': v_air}
-
-		# Horizontal push for legs on ground (Group 2: R1, L2, R3)
-		h_push_base = -h_swing_base
-		positions['R1'] = {'h': h_push_base * right_bias_factor, 'v': v_ground}
-		positions['L2'] = {'h': -h_push_base * left_bias_factor, 'v': v_ground}
-		positions['R3'] = {'h': h_push_base * right_bias_factor, 'v': v_ground}
-	else:
-		# Second half of the cycle
-		t = (phase - 0.5) * 2  # Normalize to 0.0 to 1.0
-		v_air = int(3 * abs(speed) * math.sin(t * math.pi))
-		v_ground = -10
-
-		# Horizontal swing for legs in air (Group 2: R1, L2, R3)
-		h_swing_base = int(abs(speed) * math.cos(t * math.pi))
-		positions['R1'] = {'h': h_swing_base * right_bias_factor, 'v': v_air}
-		positions['L2'] = {'h': -h_swing_base * left_bias_factor, 'v': v_air}
-		positions['R3'] = {'h': h_swing_base * right_bias_factor, 'v': v_air}
-
-		# Horizontal push for legs on ground (Group 1: L1, R2, L3)
-		h_push_base = -h_swing_base
-		positions['L1'] = {'h': -h_push_base * left_bias_factor, 'v': v_ground}
-		positions['R2'] = {'h': h_push_base * right_bias_factor, 'v': v_ground}
-		positions['L3'] = {'h': -h_push_base * left_bias_factor, 'v': v_ground}
+	for leg in air_group:
+		positions[leg] = {'h': h_swing * swing_direction[leg] * bias_factors[leg], 'v': v_air}
+	for leg in ground_group:
+		positions[leg] = {'h': h_push * swing_direction[leg] * bias_factors[leg], 'v': v_ground}
 
 	return positions
 
@@ -1002,77 +978,27 @@ def _get_arc_leg_positions(phase, speed, is_left_arc):
 def _get_turn_leg_positions(phase, speed, is_left_turn):
 	"""
 	Calculate target horizontal and vertical positions for all legs during a turn.
-
-	Args:
-		phase: Current phase in cycle (0.0 to 1.0)
-		speed: Movement amplitude (absolute value used)
-		is_left_turn: True for left turn (CCW), False for right turn (CW)
-
-	Returns:
-		Dictionary with target positions for each leg: {'L1': {'h': ..., 'v': ...}, ...}
 	"""
 	positions = {}
+	air_group, ground_group, t, v_air, v_ground = _calculate_gait_phase(phase, speed)
 
-	if phase < 0.5:
-		# Phase 1: Group B (R1, L2, R3) in air, Group A (L1, R2, L3) on ground pushing
-		t = phase * 2  # Normalize to 0.0 to 1.0
-		v = int(3 * abs(speed) * math.sin(t * math.pi))
+	# Horizontal positions for turning
+	h_swing = int(abs(speed) * math.cos((t + 1) * math.pi))  # -speed to +speed
+	h_push = int(abs(speed) * math.cos(t * math.pi))       # +speed to -speed
 
-		# Swing legs (Group B in air)
-		h_swing_base = int(abs(speed) * math.cos((t + 1) * math.pi))  # -speed to +speed
-		if is_left_turn:
-			# Left turn: Right legs pull forward (+h), Left legs pull back (-h)
-			positions['R1'] = {'h': h_swing_base, 'v': v}   # Right: -h to go forward (inverted)
-			positions['L2'] = {'h': -h_swing_base, 'v': v}  # Left: -h to go back
-			positions['R3'] = {'h': h_swing_base, 'v': v}   # Right: -h to go forward (inverted)
-		else:
-			# Right turn: Left legs pull forward (+h), Right legs pull back (-h)
-			positions['R1'] = {'h': -h_swing_base, 'v': v}  # Right: needs +h to go back (inverted)
-			positions['L2'] = {'h': h_swing_base, 'v': v}   # Left: +h to go forward
-			positions['R3'] = {'h': -h_swing_base, 'v': v}  # Right: needs +h to go back (inverted)
+	# Define leg-specific horizontal multipliers for turning
+	# Left turn: left legs move back (-1), right legs move forward (+1)
+	# Right turn: left legs move forward (+1), right legs move back (-1)
+	turn_factors = {
+		'L1': -1 if is_left_turn else 1, 'L2': -1 if is_left_turn else 1, 'L3': -1 if is_left_turn else 1,
+		'R1': 1 if is_left_turn else -1, 'R2': 1 if is_left_turn else -1, 'R3': 1 if is_left_turn else -1,
+	}
 
-		# Push legs (Group A on ground)
-		h_push_base = int(abs(speed) * math.cos(t * math.pi))  # +speed to -speed
-		if is_left_turn:
-			# Left turn: Left legs push forward (-h -> +h), Right legs pull back (+h -> -h)
-			positions['L1'] = {'h': -h_push_base, 'v': -10}  # Left: -→+ = back→forward (push left)
-			positions['R2'] = {'h': h_push_base, 'v': -10}   # Right: needs +→- inverted = forward→back (pull left)
-			positions['L3'] = {'h': -h_push_base, 'v': -10}  # Left: -→+ = back→forward (push left)
-		else:
-			# Right turn: Right legs push forward (-h -> +h), Left legs pull back (+h -> -h)
-			positions['L1'] = {'h': h_push_base, 'v': -10}  # Left: +→- = forward→back (pull right)
-			positions['R2'] = {'h': -h_push_base, 'v': -10}  # Right: needs -→+ inverted = back→forward (push right)
-			positions['L3'] = {'h': h_push_base, 'v': -10}  # Left: +→- = forward→back (pull right)
-	else:
-		# Phase 2: Group A (L1, R2, L3) in air, Group B (R1, L2, R3) on ground pushing
-		t = (phase - 0.5) * 2  # Normalize to 0.0 to 1.0
-		v = int(3 * abs(speed) * math.sin(t * math.pi))
-
-		# Swing legs (Group A in air)
-		h_swing_base = int(abs(speed) * math.cos((t + 1) * math.pi))  # -speed to +speed
-		if is_left_turn:
-			# Left turn: Right legs pull forward (+h), Left legs pull back (-h)
-			positions['L1'] = {'h': -h_swing_base, 'v': v}  # Left: -h to go back
-			positions['R2'] = {'h': h_swing_base, 'v': v}   # Right: -h to go forward (inverted)
-			positions['L3'] = {'h': -h_swing_base, 'v': v}  # Left: -h to go back
-		else:
-			# Right turn: Left legs pull forward (+h), Right legs pull back (-h)
-			positions['L1'] = {'h': h_swing_base, 'v': v}  # Left: +h to go forward
-			positions['R2'] = {'h': -h_swing_base, 'v': v}  # Right: needs +h to go back (inverted)
-			positions['L3'] = {'h': h_swing_base, 'v': v}  # Left: +h to go forward
-
-		# Push legs (Group B on ground)
-		h_push_base = int(abs(speed) * math.cos(t * math.pi))  # +speed to -speed
-		if is_left_turn:
-			# Left turn: Right legs pull back (+h -> -h), Left legs push forward (-h -> +h)
-			positions['R1'] = {'h': h_push_base, 'v': -10}   # Right: needs +→- inverted = forward→back (pull left)
-			positions['L2'] = {'h': -h_push_base, 'v': -10}  # Left: -→+ = back→forward (push left)
-			positions['R3'] = {'h': h_push_base, 'v': -10}   # Right: needs +→- inverted = forward→back (pull left)
-		else:
-			# Right turn: Left legs pull back (+h -> -h), Right legs push forward (-h -> +h)
-			positions['R1'] = {'h': -h_push_base, 'v': -10}  # Right: needs -→+ inverted = back→forward (push right)
-			positions['L2'] = {'h': h_push_base, 'v': -10}  # Left: +→- = forward→back (pull right)
-			positions['R3'] = {'h': -h_push_base, 'v': -10}  # Right: needs -→+ inverted = back→forward (push right)
+	for leg in air_group:
+		positions[leg] = {'h': h_swing * turn_factors[leg], 'v': v_air}
+	for leg in ground_group:
+		# Ground legs push in the opposite horizontal direction of the swing
+		positions[leg] = {'h': -h_push * turn_factors[leg], 'v': v_ground}
 
 	return positions
 
