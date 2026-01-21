@@ -782,7 +782,7 @@ def calculate_target_positions(phase, speed, command):
 			positions['R2'] = {'h': h_push_base * (1 + turn_bias), 'v': v_ground}
 			positions['L3'] = {'h': -h_push_base * (1 - turn_bias), 'v': v_ground}
 
-		elif command == CMD_FORWARD_RIGHT_ARC:
+	elif command == CMD_FORWARD_RIGHT_ARC:
 		# FORWARD RIGHT ARC: Combine forward movement with a right turn bias
 		# Left legs (L1, L2, L3) move more forward / less backward (turn right)
 		# Right legs (R1, R2, R3) move less forward / more backward (turn right)
