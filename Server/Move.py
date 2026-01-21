@@ -1352,14 +1352,14 @@ def set_movement_speed(speed):
 	Set the movement speed for walking and turning.
 
 	Args:
-		speed: Movement speed (10-100 range)
+		speed: Movement speed (10-150 range)
 		       - 10: Very slow, careful movements
 		       - 35: Default speed (balanced)
-		       - 100: Fast movements (may be less stable)
+		       - 150: Fast movements (may be less stable)
 	"""
 	global movement_speed
 	# Clamp to valid range
-	speed = max(10, min(100, int(speed)))
+	speed = max(10, min(150, int(speed)))
 	movement_speed = speed
 	print(f"[Move] Movement speed set to {movement_speed}")
 

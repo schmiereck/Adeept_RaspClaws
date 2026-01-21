@@ -1125,7 +1125,7 @@ def create_movement_buttons(root, color_text, color_btn):
 	speed_label = tk.Label(root, text='Speed:', fg=color_text, bg='#212121', width=6)
 	speed_label.place(x=30, y=115)
 
-	speed_slider = tk.Scale(root, from_=10, to=100, orient=tk.HORIZONTAL,
+	speed_slider = tk.Scale(root, from_=10, to=150, orient=tk.HORIZONTAL,
 							length=200, fg=color_text, bg='#37474F',
 							troughcolor='#263238', highlightthickness=0,
 							command=lambda val: on_speed_change(val))
