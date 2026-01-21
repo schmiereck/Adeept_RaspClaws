@@ -46,3 +46,29 @@ At the user's suggestion, the entire movement logic in `Server/Move.py` was fund
 ## 4. Result
 
 The robot can now execute proper curved movements (arc movements) to the left and right. The overall movement logic is cleaner, more flexible, and more easily adaptable for future optimizations. The fundamental functionality of turning on the spot is preserved.
+
+## 5. Follow-up Changes (2026-01-21)
+
+To provide more control over the new movement capabilities, the following enhancements were made:
+
+### 5.1. Dynamic Arc Factor Control
+
+-   **Problem:** The `arc_factor` was a hard-coded constant in `Move.py`, requiring a code change to adjust the turning radius.
+-   **Solution:** A slider was added to the GUI to allow for dynamic adjustment of the `arc_factor` during runtime.
+-   **Changes:**
+    -   **`protocol.py`:** Added a new command `CMD_SET_ARC_FACTOR` to communicate the value from the client to the server.
+    -   **`Client/GUI.py`:**
+        -   Introduced a new slider for the `arc_factor` with a range from 0.0 to 1.0.
+        -   The GUI layout was adjusted to accommodate the new slider.
+        -   An `on_arc_factor_change` callback was implemented to send the new value to the server.
+    -   **`Server/GUIServer.py`:** Added `handle_arc_factor_command` to receive the new command and pass the value to the `Move` module.
+    -   **`Server/Move.py`:** Implemented a `set_arc_factor` function to safely update the global `arc_factor` variable with clamping.
+
+### 5.2. Increased Maximum Speed
+
+-   **Problem:** The maximum movement speed was limited to 60, which was not fast enough.
+-   **Solution:** The maximum speed was increased to 100.
+-   **Changes:**
+    -   **`Client/GUI.py`:** The range of the speed slider was updated from `10-60` to `10-100`.
+    -   **`Server/Move.py`:** The clamping in the `set_movement_speed` function was adjusted to allow values up to 100.
+    -   **`Server/GUIServer.py`:** The clamping in `handle_speed_command` was removed to avoid duplicate clamping and to respect the new limit set in `Move.py`.

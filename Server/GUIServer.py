@@ -365,19 +365,13 @@ def handle_speed_command(data):
 		try:
 			speed_str = data[len(CMD_SET_SPEED):]
 			speed = int(speed_str)
-			# Clamp speed to valid range (10-60)
-			speed = max(10, min(60, speed))
+			# Clamping to valid range is handled in Move.py
 			print(f"[GUIServer] Setting movement speed to {speed}")
 			move.set_movement_speed(speed)
 			return True
 		except ValueError:
 			print(f"[GUIServer] Invalid speed value: {data}")
 			return False
-	elif data == CMD_FAST or data == CMD_SLOW:
-		# Deprecated: Movement is always smooth now
-		# Just acknowledge the command for backwards compatibility
-		tcpCliSock.send(data.encode())
-		return True
 	return False  # Command not handled
 
 
