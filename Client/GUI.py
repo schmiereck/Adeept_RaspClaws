@@ -221,13 +221,13 @@ def call_Right(event):
 
 
 def call_LeftSide(event):
-	"""Command car to strafe left"""
-	send_movement_command(CMD_LEFT_SIDE, 'c_ls_stu')
+	"""Command car to move in a forward-left arc"""
+	send_movement_command(CMD_FORWARD_LEFT_ARC, 'c_ls_stu')
 
 
 def call_RightSide(event):
-	"""Command car to strafe right"""
-	send_movement_command(CMD_RIGHT_SIDE, 'c_rs_stu')
+	"""Command car to move in a forward-right arc"""
+	send_movement_command(CMD_FORWARD_RIGHT_ARC, 'c_rs_stu')
 
 
 def call_DS(event):
@@ -1117,11 +1117,15 @@ def create_movement_buttons(root, color_text, color_btn):
 	# Movement buttons (Forward, Backward, Left, Right)
 	Btn0 = tk.Button(root, width=8, text='Forward', fg=color_text, bg=color_btn, relief='ridge')
 	Btn1 = tk.Button(root, width=8, text='Backward', fg=color_text, bg=color_btn, relief='ridge')
+	Btn_LeftSide = tk.Button(root, width=8, text='Arc Left', fg=color_text, bg=color_btn, relief='ridge')
 	Btn2 = tk.Button(root, width=8, text='Left', fg=color_text, bg=color_btn, relief='ridge')
 	Btn3 = tk.Button(root, width=8, text='Right', fg=color_text, bg=color_btn, relief='ridge')
+	Btn_RightSide = tk.Button(root, width=8, text='Arc Right', fg=color_text, bg=color_btn, relief='ridge')
 
 	# Position movement buttons
 	Btn0.place(x=100, y=195)    # Forward (center top)
+	Btn_LeftSide.place(x=30, y=195) # Left Side (left top, above Left)
+	Btn_RightSide.place(x=170, y=195) # Right Side (right top, above Right)
 	Btn1.place(x=100, y=230)    # Backward (center middle)
 	Btn2.place(x=30, y=230)     # Left (left middle)
 	Btn3.place(x=170, y=230)    # Right (right middle)
@@ -1158,6 +1162,10 @@ def create_movement_buttons(root, color_text, color_btn):
 	Btn2.bind('<ButtonRelease-1>', call_TS)
 	Btn3.bind('<ButtonPress-1>', call_Right)
 	Btn3.bind('<ButtonRelease-1>', call_TS)
+	Btn_LeftSide.bind('<ButtonPress-1>', call_LeftSide)
+	Btn_LeftSide.bind('<ButtonRelease-1>', call_Turn_stop)
+	Btn_RightSide.bind('<ButtonPress-1>', call_RightSide)
+	Btn_RightSide.bind('<ButtonRelease-1>', call_Turn_stop)
 
 	Btn0.bind('<ButtonRelease-1>', call_FB_stop)
 	Btn1.bind('<ButtonRelease-1>', call_FB_stop)

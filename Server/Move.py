@@ -742,43 +742,85 @@ def calculate_target_positions(phase, speed, command):
 			positions['L2'] = {'h': -h_push, 'v': -10}  # Left: -→+ = back→forward (push left)
 			positions['R3'] = {'h': h_push, 'v': -10}   # Right: needs +→- inverted = forward→back (pull left)
 
-	elif command == CMD_RIGHT:
-		# RIGHT TURN (CW): Tripod-Gait Rotation (mirror of LEFT)
-		# Group A (L1, R2, L3) alternates with Group B (R1, L2, R3)
-		# CRITICAL: For rotation, legs must move based on SIDE (left vs right), NOT group!
-		# Left legs: pull back (negative h), Right legs: push forward (negative h inverted = forward)
+	elif command == CMD_FORWARD_LEFT_ARC:
+		# FORWARD LEFT ARC: Combine forward movement with a left turn bias
+		# Left legs (L1, L2, L3) move less forward / more backward (turn left)
+		# Right legs (R1, R2, R3) move more forward / less backward (turn left)
+		turn_bias = 0.5 # Adjust this value to control the arc tightness
 		if phase < 0.5:
-			# Phase 1: Group B (R1, L2, R3) in air, Group A (L1, R2, L3) on ground pushing
+			# Group 1 (L1, R2, L3) in air, Group 2 (R1, L2, R3) on ground
 			t = phase * 2  # 0.0 to 1.0
-			v = int(3 * abs(speed) * math.sin(t * math.pi))
+			v_air = int(3 * abs(speed) * math.sin(t * math.pi))
+			v_ground = -10
 
-			# Group B in air: swing - left pulls forward, right pulls back
-			h_swing = int(abs(speed) * math.cos((t + 1) * math.pi))  # -speed to +speed
-			positions['R1'] = {'h': -h_swing, 'v': v}  # Right: needs +h to go back (inverted)
-			positions['L2'] = {'h': h_swing, 'v': v}   # Left: +h to go forward
-			positions['R3'] = {'h': -h_swing, 'v': v}  # Right: needs +h to go back (inverted)
+			# Horizontal for legs in air (L1, R2, L3) - swing forward/outward
+			h_swing_base = int(abs(speed) * math.cos(t * math.pi))
+			positions['L1'] = {'h': -h_swing_base * (1 - turn_bias), 'v': v_air} # Left leg, less forward swing
+			positions['R2'] = {'h': h_swing_base * (1 + turn_bias), 'v': v_air} # Right leg, more forward swing
+			positions['L3'] = {'h': -h_swing_base * (1 - turn_bias), 'v': v_air} # Left leg, less forward swing
 
-			# Group A on ground: left pulls back, right pushes forward
-			h_push = int(abs(speed) * math.cos(t * math.pi))  # +speed to -speed
-			positions['L1'] = {'h': h_push, 'v': -10}  # Left: +→- = forward→back (pull right)
-			positions['R2'] = {'h': -h_push, 'v': -10}  # Right: needs -→+ inverted = back→forward (push right)
-			positions['L3'] = {'h': h_push, 'v': -10}  # Left: +→- = forward→back (pull right)
+			# Horizontal for legs on ground (R1, L2, R3) - push backward/inward
+			h_push_base = -h_swing_base
+			positions['R1'] = {'h': h_push_base * (1 + turn_bias), 'v': v_ground} # Right leg, more push
+			positions['L2'] = {'h': -h_push_base * (1 - turn_bias), 'v': v_ground} # Left leg, less push
+			positions['R3'] = {'h': h_push_base * (1 + turn_bias), 'v': v_ground} # Right leg, more push
 		else:
-			# Phase 2: Group A (L1, R2, L3) in air, Group B (R1, L2, R3) on ground pushing
+			# Group 2 (R1, L2, R3) in air, Group 1 (L1, R2, L3) on ground
 			t = (phase - 0.5) * 2  # 0.0 to 1.0
-			v = int(3 * abs(speed) * math.sin(t * math.pi))
+			v_air = int(3 * abs(speed) * math.sin(t * math.pi))
+			v_ground = -10
 
-			# Group A in air: swing - left pulls forward, right pulls back
-			h_swing = int(abs(speed) * math.cos((t + 1) * math.pi))  # -speed to +speed
-			positions['L1'] = {'h': h_swing, 'v': v}  # Left: +h to go forward
-			positions['R2'] = {'h': -h_swing, 'v': v}  # Right: needs +h to go back (inverted)
-			positions['L3'] = {'h': h_swing, 'v': v}  # Left: +h to go forward
+			# Horizontal for legs in air (R1, L2, R3) - swing forward/outward
+			h_swing_base = int(abs(speed) * math.cos(t * math.pi))
+			positions['R1'] = {'h': h_swing_base * (1 + turn_bias), 'v': v_air}
+			positions['L2'] = {'h': -h_swing_base * (1 - turn_bias), 'v': v_air}
+			positions['R3'] = {'h': h_swing_base * (1 + turn_bias), 'v': v_air}
 
-			# Group B on ground: left pulls back, right pushes forward
-			h_push = int(abs(speed) * math.cos(t * math.pi))  # +speed to -speed
-			positions['R1'] = {'h': -h_push, 'v': -10}  # Right: needs -→+ inverted = back→forward (push right)
-			positions['L2'] = {'h': h_push, 'v': -10}  # Left: +→- = forward→back (pull right)
-			positions['R3'] = {'h': -h_push, 'v': -10}  # Right: needs -→+ inverted = back→forward (push right)
+			# Horizontal for legs on ground (L1, R2, L3) - push backward/inward
+			h_push_base = -h_swing_base
+			positions['L1'] = {'h': -h_push_base * (1 - turn_bias), 'v': v_ground}
+			positions['R2'] = {'h': h_push_base * (1 + turn_bias), 'v': v_ground}
+			positions['L3'] = {'h': -h_push_base * (1 - turn_bias), 'v': v_ground}
+
+		elif command == CMD_FORWARD_RIGHT_ARC:
+		# FORWARD RIGHT ARC: Combine forward movement with a right turn bias
+		# Left legs (L1, L2, L3) move more forward / less backward (turn right)
+		# Right legs (R1, R2, R3) move less forward / more backward (turn right)
+		turn_bias = 0.5 # Adjust this value to control the arc tightness
+		if phase < 0.5:
+			# Group 1 (L1, R2, L3) in air, Group 2 (R1, L2, R3) on ground
+			t = phase * 2  # 0.0 to 1.0
+			v_air = int(3 * abs(speed) * math.sin(t * math.pi))
+			v_ground = -10
+
+			# Horizontal for legs in air (L1, R2, L3) - swing forward/outward
+			h_swing_base = int(abs(speed) * math.cos(t * math.pi))
+			positions['L1'] = {'h': -h_swing_base * (1 + turn_bias), 'v': v_air} # Left leg, more forward swing
+			positions['R2'] = {'h': h_swing_base * (1 - turn_bias), 'v': v_air} # Right leg, less forward swing
+			positions['L3'] = {'h': -h_swing_base * (1 + turn_bias), 'v': v_air} # Left leg, more forward swing
+
+			# Horizontal for legs on ground (R1, L2, R3) - push backward/inward
+			h_push_base = -h_swing_base
+			positions['R1'] = {'h': h_push_base * (1 - turn_bias), 'v': v_ground} # Right leg, less push
+			positions['L2'] = {'h': -h_push_base * (1 + turn_bias), 'v': v_ground} # Left leg, more push
+			positions['R3'] = {'h': h_push_base * (1 - turn_bias), 'v': v_ground} # Right leg, less push
+		else:
+			# Group 2 (R1, L2, R3) in air, Group 1 (L1, R2, L3) on ground
+			t = (phase - 0.5) * 2  # 0.0 to 1.0
+			v_air = int(3 * abs(speed) * math.sin(t * math.pi))
+			v_ground = -10
+
+			# Horizontal for legs in air (R1, L2, R3) - swing forward/outward
+			h_swing_base = int(abs(speed) * math.cos(t * math.pi))
+			positions['R1'] = {'h': h_swing_base * (1 - turn_bias), 'v': v_air}
+			positions['L2'] = {'h': -h_swing_base * (1 + turn_bias), 'v': v_air}
+			positions['R3'] = {'h': h_swing_base * (1 - turn_bias), 'v': v_air}
+
+			# Horizontal for legs on ground (L1, R2, L3) - push backward/inward
+			h_push_base = -h_swing_base
+			positions['L1'] = {'h': -h_push_base * (1 + turn_bias), 'v': v_ground}
+			positions['R2'] = {'h': h_push_base * (1 - turn_bias), 'v': v_ground}
+			positions['L3'] = {'h': -h_push_base * (1 + turn_bias), 'v': v_ground}
 
 	return positions
 
@@ -1629,8 +1671,11 @@ def move_thread():
 			movement_executed = True
 
 		# Step 2: Handle turn movement (independent of directional movement)
-		if turn_command != MOVE_NO:
-			execute_movement_step(movement_speed, turn_command)  # Use same speed for turns
+		if turn_command == CMD_FORWARD_LEFT_ARC or turn_command == CMD_FORWARD_RIGHT_ARC:
+			execute_movement_step(-movement_speed, turn_command) # Negative speed for forward arc
+			movement_executed = True
+		elif turn_command != MOVE_NO:
+			execute_movement_step(movement_speed, turn_command)  # Use positive speed for pure turns
 			movement_executed = True
 
 		# Step 3: ONLY apply stand/steady when NO movement is happening
@@ -1680,7 +1725,8 @@ def set_direction_and_resume(direction, turn='no'):
 
 def set_turn_and_resume(turn):
 	"""Set turn command and resume robot movement"""
-	global turn_command
+	global turn_command, direction_command
+	direction_command = MOVE_NO # Ensure no conflicting forward/backward command
 	turn_command = turn
 	rm.resume()
 
@@ -1715,6 +1761,8 @@ def handle_movement_command(command):
 		'stand': lambda: set_direction_and_pause('stand'),
 		'left': lambda: set_turn_and_resume('left'),
 		'right': lambda: set_turn_and_resume('right'),
+		CMD_FORWARD_LEFT_ARC: lambda: set_direction_and_resume(CMD_FORWARD, CMD_FORWARD_LEFT_ARC),
+		CMD_FORWARD_RIGHT_ARC: lambda: set_direction_and_resume(CMD_FORWARD, CMD_FORWARD_RIGHT_ARC),
 		'no': lambda: set_turn_and_pause(),
 	}
 

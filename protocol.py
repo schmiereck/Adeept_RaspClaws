@@ -23,8 +23,12 @@ CMD_RIGHT = 'right'
 CMD_TURN_STOP = 'TS'  # Stop turning
 
 # Strafe commands (side movement)
-CMD_LEFT_SIDE = 'leftside'
-CMD_RIGHT_SIDE = 'rightside'
+CMD_STRAFE_LEFT = 'strafeLeft'
+CMD_STRAFE_RIGHT = 'strafeRight'
+
+# Arc movement commands (forward and turn)
+CMD_FORWARD_LEFT_ARC = 'forwardLeftArc'
+CMD_FORWARD_RIGHT_ARC = 'forwardRightArc'
 
 # Internal movement commands (used in Move.py)
 MOVE_STAND = 'stand'  # Stand still position
@@ -117,6 +121,8 @@ GUI_TO_MOVE_COMMAND_MAP = {
     CMD_LEFT: CMD_LEFT,
     CMD_RIGHT: CMD_RIGHT,
     CMD_TURN_STOP: MOVE_NO,
-    CMD_LEFT_SIDE: CMD_LEFT,  # Strafe left -> turn left
-    CMD_RIGHT_SIDE: CMD_RIGHT,  # Strafe right -> turn right
+    CMD_STRAFE_LEFT: CMD_LEFT,  # Strafe left
+    CMD_STRAFE_RIGHT: CMD_RIGHT,  # Strafe right
+    CMD_FORWARD_LEFT_ARC: CMD_LEFT,  # Forward left arc
+    CMD_FORWARD_RIGHT_ARC: CMD_RIGHT,  # Forward right arc
 }
