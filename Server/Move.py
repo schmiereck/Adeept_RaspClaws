@@ -94,6 +94,7 @@ Up_Down_Min = 270
 look_wiggle = 30
 move_stu = 1
 abort_current_movement = False  # Flag to immediately abort ongoing movement cycle
+arc_factor = 0.4  # Factor to control arc tightness. 0 = straight, 1 = pivot turn on inner leg.
 
 
 '''
@@ -571,20 +572,20 @@ _leg_positions = {
 _last_command = None
 _last_speed_sign = 0
 
-def move_smooth(speed, command, cycle_steps=30):
+def move_smooth(speed_left, speed_right, cycle_steps=30):
 	"""
 	Smooth continuous movement using sine/cosine curves with position tracking.
 
 	Args:
-		speed: Movement amplitude (negative = forward, positive = backward)
-		command: Movement command ('no', 'left', 'right')
+		speed_left: Movement amplitude for left legs (negative = forward)
+		speed_right: Movement amplitude for right legs (negative = forward)
 		cycle_steps: Number of steps per full walking cycle (default 30)
-
-	Uses actual leg position tracking to ensure smooth transitions even when
-	direction changes. Interpolates from current position to target position.
 	"""
 	global _leg_positions, _last_command, _last_speed_sign, direction_command, turn_command, abort_current_movement
 
+	# TODO: Refactor command/speed change detection
+	speed = max(abs(speed_left), abs(speed_right))
+	command = turn_command # Temporary for change detection
 	# Detect command or direction change
 	current_speed_sign = 1 if speed > 0 else -1 if speed < 0 else 0
 	command_changed = (command != _last_command) or (current_speed_sign != _last_speed_sign and current_speed_sign != 0 and _last_speed_sign != 0)
@@ -691,51 +692,75 @@ def _calculate_gait_phase(phase, speed):
 	return air_group, ground_group, t, v_air, v_ground
 
 
-def _get_forward_backward_leg_positions(phase, speed):
+def _get_arc_leg_positions(phase, speed, is_left_arc):
+def calculate_target_positions(speed_left, speed_right):
+
 	"""
-	Calculate target horizontal and vertical positions for all legs during forward/backward movement.
-	"""
-	positions = {}
-	air_group, ground_group, t, v_air, v_ground = _calculate_gait_phase(phase, speed)
 
-	# Horizontal positions for forward/backward movement
-	h_air = int(speed * math.cos(t * math.pi))
-	h_ground = -h_air
+	Calculate target horizontal and vertical positions for all legs based on side speeds.
 
-	# Assign positions to the correct leg groups
-	for leg in air_group:
-		positions[leg] = {'h': h_air, 'v': v_air}
-	for leg in ground_group:
-		positions[leg] = {'h': h_ground, 'v': v_ground}
+	This single function handles all movement types (forward, backward, turn, arc).
 
-	return positions
 
-def calculate_target_positions(phase, speed, command):
-	"""
-	Calculate target horizontal and vertical positions for all legs at given phase.
 
 	Args:
-		phase: Current phase in cycle (0.0 to 1.0)
-		speed: Movement amplitude (negative = forward, positive = backward)
-		command: Movement command ('no', 'left', 'right')
+
+		speed_left: Movement amplitude for the left legs.
+
+		speed_right: Movement amplitude for the right legs.
+
+
 
 	Returns:
+
 		Dictionary with target positions for each leg: {'L1': {'h': ..., 'v': ...}, ...}
+
 	"""
+
 	positions = {}
 
-	if command == MOVE_NO:
-		positions = _get_forward_backward_leg_positions(phase, speed)
+	# The overall speed determines the leg lift height.
 
-	elif command == CMD_LEFT:
-		positions = _get_turn_leg_positions(phase, speed, is_left_turn=True)
-	elif command == CMD_RIGHT:
-		positions = _get_turn_leg_positions(phase, speed, is_left_turn=False)
+	speed = max(abs(speed_left), abs(speed_right))
 
-	elif command == CMD_FORWARD_LEFT_ARC:
-		positions = _get_arc_leg_positions(phase, speed, is_left_arc=True)
-	elif command == CMD_FORWARD_RIGHT_ARC:
-		positions = _get_arc_leg_positions(phase, speed, is_left_arc=False)
+	phase = (time.time() * 1.0) % 1.0  # Simple phase calculation based on time
+
+
+
+	air_group, ground_group, t, v_air, v_ground = _calculate_gait_phase(phase, speed)
+
+
+
+	# Calculate horizontal movement for each side
+
+	h_left_air = int(speed_left * math.cos(t * math.pi))
+
+	h_left_ground = -h_left_air
+
+
+
+	h_right_air = int(speed_right * math.cos(t * math.pi))
+
+	h_right_ground = -h_right_air
+
+
+
+	# Assign positions to all legs
+
+	for leg in ['L1', 'L2', 'L3', 'R1', 'R2', 'R3']:
+
+		is_left = leg.startswith('L')
+
+		if leg in air_group:
+
+			positions[leg] = {'h': h_left_air if is_left else h_right_air, 'v': v_air}
+
+		else: # in ground_group
+
+			positions[leg] = {'h': h_left_ground if is_left else h_right_ground, 'v': v_ground}
+
+			
+
 	return positions
 
 
@@ -942,115 +967,6 @@ def _interpolate_vertical_arc(speed, t, descending=False):
 	else:
 		# Ascending arc: 0 → 3*speed → 0 (full sine wave)
 		return int(3 * abs(speed) * math.sin(t * math.pi))
-
-
-def _get_arc_leg_positions(phase, speed, is_left_arc):
-	"""
-	Calculate target horizontal and vertical positions for all legs during an arc movement.
-	"""
-	positions = {}
-	air_group, ground_group, t, v_air, v_ground = _calculate_gait_phase(phase, speed)
-
-	turn_bias = 0.5  # Adjust this value to control the arc tightness
-	left_bias_factor = 1 - turn_bias if is_left_arc else 1 + turn_bias
-	right_bias_factor = 1 + turn_bias if is_left_arc else 1 - turn_bias
-
-	# Horizontal positions for arc movement
-	h_swing = int(abs(speed) * math.cos(t * math.pi))
-	h_push = -h_swing
-
-	# Define leg-specific horizontal multipliers
-	bias_factors = {
-		'L1': left_bias_factor, 'L2': left_bias_factor, 'L3': left_bias_factor,
-		'R1': right_bias_factor, 'R2': right_bias_factor, 'R3': right_bias_factor,
-	}
-	# Left legs move with negative horizontal component in this gait
-	swing_direction = {'L1': -1, 'L2': -1, 'L3': -1, 'R1': 1, 'R2': 1, 'R3': 1}
-
-	for leg in air_group:
-		positions[leg] = {'h': h_swing * swing_direction[leg] * bias_factors[leg], 'v': v_air}
-	for leg in ground_group:
-		positions[leg] = {'h': h_push * swing_direction[leg] * bias_factors[leg], 'v': v_ground}
-
-	return positions
-
-
-def _get_turn_leg_positions(phase, speed, is_left_turn):
-	"""
-	Calculate target horizontal and vertical positions for all legs during a turn.
-	This uses a specific gait pattern for turning that is different from forward movement.
-	"""
-	positions = {}
-	v_ground = -10
-
-	if phase < 0.5:
-		# Phase 1: Group B (R1, L2, R3) in air, Group A (L1, R2, L3) on ground
-		t = phase * 2
-		v_air = int(3 * abs(speed) * math.sin(t * math.pi))
-		h_swing = int(abs(speed) * math.cos((t + 1) * math.pi))  # -speed to +speed
-		h_push = int(abs(speed) * math.cos(t * math.pi))       # +speed to -speed
-
-		# Air group (B)
-		if is_left_turn:
-			positions['R1'] = {'h': h_swing, 'v': v_air}
-			positions['L2'] = {'h': -h_swing, 'v': v_air}
-			positions['R3'] = {'h': h_swing, 'v': v_air}
-		else: # Right turn
-			positions['R1'] = {'h': -h_swing, 'v': v_air}
-			positions['L2'] = {'h': h_swing, 'v': v_air}
-			positions['R3'] = {'h': -h_swing, 'v': v_air}
-
-		# Ground group (A)
-		if is_left_turn:
-			positions['L1'] = {'h': -h_push, 'v': v_ground}
-			positions['R2'] = {'h': h_push, 'v': v_ground}
-			positions['L3'] = {'h': -h_push, 'v': v_ground}
-		else: # Right turn
-			positions['L1'] = {'h': h_push, 'v': v_ground}
-			positions['R2'] = {'h': -h_push, 'v': v_ground}
-			positions['L3'] = {'h': h_push, 'v': v_ground}
-	else:
-		# Phase 2: Group A (L1, R2, L3) in air, Group B (R1, L2, R3) on ground
-		t = (phase - 0.5) * 2
-		v_air = int(3 * abs(speed) * math.sin(t * math.pi))
-		h_swing = int(abs(speed) * math.cos((t + 1) * math.pi))  # -speed to +speed
-		h_push = int(abs(speed) * math.cos(t * math.pi))       # +speed to -speed
-
-		# Air group (A)
-		if is_left_turn:
-			positions['L1'] = {'h': -h_swing, 'v': v_air}
-			positions['R2'] = {'h': h_swing, 'v': v_air}
-			positions['L3'] = {'h': -h_swing, 'v': v_air}
-		else: # Right turn
-			positions['L1'] = {'h': h_swing, 'v': v_air}
-			positions['R2'] = {'h': -h_swing, 'v': v_air}
-			positions['L3'] = {'h': h_swing, 'v': v_air}
-
-		# Ground group (B)
-		if is_left_turn:
-			positions['R1'] = {'h': h_push, 'v': v_ground}
-			positions['L2'] = {'h': -h_push, 'v': v_ground}
-			positions['R3'] = {'h': h_push, 'v': v_ground}
-		else: # Right turn
-			positions['R1'] = {'h': -h_push, 'v': v_ground}
-			positions['L2'] = {'h': h_push, 'v': v_ground}
-			positions['R3'] = {'h': -h_push, 'v': v_ground}
-
-	return positions
-
-
-def _calculate_turn_positions_deprecated(base_h, command):
-	"""
-	DEPRECATED: Calculate horizontal positions for LEFT/RIGHT turn movements.
-	This function is kept for backwards compatibility with the dove() function,
-	but new code should use _get_turn_leg_positions.
-	"""
-	if command == CMD_LEFT:
-		return (-base_h, base_h, -base_h, base_h, -base_h, base_h)
-	elif command == CMD_RIGHT:
-		return (base_h, -base_h, base_h, -base_h, base_h, -base_h)
-	else:
-		return (base_h, base_h, base_h, base_h, base_h, base_h)
 
 
 def _execute_step_loop(num_steps, time_per_step, position_calculator, command):
@@ -1581,47 +1497,11 @@ def increment_step():
 		step_set = 1
 
 
-def execute_movement_step(speed, turn='no'):
+def execute_movement_step(speed_left, speed_right):
 	"""
 	Execute a single movement step using smooth sine-curve movement.
-
-	Args:
-		speed: Movement speed (negative for forward, positive for backward)
-		turn: Turn command ('left', 'right', or 'no')
-
-	Note: Always uses smooth movement with sine curves
-	      Speed parameter can be adjusted in the future for variable speeds.
 	"""
-	# Always use smooth movement with sine curves
-	# Old step-based move() function is deprecated
-	# Pass speed with sign - negative = forward, positive = backward
-	move_smooth(speed, turn, cycle_steps=30)
-
-
-
-def handle_direction_movement():
-	"""
-	Handle forward/backward movement
-	Returns True if movement was executed, False otherwise
-	"""
-	if direction_command == CMD_FORWARD and turn_command == MOVE_NO:
-		execute_movement_step(-movement_speed, 'no')
-		return True
-	elif direction_command == CMD_BACKWARD and turn_command == MOVE_NO:
-		execute_movement_step(movement_speed, 'no')
-		return True
-	return False
-
-
-def handle_turn_movement():
-	"""
-	Handle left/right turning
-	Returns True if turn was executed, False otherwise
-	"""
-	if turn_command != MOVE_NO:
-		execute_movement_step(movement_speed, turn_command)
-		return True
-	return False
+	move_smooth(speed_left, speed_right, cycle_steps=30)
 
 
 def handle_stand_or_steady():
@@ -1643,46 +1523,54 @@ def handle_stand_or_steady():
 
 def move_thread():
 	"""
-	Main movement thread - coordinates all movement commands
-
-	This function is called repeatedly by the RobotM thread.
-	Original logic:
-	1. Check and execute directional movement (forward OR backward)
-	2. Check and execute turn movement (if turn_command set)
-	3. Handle stand OR steady only when NOT moving
+	Main movement thread - calculates side speeds and executes the movement step.
 	"""
 	global step_set
 
 	if not steadyMode:
-		# Track if any movement was executed
-		movement_executed = False
+		speed_left = 0
+		speed_right = 0
+		movement_active = True
 
-		# Step 1: Handle directional movement (forward/backward)
-		# Only one of these will execute per cycle
-		if direction_command == CMD_FORWARD and turn_command == MOVE_NO:
-			execute_movement_step(-movement_speed, 'no')  # Negative = forward (legs pull forward)
-			movement_executed = True
-		elif direction_command == CMD_BACKWARD and turn_command == MOVE_NO:
-			execute_movement_step(movement_speed, 'no')  # Positive = backward (legs push back)
-			movement_executed = True
+		if direction_command == CMD_FORWARD:
+			if turn_command == MOVE_NO: # Forward
+				speed_left = -movement_speed
+				speed_right = -movement_speed
+			elif turn_command == CMD_FORWARD_LEFT_ARC:
+				speed_left = -movement_speed * (1 - arc_factor)
+				speed_right = -movement_speed
+			elif turn_command == CMD_FORWARD_RIGHT_ARC:
+				speed_left = -movement_speed
+				speed_right = -movement_speed * (1 - arc_factor)
+		
+		elif direction_command == CMD_BACKWARD: # Backward
+			speed_left = movement_speed
+			speed_right = movement_speed
+		
+		elif turn_command == CMD_LEFT: # Turn Left on the spot
+			speed_left = movement_speed
+			speed_right = -movement_speed
 
-		# Step 2: Handle turn movement (independent of directional movement)
-		if turn_command == CMD_FORWARD_LEFT_ARC or turn_command == CMD_FORWARD_RIGHT_ARC:
-			execute_movement_step(-movement_speed, turn_command) # Negative speed for forward arc
-			movement_executed = True
-		elif turn_command != MOVE_NO:
-			execute_movement_step(movement_speed, turn_command)  # Use positive speed for pure turns
-			movement_executed = True
+		elif turn_command == CMD_RIGHT: # Turn Right on the spot
+			speed_left = -movement_speed
+			speed_right = movement_speed
 
-		# Step 3: ONLY apply stand/steady when NO movement is happening
-		# This prevents the jerky return to center position between cycles
-		if not movement_executed:
+		else:
+			movement_active = False
+
+		if movement_active:
+			execute_movement_step(speed_left, speed_right)
+		else:
+			# Handle stand OR steady only when NOT moving
 			if turn_command == MOVE_NO and direction_command == MOVE_STAND:
 				stand()
 				step_set = 1
 			else:
 				steady_X()
 				steady()
+	else: # steadyMode is active
+		steady_X()
+		steady()
 
 class RobotM(threading.Thread):
 	def __init__(self, *args, **kwargs):
