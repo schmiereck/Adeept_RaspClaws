@@ -94,7 +94,7 @@ Up_Down_Min = 270
 look_wiggle = 30
 move_stu = 1
 abort_current_movement = False  # Flag to immediately abort ongoing movement cycle
-arc_factor = 0.4  # Factor to control arc tightness. 0 = straight, 1 = pivot turn on inner leg.
+arc_factor = 0.7  # Factor to control arc tightness. 0 = straight, 1 = pivot turn on inner leg.
 
 
 '''
