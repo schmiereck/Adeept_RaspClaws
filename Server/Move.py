@@ -166,7 +166,7 @@ target_Y = 0
 
 # ==================== Servo Position Tracking & Smooth Interpolation ====================
 
-def set_servo_smooth(channel, target_pos, steps=0):
+def set_servo_smooth(channel, target_pos, steps=0, delay=0):
 	"""
 	Move servo from current position to target position.
 	Automatically updates servo_current_pos[channel].
@@ -199,6 +199,8 @@ def set_servo_smooth(channel, target_pos, steps=0):
 			t = i / steps
 			pos = int(current + (target_pos - current) * t)
 			pwm.set_pwm(channel, 0, pos)
+			if delay > 0:
+				time.sleep(delay)
 		# Update tracked position
 		servo_current_pos[channel] = target_pos
 
@@ -781,14 +783,14 @@ def dove_Left_I(horizontal, vertical):
 		target_h = pwm0 + horizontal
 	else:
 		target_h = pwm0 - horizontal
-	set_servo_smooth(0, target_h, steps=3)
+	set_servo_smooth(0, target_h, steps=3, delay=0.005)
 
 	# Vertical servo (channel 1)
 	if leftSide_height:
 		target_v = pwm1 + vertical
 	else:
 		target_v = pwm1 - vertical
-	set_servo_smooth(1, target_v, steps=3)
+	set_servo_smooth(1, target_v, steps=3, delay=0.005)
 
 
 def dove_Left_II(horizontal, vertical):
@@ -797,14 +799,14 @@ def dove_Left_II(horizontal, vertical):
 		target_h = pwm2 + horizontal
 	else:
 		target_h = pwm2 - horizontal
-	set_servo_smooth(2, target_h, steps=3)
+	set_servo_smooth(2, target_h, steps=3, delay=0.005)
 
 	# Vertical servo (channel 3)
 	if leftSide_height:
 		target_v = pwm3 + vertical
 	else:
 		target_v = pwm3 - vertical
-	set_servo_smooth(3, target_v, steps=3)
+	set_servo_smooth(3, target_v, steps=3, delay=0.005)
 
 
 def dove_Left_III(horizontal, vertical):
@@ -813,14 +815,14 @@ def dove_Left_III(horizontal, vertical):
 		target_h = pwm4 + horizontal
 	else:
 		target_h = pwm4 - horizontal
-	set_servo_smooth(4, target_h, steps=3)
+	set_servo_smooth(4, target_h, steps=3, delay=0.005)
 
 	# Vertical servo (channel 5)
 	if leftSide_height:
 		target_v = pwm5 + vertical
 	else:
 		target_v = pwm5 - vertical
-	set_servo_smooth(5, target_v, steps=3)
+	set_servo_smooth(5, target_v, steps=3, delay=0.005)
 
 
 def dove_Right_I(horizontal, vertical):
@@ -829,14 +831,14 @@ def dove_Right_I(horizontal, vertical):
 		target_h = pwm6 + horizontal
 	else:
 		target_h = pwm6 - horizontal
-	set_servo_smooth(6, target_h, steps=3)
+	set_servo_smooth(6, target_h, steps=3, delay=0.005)
 
 	# Vertical servo (channel 7)
 	if rightSide_height:
 		target_v = pwm7 + vertical
 	else:
 		target_v = pwm7 - vertical
-	set_servo_smooth(7, target_v, steps=3)
+	set_servo_smooth(7, target_v, steps=3, delay=0.005)
 
 
 def dove_Right_II(horizontal, vertical):
@@ -845,14 +847,14 @@ def dove_Right_II(horizontal, vertical):
 		target_h = pwm8 + horizontal
 	else:
 		target_h = pwm8 - horizontal
-	set_servo_smooth(8, target_h, steps=3)
+	set_servo_smooth(8, target_h, steps=3, delay=0.005)
 
 	# Vertical servo (channel 9)
 	if rightSide_height:
 		target_v = pwm9 + vertical
 	else:
 		target_v = pwm9 - vertical
-	set_servo_smooth(9, target_v, steps=3)
+	set_servo_smooth(9, target_v, steps=3, delay=0.005)
 
 
 def dove_Right_III(horizontal, vertical):
@@ -861,14 +863,14 @@ def dove_Right_III(horizontal, vertical):
 		target_h = pwm10 + horizontal
 	else:
 		target_h = pwm10 - horizontal
-	set_servo_smooth(10, target_h, steps=3)
+	set_servo_smooth(10, target_h, steps=3, delay=0.005)
 
 	# Vertical servo (channel 11)
 	if rightSide_height:
 		target_v = pwm11 + vertical
 	else:
 		target_v = pwm11 - vertical
-	set_servo_smooth(11, target_v, steps=3)
+	set_servo_smooth(11, target_v, steps=3, delay=0.005)
 
 
 # ==================== Generic Helper Functions for Movement ====================
