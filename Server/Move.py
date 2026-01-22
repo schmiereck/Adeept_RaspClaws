@@ -572,7 +572,7 @@ _leg_positions = {
 _last_command = None
 _last_speed_sign = 0
 
-def move_smooth(speed_left, speed_right, cycle_steps=100):
+def move_smooth(speed_left, speed_right, cycle_steps=30):
 	"""
 	Smooth continuous movement using sine/cosine curves with position tracking.
 
@@ -651,7 +651,7 @@ def move_smooth(speed_left, speed_right, cycle_steps=100):
 			# Apply to servos
 			apply_leg_position(leg, new_horizontal, vertical)
 
-		# Removed: time.sleep(1.0 / cycle_steps) to allow continuous updates.
+		time.sleep(1.0 / cycle_steps)  # ~33ms per step = 1.0s per cycle (faster movement)
 
 	# Reset abort flag after cycle completes (either normally or via break)
 	abort_current_movement = False
@@ -781,14 +781,14 @@ def dove_Left_I(horizontal, vertical):
 		target_h = pwm0 + horizontal
 	else:
 		target_h = pwm0 - horizontal
-	set_servo_smooth(0, target_h, steps=5)
+	set_servo_smooth(0, target_h, steps=3)
 
 	# Vertical servo (channel 1)
 	if leftSide_height:
 		target_v = pwm1 + vertical
 	else:
 		target_v = pwm1 - vertical
-	set_servo_smooth(1, target_v, steps=5)
+	set_servo_smooth(1, target_v, steps=3)
 
 
 def dove_Left_II(horizontal, vertical):
@@ -797,14 +797,14 @@ def dove_Left_II(horizontal, vertical):
 		target_h = pwm2 + horizontal
 	else:
 		target_h = pwm2 - horizontal
-	set_servo_smooth(2, target_h, steps=5)
+	set_servo_smooth(2, target_h, steps=3)
 
 	# Vertical servo (channel 3)
 	if leftSide_height:
 		target_v = pwm3 + vertical
 	else:
 		target_v = pwm3 - vertical
-	set_servo_smooth(3, target_v, steps=5)
+	set_servo_smooth(3, target_v, steps=3)
 
 
 def dove_Left_III(horizontal, vertical):
@@ -813,14 +813,14 @@ def dove_Left_III(horizontal, vertical):
 		target_h = pwm4 + horizontal
 	else:
 		target_h = pwm4 - horizontal
-	set_servo_smooth(4, target_h, steps=5)
+	set_servo_smooth(4, target_h, steps=3)
 
 	# Vertical servo (channel 5)
 	if leftSide_height:
 		target_v = pwm5 + vertical
 	else:
 		target_v = pwm5 - vertical
-	set_servo_smooth(5, target_v, steps=5)
+	set_servo_smooth(5, target_v, steps=3)
 
 
 def dove_Right_I(horizontal, vertical):
@@ -829,14 +829,14 @@ def dove_Right_I(horizontal, vertical):
 		target_h = pwm6 + horizontal
 	else:
 		target_h = pwm6 - horizontal
-	set_servo_smooth(6, target_h, steps=5)
+	set_servo_smooth(6, target_h, steps=3)
 
 	# Vertical servo (channel 7)
 	if rightSide_height:
 		target_v = pwm7 + vertical
 	else:
 		target_v = pwm7 - vertical
-	set_servo_smooth(7, target_v, steps=5)
+	set_servo_smooth(7, target_v, steps=3)
 
 
 def dove_Right_II(horizontal, vertical):
@@ -845,14 +845,14 @@ def dove_Right_II(horizontal, vertical):
 		target_h = pwm8 + horizontal
 	else:
 		target_h = pwm8 - horizontal
-	set_servo_smooth(8, target_h, steps=5)
+	set_servo_smooth(8, target_h, steps=3)
 
 	# Vertical servo (channel 9)
 	if rightSide_height:
 		target_v = pwm9 + vertical
 	else:
 		target_v = pwm9 - vertical
-	set_servo_smooth(9, target_v, steps=5)
+	set_servo_smooth(9, target_v, steps=3)
 
 
 def dove_Right_III(horizontal, vertical):
@@ -861,14 +861,14 @@ def dove_Right_III(horizontal, vertical):
 		target_h = pwm10 + horizontal
 	else:
 		target_h = pwm10 - horizontal
-	set_servo_smooth(10, target_h, steps=5)
+	set_servo_smooth(10, target_h, steps=3)
 
 	# Vertical servo (channel 11)
 	if rightSide_height:
 		target_v = pwm11 + vertical
 	else:
 		target_v = pwm11 - vertical
-	set_servo_smooth(11, target_v, steps=5)
+	set_servo_smooth(11, target_v, steps=3)
 
 
 # ==================== Generic Helper Functions for Movement ====================
@@ -1394,7 +1394,7 @@ def execute_movement_step(speed_left, speed_right):
 	"""
 	Execute a single movement step using smooth sine-curve movement.
 	"""
-	move_smooth(speed_left, speed_right, cycle_steps=100)
+	move_smooth(speed_left, speed_right, cycle_steps=30)
 
 
 def handle_stand_or_steady():
