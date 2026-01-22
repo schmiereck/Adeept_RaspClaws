@@ -572,7 +572,7 @@ _leg_positions = {
 _last_command = None
 _last_speed_sign = 0
 
-def move_smooth(speed_left, speed_right, cycle_steps=50):
+def move_smooth(speed_left, speed_right, cycle_steps=18):
 	"""
 	Smooth continuous movement using sine/cosine curves with position tracking.
 
