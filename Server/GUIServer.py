@@ -50,6 +50,8 @@ rm.pause()
 
 SmoothMode = 0
 steadyMode = 0
+SmoothCamMode = 1 # Enable SmoothCam by default
+
 
 # Power Management Status
 servo_standby_active = False
@@ -217,6 +219,13 @@ def info_send_client():
         else:
             tcpCliSock.send(f'{STATUS_CAMERA_RESUMED}\n'.encode())
             print("✓ Sent camera pause status: ACTIVE")
+
+        if SmoothCamMode:
+            tcpCliSock.send(f'{CMD_SMOOTH_CAM}\n'.encode())
+            print("✓ Sent SmoothCam status: ACTIVE")
+        else:
+            tcpCliSock.send(f'{CMD_SMOOTH_CAM_OFF}\n'.encode())
+            print("✓ Sent SmoothCam status: INACTIVE")
 
         # Send first INFO message immediately
         battery_voltage = get_battery_voltage()
