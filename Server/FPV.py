@@ -163,7 +163,7 @@ class FPV:
 				footage_socket.send(jpg_as_text)
 
 			# Limit frame rate to reduce CPU load (~30 FPS = 33ms per frame)
-			time.sleep(0.033)  # 33ms = ~30 FPS, reduces CPU load significantly
+			time.sleep(0.1)  # 100ms = ~10 FPS, reduces CPU load significantly
 
 
 if __name__ == '__main__':
