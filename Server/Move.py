@@ -167,58 +167,37 @@ def _batch_set_servos(servo_positions):
 				servo_current_pos[channel] = value
 		return
 
-	# Prepare the data buffer for all 16 channels, assuming ON is always 0
-	# Each channel needs 4 bytes: ON_L, ON_H, OFF_L, OFF_H
-	# The PCA9685 has registers for LED0_ON_L through LED15_OFF_H contiguously.
-	# We collect all 64 bytes and send in one block write.
-	
-	# Current pwm values from servo_current_pos are used for channels not explicitly
-	# present in servo_positions, to maintain their last known state.
-	
-	data_bytes = bytearray(16 * 4) # 16 channels * 4 bytes/channel
+	# Prepare the data buffer for all 16 channels.
+	data_bytes = bytearray(16 * 4)
 
 	for channel in range(16):
 		# Default to current tracked position if not in batch update
 		off_val = servo_positions.get(channel, servo_current_pos[channel])
 		
-		# Ensure off_val is within valid range
+		# Ensure off_val is within valid range and update the global tracking state
 		off_val = max(0, min(4095, off_val))
-
-		# Update tracked position
 		servo_current_pos[channel] = off_val
 
-		# Fill byte array (ON_L, ON_H, OFF_L, OFF_H)
-		# ON_L and ON_H are 0 for typical servo control (pulse starts at beginning of cycle)
+		# Fill byte array for this channel
 		data_bytes[channel * 4 + 0] = 0        # ON_L
 		data_bytes[channel * 4 + 1] = 0        # ON_H
 		data_bytes[channel * 4 + 2] = off_val & 0xFF  # OFF_L
 		data_bytes[channel * 4 + 3] = off_val >> 8    # OFF_H
 
-		try:
-
-			# Write the entire block of 64 bytes starting from LED0_ON_L register (0x06)
-
-			pwm._i2c.write_i2c_block_data(pwm._address, _LED0_ON_L, list(data_bytes))
-
-			# print(f"✓ I2C batch write successful for {len(servo_positions)} channels.") # uncomment for verbose debugging
-
-		except Exception as e:
-
-			print(f"⚠ I2C batch write failed: {e}. Attempting fallback to individual PWM writes.")
-
-			# Fallback to individual writes if batch fails
-
-			for channel, value in servo_positions.items():
-
-				try:
-
-					pwm.set_pwm(channel, 0, value)
-
-					# print(f"  Fallback: Channel {channel} set to {value}") # uncomment for verbose debugging
-
-				except Exception as e_single:
-
-					print(f"✗ Fallback individual PWM write for channel {channel} failed: {e_single}")
+	# After preparing all 16 channels, send the entire block in one I2C transaction.
+	try:
+		# Write the entire block of 64 bytes starting from LED0_ON_L register (0x06)
+		pwm._i2c.write_i2c_block_data(pwm._address, _LED0_ON_L, list(data_bytes))
+		# print(f"✓ I2C batch write successful for {len(servo_positions)} channels.") # uncomment for verbose debugging
+	except Exception as e:
+		print(f"⚠ I2C batch write failed: {e}. Attempting fallback to individual PWM writes.")
+		# Fallback to individual writes if batch fails
+		for channel, value in servo_positions.items():
+			try:
+				pwm.set_pwm(channel, 0, value)
+				# print(f"  Fallback: Channel {channel} set to {value}") # uncomment for verbose debugging
+			except Exception as e_single:
+				print(f"✗ Fallback individual PWM write for channel {channel} failed: {e_single}")
 
 	
 
