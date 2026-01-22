@@ -1031,19 +1031,20 @@ def move_thread():
 	else:
 		movement_active = False
 
-	# Handle abort logic first
-	if abort_current_movement:
-		print("[move_thread] ⚡ ABORT FLAG detected. Lowering legs to stable ground position.")
-		# Calculate interpolation steps based on movement speed for adaptive smoothness
-		# Faster movement speed -> quicker lowering (fewer steps)
-		interpolation_steps = max(5, int(20 - movement_speed / 4))
-		lower_legs_smoothly(target_vertical_offset=-10, interpolation_steps=interpolation_steps)
-		abort_current_movement = False  # Reset flag
-		gait_phase = 0.0  # Reset phase
-		# Fall through to handle_stand_or_steady to ensure a steady state
-		handle_stand_or_steady()
-		return
-
+		# Handle abort logic first
+		if abort_current_movement:
+			print("[move_thread] ⚡ ABORT FLAG detected. Lowering legs to stable ground position.")
+			# Calculate interpolation steps based on movement speed for adaptive smoothness
+			interpolation_steps = max(5, int(20 - movement_speed / 4))
+			lower_legs_smoothly(target_vertical_offset=-10, interpolation_steps=interpolation_steps)
+			
+			# Reset flags and phase after smooth lowering is complete
+			abort_current_movement = False  # Reset flag
+			gait_phase = 0.0  # Reset phase
+			steadyMode = 0 # Ensure steady mode is off after stopping movement
+			rm.pause() # Ensure RobotM thread is paused if it's not already
+	
+			return # IMPORTANT: return here to prevent further movement or stand() from overriding
 	# If no movement command is active, stand still and reset the gait phase
 	if not movement_active:
 		handle_stand_or_steady()
