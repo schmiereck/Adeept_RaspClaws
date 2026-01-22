@@ -748,7 +748,7 @@ def calculate_target_positions(phase, speed_left, speed_right):
 	h_right_ground = -h_right_air
 
 	# Assign positions to all legs
-	for leg in ['L1', 'L2', 'L3', 'R1', 'R2', 'R3']:
+	for leg in LEG_CONFIG.keys(): # Corrected: Iterate over actual leg names from LEG_CONFIG
 		is_left = leg.startswith('L')
 		if leg in air_group:
 			positions[leg] = {'h': h_left_air if is_left else h_right_air, 'v': v_air}
