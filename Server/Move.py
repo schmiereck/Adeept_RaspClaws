@@ -142,8 +142,6 @@ except (OSError, IOError) as e:
 	pwm = MockPWM()
 MOCK_MODE = True # Set MOCK_MODE to True if PCA9685 initialization fails
 
-print(f"Servo controller MOCK_MODE status: {MOCK_MODE}")
-
 # PCA9685 Register Constants for direct I2C access
 _LED0_ON_L = 0x06
 _LED0_ON_H = 0x07
@@ -193,35 +191,23 @@ def _batch_set_servos(servo_positions):
 		data_bytes[channel * 4 + 2] = off_val & 0xFF  # OFF_L
 		data_bytes[channel * 4 + 3] = off_val >> 8    # OFF_H
 
-		try:
+	try:
+		# Write the entire block of 64 bytes starting from LED0_ON_L register (0x06)
+		pwm._i2c.write_i2c_block_data(pwm._address, _LED0_ON_L, list(data_bytes))
+	except Exception as e:
+		print(f"⚠ I2C batch write failed: {e}")
+		# Fallback to individual writes if batch fails (or simply log error)
+		# For robustness, could implement a retry or fall back to individual pwm.set_pwm,
+		# but for performance, we expect batch to work.
+		# For now, just log and continue to avoid crashing.
+		for channel, value in servo_positions.items():
+			try:
+				pwm.set_pwm(channel, 0, value)
+			except Exception as e_single:
+				print(f"✗ Fallback individual PWM write for channel {channel} failed: {e_single}")
 
-			# Write the entire block of 64 bytes starting from LED0_ON_L register (0x06)
 
-			pwm._i2c.write_i2c_block_data(pwm._address, _LED0_ON_L, list(data_bytes))
-
-			# print(f"✓ I2C batch write successful for {len(servo_positions)} channels.") # uncomment for verbose debugging
-
-		except Exception as e:
-
-			print(f"⚠ I2C batch write failed: {e}. Attempting fallback to individual PWM writes.")
-
-			# Fallback to individual writes if batch fails
-
-			for channel, value in servo_positions.items():
-
-				try:
-
-					pwm.set_pwm(channel, 0, value)
-
-					# print(f"  Fallback: Channel {channel} set to {value}") # uncomment for verbose debugging
-
-				except Exception as e_single:
-
-					print(f"✗ Fallback individual PWM write for channel {channel} failed: {e_single}")
-
-	
-
-	kalman_filter_X =  Kalman_filter.Kalman_filter(0.001,0.1)
+kalman_filter_X =  Kalman_filter.Kalman_filter(0.001,0.1)
 kalman_filter_Y =  Kalman_filter.Kalman_filter(0.001,0.1)
 
 try:
