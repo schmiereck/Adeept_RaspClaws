@@ -665,7 +665,7 @@ def move_smooth(speed_left, speed_right, cycle_steps=18):
 
 		# Collect all new target PWM values for batch update
 		batch_servo_updates = {}
-		for leg_name in LEG_CONFIG.keys(): # Corrected: Iterate over actual leg names from LEG_CONFIG
+		for leg_name in ['L1', 'L2', 'L3', 'R1', 'R2', 'R3']:
 			horizontal_offset = target_positions[leg_name]['h']
 			vertical_offset = target_positions[leg_name]['v']
 
@@ -674,16 +674,16 @@ def move_smooth(speed_left, speed_right, cycle_steps=18):
 			
 			for channel, pwm_value in leg_pwms.items():
 				batch_servo_updates[channel] = pwm_value
-				# Update _leg_positions for horizontal tracking (needs to be adjusted for new leg_name keys)
-				# Original _leg_positions keys are 'L1', 'L2', etc. This needs careful handling.
-				# For now, let's just ensure servo_current_pos is updated.
-				# The _leg_positions update logic should reflect the leg_name used in target_positions.
-				# Since target_positions is indexed by LEG_CONFIG keys, _leg_positions also needs to align.
-				# For now, let's comment out the _leg_positions update line to avoid another KeyError
-				# and focus on getting movement back. The _leg_positions logic needs rethinking.
-				# _leg_positions[leg_name] = pwm_value - base_h (this would require base_h for the leg)
-				pass # The _leg_positions logic needs to be revisited, currently it's causing issues.
+				# Update _leg_positions for horizontal tracking
+				if channel in [0, 2, 4]: # Left horizontal servos
+					_leg_positions[leg_name] = pwm_value - pwm0 # Adjust to store offset, not absolute PWM
+				elif channel in [6, 8, 10]: # Right horizontal servos
+					_leg_positions[leg_name] = pwm_value - pwm6 # Adjust to store offset, not absolute PWM
 
+		_batch_set_servos(batch_servo_updates)
+
+	# Reset abort flag after cycle completes (either normally or via break)
+	abort_current_movement = False
 
 
 def _calculate_gait_phase(phase, speed):
