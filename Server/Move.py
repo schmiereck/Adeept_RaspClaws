@@ -1,8 +1,8 @@
 #!/usr/bin/env/python3
 # File name   : Move.py
-# Website     : www.Adeept.com
-# Author      : Adeept
-# Date        : 2025/04/16
+# Website	 : www.Adeept.com
+# Author	  : Adeept
+# Date		: 2025/04/16
 import time
 import math
 import Adafruit_PCA9685
@@ -175,10 +175,10 @@ change these two variable to adjuest the steady status.
 	   (X+)
 	   /|\
   (Y+)<-+->(Y-)
-	    |
+		|
 	   (X-)
 Example: If you want the forhead of the robot to point down,
-         you need to increase the value target_X.
+		 you need to increase the value target_X.
 '''
 target_X = 0
 target_Y = 0
@@ -273,11 +273,11 @@ def get_servo_positions_info():
 	# Right_III:channels 10 (H), 11 (V)
 
 	return (f"L1:{servo_current_pos[0]},{servo_current_pos[1]} "
-	        f"L2:{servo_current_pos[2]},{servo_current_pos[3]} "
-	        f"L3:{servo_current_pos[4]},{servo_current_pos[5]} "
-	        f"R1:{servo_current_pos[6]},{servo_current_pos[7]} "
-	        f"R2:{servo_current_pos[8]},{servo_current_pos[9]} "
-	        f"R3:{servo_current_pos[10]},{servo_current_pos[11]}")
+			f"L2:{servo_current_pos[2]},{servo_current_pos[3]} "
+			f"L3:{servo_current_pos[4]},{servo_current_pos[5]} "
+			f"R1:{servo_current_pos[6]},{servo_current_pos[7]} "
+			f"R2:{servo_current_pos[8]},{servo_current_pos[9]} "
+			f"R3:{servo_current_pos[10]},{servo_current_pos[11]}")
 
 
 def get_mpu6050_data():
@@ -381,11 +381,11 @@ left_I   -<forward>-- right_III
 left_II  ---<BODY>---  right_II
 left_III -<Backward>-   right_I
 
-            pos=1
-           /     \
-          /       \
-         /         \
-    pos=2---pos=3---pos=4
+			pos=1
+		   /	 \
+		  /	   \
+		 /		 \
+	pos=2---pos=3---pos=4
 
 Change the value of wiggle to set the range and direction that the legs moves.
 '''
@@ -403,7 +403,7 @@ LEG_CONFIG = {
 }
 
 
-def leg_control(leg_name, pos, wiggle, heightAdjust=0):
+def leg_control(leg_name, pos, wiggle, height_adjust=0):
 	"""
 	Generic leg control function for all 6 legs.
 	Replaces the 6 individual left_I/II/III and right_I/II/III functions.
@@ -412,7 +412,7 @@ def leg_control(leg_name, pos, wiggle, heightAdjust=0):
 		leg_name: Name of the leg ('left_I', 'left_II', 'left_III', 'right_I', 'right_II', 'right_III')
 		pos: Position in walk cycle (0-4)
 		wiggle: Movement range (speed parameter)
-		heightAdjust: Height adjustment for pos=0
+		height_adjust: Height adjustment for pos=0
 	"""
 	h_channel, v_channel, base_h, base_v, is_left = LEG_CONFIG[leg_name]
 
@@ -428,9 +428,9 @@ def leg_control(leg_name, pos, wiggle, heightAdjust=0):
 		# Position 0: Height adjustment only
 		#pwm.set_pwm(h_channel, 0, base_h)  # Commented out like in original
 		if height_flag:
-			pwm.set_pwm(v_channel, 0, base_v + heightAdjust)
+			pwm.set_pwm(v_channel, 0, base_v + height_adjust)
 		else:
-			pwm.set_pwm(v_channel, 0, base_v - heightAdjust)
+			pwm.set_pwm(v_channel, 0, base_v - height_adjust)
 	else:
 		# Positions 1-4: Full movement cycle
 		if direction_flag:
@@ -490,34 +490,34 @@ def leg_control(leg_name, pos, wiggle, heightAdjust=0):
 # ==================== Wrapper Functions (for backwards compatibility) ====================
 # The old 6 functions are now simple wrappers that call the generic leg_control()
 
-def left_I(pos, wiggle, heightAdjust=0):
+def left_I(pos, wiggle, height_adjust=0):
 	"""Left leg I - uses generic leg_control"""
-	leg_control('left_I', pos, wiggle, heightAdjust)
+	leg_control('left_I', pos, wiggle, height_adjust)
 
 
-def left_II(pos, wiggle, heightAdjust=0):
+def left_II(pos, wiggle, height_adjust=0):
 	"""Left leg II - uses generic leg_control"""
-	leg_control('left_II', pos, wiggle, heightAdjust)
+	leg_control('left_II', pos, wiggle, height_adjust)
 
 
-def left_III(pos, wiggle, heightAdjust=0):
+def left_III(pos, wiggle, height_adjust=0):
 	"""Left leg III - uses generic leg_control"""
-	leg_control('left_III', pos, wiggle, heightAdjust)
+	leg_control('left_III', pos, wiggle, height_adjust)
 
 
-def right_I(pos, wiggle, heightAdjust=0):
+def right_I(pos, wiggle, height_adjust=0):
 	"""Right leg I - uses generic leg_control"""
-	leg_control('right_I', pos, wiggle, heightAdjust)
+	leg_control('right_I', pos, wiggle, height_adjust)
 
 
-def right_II(pos, wiggle, heightAdjust=0):
+def right_II(pos, wiggle, height_adjust=0):
 	"""Right leg II - uses generic leg_control"""
-	leg_control('right_II', pos, wiggle, heightAdjust)
+	leg_control('right_II', pos, wiggle, height_adjust)
 
 
-def right_III(pos, wiggle, heightAdjust=0):
+def right_III(pos, wiggle, height_adjust=0):
 	"""Right leg III - uses generic leg_control"""
-	leg_control('right_III', pos, wiggle, heightAdjust)
+	leg_control('right_III', pos, wiggle, height_adjust)
 
 
 # ==================== OLD IMPLEMENTATIONS REMOVED ====================
@@ -740,52 +740,6 @@ def steady():
 		right_I_input = ctrl_range((-X_fix_output-Y_fix_output), steady_range_Max, steady_range_Min)
 		right_I(0, 35, right_I_input)
 
-
-def steadyTest():
-	if leftSide_direction:
-		pwm.set_pwm(0,0,pwm0+steady_X)
-		pwm.set_pwm(2,0,pwm2)
-		pwm.set_pwm(4,0,pwm4-steady_X)
-	else:
-		pwm.set_pwm(0,0,pwm0+steady_X)
-		pwm.set_pwm(2,0,pwm2)
-		pwm.set_pwm(4,0,pwm4-steady_X)
-
-	if rightSide_direction:
-		pwm.set_pwm(10,0,pwm10+steady_X)
-		pwm.set_pwm(8,0,pwm8)
-		pwm.set_pwm(6,0,pwm6-steady_X)
-	else:
-		pwm.set_pwm(10,0,pwm10-steady_X)
-		pwm.set_pwm(8,0,pwm8)
-		pwm.set_pwm(6,0,pwm6+steady_X)
-
-	while 1:
-		left_H = steady_range_Min
-		right_H = steady_range_Max
-		left_I(0, 35, left_H)
-		left_II(0, 35, left_H)
-		left_III(0, 35, left_H)
-		
-		right_I(0, 35, right_H)
-		right_II(0, 35, right_H)
-		right_III(0, 35, right_H)
-
-		time.sleep(1)
-		
-		left_H = 130
-		right_H = -40
-		left_I(0, 35, left_H)
-		left_II(0, 35, left_H)
-		left_III(0, 35, left_H)
-		
-		right_I(0, 35, right_H)
-		right_II(0, 35, right_H)
-		right_III(0, 35, right_H)
-
-		time.sleep(1)
-		
-
 def look_up(wiggle=look_wiggle):
 	global Up_Down_input
 	if SmoothCamMode:
@@ -809,7 +763,6 @@ def look_up(wiggle=look_wiggle):
 			Up_Down_input -= wiggle
 		Up_Down_input = ctrl_range(Up_Down_input, Up_Down_Max, Up_Down_Min)
 		pwm.set_pwm(13, 0, Up_Down_input)
-
 
 def look_down(wiggle=look_wiggle):
 	global Up_Down_input
@@ -912,8 +865,8 @@ def interpolate(start, end, steps=10):
 		yield end
 		return
 	step_size = (end - start) / steps
-	for i in range(steps + 1):
-		yield int(start + step_size * i)
+	for step in range(steps + 1):
+		yield int(start + step_size * step)
 
 
 SmoothMode = 0
@@ -937,9 +890,9 @@ def set_movement_speed(speed):
 
 	Args:
 		speed: Movement speed (10-150 range)
-		       - 10: Very slow, careful movements
-		       - 35: Default speed (balanced)
-		       - 150: Fast movements (may be less stable)
+			   - 10: Very slow, careful movements
+			   - 35: Default speed (balanced)
+			   - 150: Fast movements (may be less stable)
 	"""
 	global movement_speed
 	# Clamp to valid range
@@ -954,8 +907,8 @@ def set_arc_factor(factor):
 
 	Args:
 		factor: Arc factor (0.0 to 1.0 range)
-		       - 0.0: Straight movement
-		       - 1.0: Pivot turn on inner leg
+			   - 0.0: Straight movement
+			   - 1.0: Pivot turn on inner leg
 	"""
 	global arc_factor
 	# Clamp to valid range
@@ -1004,6 +957,22 @@ def move_thread():
 		steady()
 		return
 
+	# --- Handle abort logic first (moved to the top level) ---
+	if abort_current_movement:
+		print("[move_thread] ⚡ ABORT FLAG detected. Lowering legs to stable ground position.")
+		# Calculate interpolation steps based on movement speed for adaptive smoothness
+		# Faster movement speed -> quicker lowering (fewer steps)
+		interpolation_steps = max(5, int(20 - movement_speed / 4))
+		lower_legs_smoothly(target_vertical_offset=-10, interpolation_steps=interpolation_steps)
+
+		# Reset flags and phase after smooth lowering is complete
+		abort_current_movement = False  # Reset flag
+		gait_phase = 0.0  # Reset phase
+		steadyMode = 0 # Ensure steady mode is off after stopping movement
+		rm.pause() # Ensure RobotM thread is paused after smooth lowering is complete
+
+		return # IMPORTANT: return here to prevent further movement
+
 	# Determine speed and direction for each side
 	speed_left = 0
 	speed_right = 0
@@ -1035,6 +1004,7 @@ def move_thread():
 		if abort_current_movement:
 			print("[move_thread] ⚡ ABORT FLAG detected. Lowering legs to stable ground position.")
 			# Calculate interpolation steps based on movement speed for adaptive smoothness
+			# Faster movement speed -> quicker lowering (fewer steps)
 			interpolation_steps = max(5, int(20 - movement_speed / 4))
 			lower_legs_smoothly(target_vertical_offset=-10, interpolation_steps=interpolation_steps)
 			
@@ -1224,7 +1194,7 @@ def _interpolate_vertical_arc(speed, t, descending=False):
 		speed: Movement amplitude
 		t: Phase parameter (0.0 to 1.0)
 		descending: If True, arc goes from peak to ground (3*speed → 0)
-		            If False, arc goes from ground to peak (0 → 3*speed)
+					If False, arc goes from ground to peak (0 → 3*speed)
 
 	Returns:
 		Vertical position as integer
@@ -1374,9 +1344,6 @@ def commandInput(command_input):
 		handle_movement_command(command_input)
 
 
-
-
-
 def standby():
 	"""
 	Put all servos into standby mode - stops PWM signals.
@@ -1392,8 +1359,8 @@ def standby():
 	rm.pause()
 
 	# Stop PWM signals on all channels
-	for i in range(16):
-		pwm.set_pwm(i, 0, 0)
+	for channel in range(16):
+		pwm.set_pwm(channel, 0, 0)
 
 	print("✓ All servos in STANDBY - legs are soft, low power consumption")
 
