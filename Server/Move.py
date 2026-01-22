@@ -130,7 +130,6 @@ Y_pid.SetKi(D)
 try:
 	pwm = Adafruit_PCA9685.PCA9685(address=0x40, busnum=1)  # Changed from 0x5F to 0x40
 	pwm.set_pwm_freq(50)
-	MOCK_MODE = False
 	print("PCA9685 initialized in Move.py on address 0x40")
 except (OSError, IOError) as e:
 	print(f"\033[38;5;3mWarning:\033[0m Could not initialize PCA9685 in Move.py: {e}")
@@ -141,7 +140,7 @@ except (OSError, IOError) as e:
 		def set_pwm_freq(self, freq):
 			pass
 	pwm = MockPWM()
-	MOCK_MODE = True # Set MOCK_MODE to True if PCA9685 initialization fails
+MOCK_MODE = True # Set MOCK_MODE to True if PCA9685 initialization fails
 
 print(f"Servo controller MOCK_MODE status: {MOCK_MODE}")
 
