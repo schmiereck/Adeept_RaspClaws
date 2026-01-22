@@ -96,6 +96,26 @@ move_stu = 1
 abort_current_movement = False  # Flag to immediately abort ongoing movement cycle
 arc_factor = 0.7  # Factor to control arc tightness. 0 = straight, 1 = pivot turn on inner leg.
 
+# Global state for continuous, non-blocking movement
+gait_phase = 0.0  # Current phase of the walk cycle (0.0 to 1.0)
+CYCLE_STEPS = 60  # Number of increments for a full walk cycle
+
+# Global position tracker for smooth continuous movement
+# Store actual leg positions (horizontal offsets) instead of just phase
+# This allows smooth interpolation when direction changes
+_leg_positions = {
+	'L1': 0,  # Left front horizontal position
+	'L2': 0,  # Left middle horizontal position
+	'L3': 0,  # Left rear horizontal position
+	'R1': 0,  # Right front horizontal position
+	'R2': 0,  # Right middle horizontal position
+	'R3': 0   # Right rear horizontal position
+}
+
+# Track last movement command to detect changes
+_last_command = None
+_last_speed_sign = 0
+
 
 '''
 change these variable to adjuest the steady function.
@@ -505,166 +525,122 @@ def right_III(pos, wiggle, heightAdjust=0):
 # They have been replaced by the generic leg_control() function above.
 # This removed code duplication and improved maintainability significantly.
 
-
-def move(step_input, speed, command):
-	"""
-	Execute a movement step with interpolation for smoother servo movements.
-	Now uses multiple intermediate steps to avoid jerky movements.
-	"""
-	step_I  = step_input
-	step_II = step_input + 2
-
-	if step_II > 4:
-		step_II = step_II - 4
-	if speed == 0:
-		return
-
-	# Use 5 intermediate steps for smoother movement
-	# This makes servo movements less jerky, especially height changes
-	interpolation_steps = 5
-
-	for i in range(interpolation_steps):
-		# Calculate intermediate speed (gradually increase)
-		intermediate_speed = int(speed * (i + 1) / interpolation_steps)
-
-		if command == MOVE_NO:
-			right_I(step_I, intermediate_speed, 0)
-			left_II(step_I, intermediate_speed, 0)
-			right_III(step_I, intermediate_speed, 0)
-
-			left_I(step_II, intermediate_speed, 0)
-			right_II(step_II, intermediate_speed, 0)
-			left_III(step_II, intermediate_speed, 0)
-		elif command == CMD_LEFT:
-			right_I(step_I, intermediate_speed, 0)
-			left_II(step_I, -intermediate_speed, 0)
-			right_III(step_I, intermediate_speed, 0)
-
-			left_I(step_II, -intermediate_speed, 0)
-			right_II(step_II, intermediate_speed, 0)
-			left_III(step_II, -intermediate_speed, 0)
-		elif command == CMD_RIGHT:
-			right_I(step_I, -intermediate_speed, 0)
-			left_II(step_I, intermediate_speed, 0)
-			right_III(step_I, -intermediate_speed, 0)
-
-			left_I(step_II, intermediate_speed, 0)
-			right_II(step_II, -intermediate_speed, 0)
-			left_III(step_II, intermediate_speed, 0)
-
-		# Small delay between interpolation steps for smooth movement
-		time.sleep(0.02)  # 20ms between steps = 100ms total for 5 steps
+def stand():
+	pwm.set_pwm(0,0,300)
+	pwm.set_pwm(1,0,300)
+	pwm.set_pwm(2,0,300)
+	pwm.set_pwm(3,0,300)
+	pwm.set_pwm(4,0,300)
+	pwm.set_pwm(5,0,300)
+	pwm.set_pwm(6,0,300)
+	pwm.set_pwm(7,0,300)
+	pwm.set_pwm(8,0,300)
+	pwm.set_pwm(9,0,300)
+	pwm.set_pwm(10,0,300)
+	pwm.set_pwm(11,0,300)
 
 
-# Global state for continuous, non-blocking movement
-gait_phase = 0.0  # Current phase of the walk cycle (0.0 to 1.0)
-CYCLE_STEPS = 60  # Number of increments for a full walk cycle
-
-
-# ==================== Main Movement Functions ====================
-
-def dove(step_input, speed, timeLast, dpi, command):
-	"""
-	Step-based leg movement with 4-phase tripod gait.
-	(This function is part of the old, step-based logic and is no longer
-	called by the main movement thread, but kept for potential reference).
-	"""
-	# Adjust for backward movement
-	if speed < 0:
-		speed = -speed
-		is_backward = True
+'''
+---Dove---
+making the servo moves smooth.
+'''
+def dove_Left_I(horizontal, vertical):
+	# Horizontal servo (channel 0)
+	if leftSide_direction:
+		target_h = pwm0 + horizontal
 	else:
-		is_backward = False
+		target_h = pwm0 - horizontal
+	set_servo_smooth(0, target_h, steps=0)
 
-	num_steps = dpi
-	time_per_step = timeLast / dpi
+	# Vertical servo (channel 1)
+	if leftSide_height:
+		target_v = pwm1 + vertical
+	else:
+		target_v = pwm1 - vertical
+	set_servo_smooth(1, target_v, steps=0)
 
-	# Define position calculators for each step
-	def calc_step_1(t, cmd):
-		"""Step 1: Group A lifts and moves (ascending arc)"""
-		if cmd == MOVE_NO:
-			h_a = _interpolate_linear(speed if not is_backward else -speed,
-			                          -speed if not is_backward else speed, t)
-			v_a = _interpolate_vertical_arc(speed, t, descending=False)
-			h_b = speed if not is_backward else -speed
-			v_b = -10
-			return (h_a, v_a, h_b, v_b)
-		elif cmd == CMD_LEFT:
-			h_base = _interpolate_linear(speed, -speed, t)
-			v = _interpolate_vertical_arc(speed, t, descending=False)
-			return {'L1_h': -h_base, 'L1_v': v, 'R2_h': h_base, 'R2_v': v, 'L3_h': -h_base, 'L3_v': v,
-			        'R1_h': speed, 'R1_v': -10, 'L2_h': -speed, 'L2_v': -10, 'R3_h': speed, 'R3_v': -10}
-		elif cmd == CMD_RIGHT:
-			h_base = _interpolate_linear(speed, -speed, t)
-			v = _interpolate_vertical_arc(speed, t, descending=False)
-			return {'L1_h': h_base, 'L1_v': v, 'R2_h': -h_base, 'R2_v': v, 'L3_h': h_base, 'L3_v': v,
-			        'R1_h': -speed, 'R1_v': -10, 'L2_h': speed, 'L2_v': -10, 'R3_h': -speed, 'R3_v': -10}
 
-	def calc_step_2(t, cmd):
-		"""Step 2: Group A lands (descending arc)"""
-		if cmd == MOVE_NO:
-			h_a = _interpolate_linear(-speed if not is_backward else speed,
-			                          speed if not is_backward else -speed, t)
-			v_a = _interpolate_vertical_arc(speed, 1-t, descending=True)
-			h_b = -h_a
-			v_b = -10
-			return (h_a, v_a, h_b, v_b)
-		elif cmd == CMD_LEFT:
-			h_base = _interpolate_linear(-speed, speed, t)
-			v = _interpolate_vertical_arc(speed, 1-t, descending=True)
-			return {'L1_h': -h_base, 'L1_v': v, 'R2_h': h_base, 'R2_v': v, 'L3_h': -h_base, 'L3_v': v,
-			        'R1_h': h_base, 'R1_v': -10, 'L2_h': -h_base, 'L2_v': -10, 'R3_h': h_base, 'R3_v': -10}
-		elif cmd == CMD_RIGHT:
-			h_base = _interpolate_linear(-speed, speed, t)
-			v = _interpolate_vertical_arc(speed, 1-t, descending=True)
-			return {'L1_h': h_base, 'L1_v': v, 'R2_h': -h_base, 'R2_v': v, 'L3_h': h_base, 'L3_v': v,
-			        'R1_h': -h_base, 'R1_v': -10, 'L2_h': h_base, 'L2_v': -10, 'R3_h': -h_base, 'R3_v': -10}
+def dove_Left_II(horizontal, vertical):
+	# Horizontal servo (channel 2)
+	if leftSide_direction:
+		target_h = pwm2 + horizontal
+	else:
+		target_h = pwm2 - horizontal
+	set_servo_smooth(2, target_h, steps=0)
 
-	def calc_step_3(t, cmd):
-		"""Step 3: Group B lifts and moves (ascending arc)"""
-		if cmd == MOVE_NO:
-			h_a = speed if not is_backward else -speed
-			v_a = -10
-			h_b = _interpolate_linear(speed if not is_backward else -speed,
-			                          -speed if not is_backward else speed, t)
-			v_b = _interpolate_vertical_arc(speed, t, descending=False)
-			return (h_a, v_a, h_b, v_b)
-		elif cmd == CMD_LEFT:
-			h_base = _interpolate_linear(speed, -speed, t)
-			v = _interpolate_vertical_arc(speed, t, descending=False)
-			return {'L1_h': -speed, 'L1_v': -10, 'R2_h': speed, 'R2_v': -10, 'L3_h': -speed, 'L3_v': -10,
-			        'R1_h': h_base, 'R1_v': v, 'L2_h': -h_base, 'L2_v': v, 'R3_h': h_base, 'R3_v': v}
-		elif cmd == CMD_RIGHT:
-			h_base = _interpolate_linear(speed, -speed, t)
-			v = _interpolate_vertical_arc(speed, t, descending=False)
-			return {'L1_h': speed, 'L1_v': -10, 'R2_h': -speed, 'R2_v': -10, 'L3_h': speed, 'L3_v': -10,
-			        'R1_h': -h_base, 'R1_v': v, 'L2_h': h_base, 'L2_v': v, 'R3_h': -h_base, 'R3_v': v}
+	# Vertical servo (channel 3)
+	if leftSide_height:
+		target_v = pwm3 + vertical
+	else:
+		target_v = pwm3 - vertical
+	set_servo_smooth(3, target_v, steps=0)
 
-	def calc_step_4(t, cmd):
-		"""Step 4: Group B lands (descending arc)"""
-		if cmd == MOVE_NO:
-			h_a = -speed if not is_backward else speed
-			v_a = -10
-			h_b = _interpolate_linear(-speed if not is_backward else speed,
-			                          speed if not is_backward else -speed, t)
-			v_b = _interpolate_vertical_arc(speed, 1-t, descending=True)
-			return (h_a, v_a, h_b, v_b)
-		elif cmd == CMD_LEFT:
-			h_base = _interpolate_linear(-speed, speed, t)
-			v = _interpolate_vertical_arc(speed, 1-t, descending=True)
-			return {'L1_h': h_base, 'L1_v': -10, 'R2_h': -h_base, 'R2_v': -10, 'L3_h': h_base, 'L3_v': -10,
-			        'R1_h': h_base, 'R1_v': v, 'L2_h': -h_base, 'L2_v': v, 'R3_h': h_base, 'R3_v': v}
-		elif cmd == CMD_RIGHT:
-			h_base = _interpolate_linear(-speed, speed, t)
-			v = _interpolate_vertical_arc(speed, 1-t, descending=True)
-			return {'L1_h': -h_base, 'L1_v': -10, 'R2_h': h_base, 'R2_v': -10, 'L3_h': -h_base, 'L3_v': -10,
-			        'R1_h': -h_base, 'R1_v': v, 'L2_h': h_base, 'L2_v': v, 'R3_h': -h_base, 'R3_v': v}
 
-	# Execute the appropriate step
-	calculators = {1: calc_step_1, 2: calc_step_2, 3: calc_step_3, 4: calc_step_4}
+def dove_Left_III(horizontal, vertical):
+	# Horizontal servo (channel 4)
+	if leftSide_direction:
+		target_h = pwm4 + horizontal
+	else:
+		target_h = pwm4 - horizontal
+	set_servo_smooth(4, target_h, steps=0)
 
-	if step_input in calculators:
-		_execute_step_loop(num_steps, time_per_step, calculators[step_input], command)
+	# Vertical servo (channel 5)
+	if leftSide_height:
+		target_v = pwm5 + vertical
+	else:
+		target_v = pwm5 - vertical
+	set_servo_smooth(5, target_v, steps=0)
+
+
+def dove_Right_I(horizontal, vertical):
+	# Horizontal servo (channel 6)
+	if rightSide_direction:
+		target_h = pwm6 + horizontal
+	else:
+		target_h = pwm6 - horizontal
+	set_servo_smooth(6, target_h, steps=0)
+
+	# Vertical servo (channel 7)
+	if rightSide_height:
+		target_v = pwm7 + vertical
+	else:
+		target_v = pwm7 - vertical
+	set_servo_smooth(7, target_v, steps=0)
+
+
+def dove_Right_II(horizontal, vertical):
+	# Horizontal servo (channel 8)
+	if rightSide_direction:
+		target_h = pwm8 + horizontal
+	else:
+		target_h = pwm8 - horizontal
+	set_servo_smooth(8, target_h, steps=0)
+
+	# Vertical servo (channel 9)
+	if rightSide_height:
+		target_v = pwm9 + vertical
+	else:
+		target_v = pwm9 - vertical
+	set_servo_smooth(9, target_v, steps=0)
+
+
+def dove_Right_III(horizontal, vertical):
+	# Horizontal servo (channel 10)
+	if rightSide_direction:
+		target_h = pwm10 + horizontal
+	else:
+		target_h = pwm10 - horizontal
+	set_servo_smooth(10, target_h, steps=0)
+
+	# Vertical servo (channel 11)
+	if rightSide_height:
+		target_v = pwm11 + vertical
+	else:
+		target_v = pwm11 - vertical
+	set_servo_smooth(11, target_v, steps=0)
+
+
+# ==================== Generic Helper Functions for Movement ====================
 
 
 def steady_X():
@@ -994,7 +970,7 @@ def move_thread():
 	Performs one small increment of the walk cycle per call, creating smooth,
 	continuous movement.
 	"""
-	global gait_phase, direction_command, turn_command, movement_speed, steadyMode
+	global gait_phase, direction_command, turn_command, movement_speed, steadyMode, abort_current_movement, _last_command, _last_speed_sign
 
 	if steadyMode:
 		steady_X()
@@ -1061,6 +1037,164 @@ def move_thread():
 
 		# Apply the new calculated position to the leg's servos
 		apply_leg_position(leg, new_horizontal_pos, vertical_pos)
+
+
+def _calculate_gait_phase(phase, speed):
+	"""
+	Determines which leg group is in the air/on the ground based on the phase
+	and calculates the basic timing and vertical positions.
+
+	Args:
+		phase: Current phase in the cycle (0.0 to 1.0)
+		speed: Movement amplitude
+
+	Returns:
+		A tuple containing:
+		- air_group (list of leg names in the air)
+		- ground_group (list of leg names on the ground)
+		- t (normalized time within the half-cycle, 0.0 to 1.0)
+		- v_air (vertical position for air legs)
+		- v_ground (vertical position for ground legs)
+	"""
+	group_a = ['L1', 'R2', 'L3']
+	group_b = ['R1', 'L2', 'R3']
+
+	if phase < 0.5:
+		air_group = group_a
+		ground_group = group_b
+		t = phase * 2
+	else:
+		air_group = group_b
+		ground_group = group_a
+		t = (phase - 0.5) * 2
+
+	v_air = int(3 * abs(speed) * math.sin(t * math.pi))
+	v_ground = -10
+
+	return air_group, ground_group, t, v_air, v_ground
+
+
+def calculate_target_positions(phase, speed_left, speed_right):
+	"""
+	Calculate target horizontal and vertical positions for all legs based on phase and side speeds.
+	This single function handles all movement types (forward, backward, turn, arc).
+
+	Args:
+		phase (float): Current phase of the walk cycle (0.0 to 1.0).
+		speed_left (int): Movement amplitude for the left legs.
+		speed_right (int): Movement amplitude for the right legs.
+
+	Returns:
+		dict: Dictionary with target positions for each leg: {'L1': {'h': ..., 'v': ...}, ...}
+	"""
+	positions = {}
+	# The overall speed determines the leg lift height.
+	speed = max(abs(speed_left), abs(speed_right))
+
+	air_group, ground_group, t, v_air, v_ground = _calculate_gait_phase(phase, speed)
+
+	# Calculate horizontal movement for each side
+	h_left_air = int(speed_left * math.cos(t * math.pi))
+	h_left_ground = -h_left_air
+
+	h_right_air = int(speed_right * math.cos(t * math.pi))
+	h_right_ground = -h_right_air
+
+	# Assign positions to all legs
+	for leg in ['L1', 'L2', 'L3', 'R1', 'R2', 'R3']:
+		is_left = leg.startswith('L')
+		if leg in air_group:
+			positions[leg] = {'h': h_left_air if is_left else h_right_air, 'v': v_air}
+		else:  # in ground_group
+			positions[leg] = {'h': h_left_ground if is_left else h_right_ground, 'v': v_ground}
+
+	return positions
+
+
+def apply_leg_position(leg, horizontal, vertical):
+	"""
+	Apply horizontal and vertical position to a specific leg.
+
+	Args:
+		leg: Leg identifier ('L1', 'L2', 'L3', 'R1', 'R2', 'R3')
+		horizontal: Horizontal offset (-speed to +speed)
+		vertical: Vertical offset (positive = up, negative = down)
+	"""
+	if leg == 'L1':
+		dove_Left_I(horizontal, vertical)
+	elif leg == 'L2':
+		dove_Left_II(horizontal, vertical)
+	elif leg == 'L3':
+		dove_Left_III(horizontal, vertical)
+	elif leg == 'R1':
+		dove_Right_I(horizontal, vertical)
+	elif leg == 'R2':
+		dove_Right_II(horizontal, vertical)
+	elif leg == 'R3':
+		dove_Right_III(horizontal, vertical)
+
+
+# ==================== Generic Helper Functions for Movement ====================
+
+def _apply_tripod_group_positions(group_a_h, group_a_v, group_b_h, group_b_v):
+	"""
+	Apply horizontal and vertical positions to both tripod groups.
+
+	Tripod Group A: L1, R2, L3 (front-left, middle-right, rear-left)
+	Tripod Group B: R1, L2, R3 (front-right, middle-left, rear-right)
+
+	Args:
+		group_a_h: Horizontal position for Group A
+		group_a_v: Vertical position for Group A
+		group_b_h: Horizontal position for Group B
+		group_b_v: Vertical position for Group B
+	"""
+	# Group A (L1, R2, L3)
+	dove_Left_I(group_a_h, group_a_v)
+	dove_Right_II(group_a_h, group_a_v)
+	dove_Left_III(group_a_h, group_a_v)
+
+	# Group B (R1, L2, R3)
+	dove_Right_I(group_b_h, group_b_v)
+	dove_Left_II(group_b_h, group_b_v)
+	dove_Right_III(group_b_h, group_b_v)
+
+
+def _interpolate_linear(start, end, t):
+	"""
+	Linear interpolation between start and end.
+
+	Args:
+		start: Start value
+		end: End value
+		t: Interpolation parameter (0.0 to 1.0)
+
+	Returns:
+		Interpolated integer value
+	"""
+	return int(start + (end - start) * t)
+
+
+def _interpolate_vertical_arc(speed, t, descending=False):
+	"""
+	Calculate vertical position for smooth arc movement using sine curve.
+
+	Args:
+		speed: Movement amplitude
+		t: Phase parameter (0.0 to 1.0)
+		descending: If True, arc goes from peak to ground (3*speed → 0)
+		            If False, arc goes from ground to peak (0 → 3*speed)
+
+	Returns:
+		Vertical position as integer
+	"""
+	import math
+	if descending:
+		# Descending arc: 3*speed → 0
+		return int(3 * abs(speed) * math.sin((1 - t) * math.pi))
+	else:
+		# Ascending arc: 0 → 3*speed → 0 (full sine wave)
+		return int(3 * abs(speed) * math.sin(t * math.pi))
 
 
 class RobotM(threading.Thread):
@@ -1200,19 +1334,7 @@ def commandInput(command_input):
 
 
 
-if __name__ == '__main__':
-	step = 1
-	move_stu = 1
-	try:
-		while 1:
-			move(step, 35, 'no')
-			step += 1
-			if step > 4:
-				step = 1
-			time.sleep(0.08)
-	except KeyboardInterrupt:
-		pwm.set_all_pwm(0, 300)
-		time.sleep(1)
+
 
 def standby():
 	"""
