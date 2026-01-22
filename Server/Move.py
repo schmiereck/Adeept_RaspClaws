@@ -979,7 +979,7 @@ def move_thread():
 		abort_current_movement = False  # Reset flag
 		gait_phase = 0.0  # Reset phase
 		steadyMode = 0 # Ensure steady mode is off after stopping movement
-		rm.pause() # Ensure RobotM thread is paused after smooth lowering is complete
+		#rm.pause() # Ensure RobotM thread is paused after smooth lowering is complete
 
 		return # IMPORTANT: return here to prevent further movement
 
