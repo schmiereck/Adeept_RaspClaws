@@ -540,107 +540,34 @@ def stand():
 	pwm.set_pwm(11,0,300)
 
 
-'''
----Dove---
-making the servo moves smooth.
-'''
-def dove_Left_I(horizontal, vertical):
-	# Horizontal servo (channel 0)
-	if leftSide_direction:
-		target_h = pwm0 + horizontal
-	else:
-		target_h = pwm0 - horizontal
-	set_servo_smooth(0, target_h, steps=0)
+def lower_legs_smoothly(target_vertical_offset=-10, interpolation_steps=10):
+	"""
+	Smoothly lowers all legs to a stable ground position.
+	Horizontal servos are also reset to their base position smoothly.
 
-	# Vertical servo (channel 1)
-	if leftSide_height:
-		target_v = pwm1 + vertical
-	else:
-		target_v = pwm1 - vertical
-	set_servo_smooth(1, target_v, steps=0)
+	Args:
+		target_vertical_offset: The target vertical offset (e.g., -10)
+		interpolation_steps: Number of steps for smooth interpolation.
+	"""
+	for leg_name_long in LEG_CONFIG.keys():
+		h_channel, v_channel, base_h, base_v, is_left = LEG_CONFIG[leg_name_long]
 
+		# Determine target vertical PWM for this leg
+		if is_left:
+			height_flag = leftSide_height
+		else:
+			height_flag = rightSide_height
 
-def dove_Left_II(horizontal, vertical):
-	# Horizontal servo (channel 2)
-	if leftSide_direction:
-		target_h = pwm2 + horizontal
-	else:
-		target_h = pwm2 - horizontal
-	set_servo_smooth(2, target_h, steps=0)
-
-	# Vertical servo (channel 3)
-	if leftSide_height:
-		target_v = pwm3 + vertical
-	else:
-		target_v = pwm3 - vertical
-	set_servo_smooth(3, target_v, steps=0)
-
-
-def dove_Left_III(horizontal, vertical):
-	# Horizontal servo (channel 4)
-	if leftSide_direction:
-		target_h = pwm4 + horizontal
-	else:
-		target_h = pwm4 - horizontal
-	set_servo_smooth(4, target_h, steps=0)
-
-	# Vertical servo (channel 5)
-	if leftSide_height:
-		target_v = pwm5 + vertical
-	else:
-		target_v = pwm5 - vertical
-	set_servo_smooth(5, target_v, steps=0)
-
-
-def dove_Right_I(horizontal, vertical):
-	# Horizontal servo (channel 6)
-	if rightSide_direction:
-		target_h = pwm6 + horizontal
-	else:
-		target_h = pwm6 - horizontal
-	set_servo_smooth(6, target_h, steps=0)
-
-	# Vertical servo (channel 7)
-	if rightSide_height:
-		target_v = pwm7 + vertical
-	else:
-		target_v = pwm7 - vertical
-	set_servo_smooth(7, target_v, steps=0)
-
-
-def dove_Right_II(horizontal, vertical):
-	# Horizontal servo (channel 8)
-	if rightSide_direction:
-		target_h = pwm8 + horizontal
-	else:
-		target_h = pwm8 - horizontal
-	set_servo_smooth(8, target_h, steps=0)
-
-	# Vertical servo (channel 9)
-	if rightSide_height:
-		target_v = pwm9 + vertical
-	else:
-		target_v = pwm9 - vertical
-	set_servo_smooth(9, target_v, steps=0)
-
-
-def dove_Right_III(horizontal, vertical):
-	# Horizontal servo (channel 10)
-	if rightSide_direction:
-		target_h = pwm10 + horizontal
-	else:
-		target_h = pwm10 - horizontal
-	set_servo_smooth(10, target_h, steps=0)
-
-	# Vertical servo (channel 11)
-	if rightSide_height:
-		target_v = pwm11 + vertical
-	else:
-		target_v = pwm11 - vertical
-	set_servo_smooth(11, target_v, steps=0)
-
-
-# ==================== Generic Helper Functions for Movement ====================
+		if height_flag:
+			target_v_pwm = base_v + target_vertical_offset
+		else:
+			target_v_pwm = base_v - target_vertical_offset
+		
+		# Move vertical servo smoothly
+		set_servo_smooth(v_channel, target_v_pwm, steps=interpolation_steps)
+		
+		# Also move horizontal servos to base (300) for stability
+		set_servo_smooth(h_channel, base_h, steps=interpolation_steps)
 
 
 def steady_X():
@@ -1003,6 +930,19 @@ def move_thread():
 		speed_right = movement_speed
 	else:
 		movement_active = False
+
+	# Handle abort logic first
+	if abort_current_movement:
+		print("[move_thread] ⚡ ABORT FLAG detected. Lowering legs to stable ground position.")
+		# Calculate interpolation steps based on movement speed for adaptive smoothness
+		# Faster movement speed -> quicker lowering (fewer steps)
+		interpolation_steps = max(5, int(20 - movement_speed / 4))
+		lower_legs_smoothly(target_vertical_offset=-10, interpolation_steps=interpolation_steps)
+		abort_current_movement = False  # Reset flag
+		gait_phase = 0.0  # Reset phase
+		# Fall through to handle_stand_or_steady to ensure a steady state
+		handle_stand_or_steady()
+		return
 
 	# If no movement command is active, stand still and reset the gait phase
 	if not movement_active:
