@@ -1483,7 +1483,7 @@ class RobotM(threading.Thread):
 			move_thread()
 			# Small sleep to reduce CPU load and allow quick interruption
 			# The actual movement timing is handled in execute_movement_step()
-			time.sleep(0.01)  # 10ms to check for pause quickly
+			time.sleep(0.003)  # 3ms to check for pause quickly
 
 rm = RobotM()
 rm.start()
