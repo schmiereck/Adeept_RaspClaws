@@ -570,6 +570,106 @@ def lower_legs_smoothly(target_vertical_offset=-10, interpolation_steps=10):
 		set_servo_smooth(h_channel, base_h, steps=interpolation_steps)
 
 
+'''
+---Dove---
+making the servo moves smooth.
+'''
+def dove_Left_I(horizontal, vertical):
+	# Horizontal servo (channel 0)
+	if leftSide_direction:
+		target_h = pwm0 + horizontal
+	else:
+		target_h = pwm0 - horizontal
+	set_servo_smooth(0, target_h, steps=0)
+
+	# Vertical servo (channel 1)
+	if leftSide_height:
+		target_v = pwm1 + vertical
+	else:
+		target_v = pwm1 - vertical
+	set_servo_smooth(1, target_v, steps=0)
+
+
+def dove_Left_II(horizontal, vertical):
+	# Horizontal servo (channel 2)
+	if leftSide_direction:
+		target_h = pwm2 + horizontal
+	else:
+		target_h = pwm2 - horizontal
+	set_servo_smooth(2, target_h, steps=0)
+
+	# Vertical servo (channel 3)
+	if leftSide_height:
+		target_v = pwm3 + vertical
+	else:
+		target_v = pwm3 - vertical
+	set_servo_smooth(3, target_v, steps=0)
+
+
+def dove_Left_III(horizontal, vertical):
+	# Horizontal servo (channel 4)
+	if leftSide_direction:
+		target_h = pwm4 + horizontal
+	else:
+		target_h = pwm4 - horizontal
+	set_servo_smooth(4, target_h, steps=0)
+
+	# Vertical servo (channel 5)
+	if leftSide_height:
+		target_v = pwm5 + vertical
+	else:
+		target_v = pwm5 - vertical
+	set_servo_smooth(5, target_v, steps=0)
+
+
+def dove_Right_I(horizontal, vertical):
+	# Horizontal servo (channel 6)
+	if rightSide_direction:
+		target_h = pwm6 + horizontal
+	else:
+		target_h = pwm6 - horizontal
+	set_servo_smooth(6, target_h, steps=0)
+
+	# Vertical servo (channel 7)
+	if rightSide_height:
+		target_v = pwm7 + vertical
+	else:
+		target_v = pwm7 - vertical
+	set_servo_smooth(7, target_v, steps=0)
+
+
+def dove_Right_II(horizontal, vertical):
+	# Horizontal servo (channel 8)
+	if rightSide_direction:
+		target_h = pwm8 + horizontal
+	else:
+		target_h = pwm8 - horizontal
+	set_servo_smooth(8, target_h, steps=0)
+
+	# Vertical servo (channel 9)
+	if rightSide_height:
+		target_v = pwm9 + vertical
+	else:
+		target_v = pwm9 - vertical
+	set_servo_smooth(9, target_v, steps=0)
+
+
+def dove_Right_III(horizontal, vertical):
+	# Horizontal servo (channel 10)
+	if rightSide_direction:
+		target_h = pwm10 + horizontal
+	else:
+		target_h = pwm10 - horizontal
+	set_servo_smooth(10, target_h, steps=0)
+
+	# Vertical servo (channel 11)
+	if rightSide_height:
+		target_v = pwm11 + vertical
+	else:
+		target_v = pwm11 - vertical
+	set_servo_smooth(11, target_v, steps=0)
+
+
 def steady_X():
 	if leftSide_direction:
 		pwm.set_pwm(0,0,pwm0+steady_X_set)
