@@ -23,7 +23,7 @@ import ast
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from protocol import *
 step_set = 1
-speed_set = 100
+
 
 new_frame = 0
 direction_command = 'no'

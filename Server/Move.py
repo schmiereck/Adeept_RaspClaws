@@ -1342,7 +1342,7 @@ DPI = 15
 new_frame = 0
 direction_command = MOVE_NO
 turn_command = MOVE_NO
-movement_speed = 35  # Default movement speed (10-60 range)
+movement_speed = 35 # Default movement speed (10-80 range)
 
 
 # ==================== Speed Control ====================
@@ -1359,7 +1359,7 @@ def set_movement_speed(speed):
 	"""
 	global movement_speed
 	# Clamp to valid range
-	speed = max(10, min(150, int(speed)))
+	speed = max(10, min(80, int(speed)))
 	movement_speed = speed
 	print(f"[Move] Movement speed set to {movement_speed}")
 
