@@ -408,6 +408,52 @@ LEG_CONFIG = {
 }
 
 
+def apply_leg_position(leg_name, horizontal_offset, vertical_offset):
+	"""
+	Sets a leg to a specific horizontal and vertical offset from its base position.
+	This is a direct-setting function, without interpolation.
+	"""
+	global servo_current_pos
+
+	if leg_name not in LEG_CONFIG:
+		print(f"Error: Invalid leg name '{leg_name}' in apply_leg_position")
+		return
+
+	h_channel, v_channel, base_h, base_v, is_left = LEG_CONFIG[leg_name]
+
+	# Determine direction and height flags based on side
+	if is_left:
+		direction_flag = leftSide_direction
+		height_flag = leftSide_height
+	else:
+		direction_flag = rightSide_direction
+		height_flag = rightSide_height
+
+	# --- Horizontal Servo Calculation ---
+	if direction_flag:
+		target_h = base_h + horizontal_offset
+	else:
+		target_h = base_h - horizontal_offset
+	target_h = int(max(100, min(520, target_h)))  # Clamp and ensure integer
+
+	# --- Vertical Servo Calculation ---
+	if height_flag:
+		target_v = base_v + vertical_offset
+	else:
+		target_v = base_v - vertical_offset
+	target_v = int(max(100, min(520, target_v)))  # Clamp and ensure integer
+
+	# Set the PWM values using the batch update for consistency
+	batch_update = {
+		h_channel: target_h,
+		v_channel: target_v
+	}
+	_batch_set_servos(batch_update)
+
+	# The _batch_set_servos function already updates servo_current_pos
+	# so no need to update it here again.
+
+
 def leg_control(leg_name, pos, wiggle, heightAdjust=0):
 	"""
 	Generic leg control function for all 6 legs.
@@ -585,12 +631,12 @@ def move(step_input, speed, command):
 # Store actual leg positions (horizontal offsets) instead of just phase
 # This allows smooth interpolation when direction changes
 _leg_positions = {
-	'L1': 0,  # Left front horizontal position
-	'L2': 0,  # Left middle horizontal position
-	'L3': 0,  # Left rear horizontal position
-	'R1': 0,  # Right front horizontal position
-	'R2': 0,  # Right middle horizontal position
-	'R3': 0   # Right rear horizontal position
+	'left_I': 0,
+	'left_II': 0,
+	'left_III': 0,
+	'right_I': 0,
+	'right_II': 0,
+	'right_III': 0
 }
 
 # Track last movement command to detect changes
@@ -628,7 +674,7 @@ def move_smooth(speed_left, speed_right, cycle_steps=18):
 			print(f"[move_smooth] ⚡ ABORT FLAG detected at step {step}/{cycle_steps}")
 			# Lower all legs to ground for stable position
 			print("[move_smooth] Lowering legs to stable ground position...")
-			for leg in ['L1', 'L2', 'L3', 'R1', 'R2', 'R3']:
+			for leg in LEG_CONFIG.keys():
 				# Keep current horizontal position, set vertical to ground level
 				apply_leg_position(leg, _leg_positions[leg], -10)
 			_last_command = None
@@ -665,24 +711,27 @@ def move_smooth(speed_left, speed_right, cycle_steps=18):
 
 		# Collect all new target PWM values for batch update
 		batch_servo_updates = {}
-		for leg_name in LEG_CONFIG.keys(): # Corrected: Iterate over actual leg names from LEG_CONFIG
+		for leg_name in LEG_CONFIG.keys():
 			horizontal_offset = target_positions[leg_name]['h']
 			vertical_offset = target_positions[leg_name]['v']
 
 			# Get interpolated PWM values for this leg's horizontal and vertical servos
 			leg_pwms = _get_interpolated_leg_pwms(leg_name, horizontal_offset, vertical_offset, alpha)
-			
+
 			for channel, pwm_value in leg_pwms.items():
 				batch_servo_updates[channel] = pwm_value
-				# Update _leg_positions for horizontal tracking (needs to be adjusted for new leg_name keys)
-				# Original _leg_positions keys are 'L1', 'L2', etc. This needs careful handling.
-				# For now, let's just ensure servo_current_pos is updated.
-				# The _leg_positions update logic should reflect the leg_name used in target_positions.
-				# Since target_positions is indexed by LEG_CONFIG keys, _leg_positions also needs to align.
-				# For now, let's comment out the _leg_positions update line to avoid another KeyError
-				# and focus on getting movement back. The _leg_positions logic needs rethinking.
-				# _leg_positions[leg_name] = pwm_value - base_h (this would require base_h for the leg)
-				pass # The _leg_positions logic needs to be revisited, currently it's causing issues.
+				# Update _leg_positions for horizontal tracking
+				# Note: This simple assignment is not perfect, as it doesn't store the pure offset,
+				# but it's a starting point for tracking the leg's state.
+				h_channel, _, base_h, _, _ = LEG_CONFIG[leg_name]
+				if channel == h_channel:
+					_leg_positions[leg_name] = pwm_value - base_h
+
+		# CRITICAL FIX: Send the batch update to the servos
+		_batch_set_servos(batch_servo_updates)
+
+		# Add a small delay to control the speed of the cycle
+		time.sleep(0.005)
 
 
 
@@ -703,8 +752,8 @@ def _calculate_gait_phase(phase, speed):
 		- v_air (vertical position for air legs)
 		- v_ground (vertical position for ground legs)
 	"""
-	group_a = ['L1', 'R2', 'L3']
-	group_b = ['R1', 'L2', 'R3']
+	group_a = ['left_I', 'right_II', 'left_III']
+	group_b = ['right_I', 'left_II', 'right_III']
 
 	if phase < 0.5:
 		air_group = group_a
@@ -748,8 +797,8 @@ def calculate_target_positions(phase, speed_left, speed_right):
 	h_right_ground = -h_right_air
 
 	# Assign positions to all legs
-	for leg in LEG_CONFIG.keys(): # Corrected: Iterate over actual leg names from LEG_CONFIG
-		is_left = leg.startswith('L')
+	for leg in LEG_CONFIG.keys():
+		is_left = LEG_CONFIG[leg][4]  # Correctly get side from LEG_CONFIG
 		if leg in air_group:
 			positions[leg] = {'h': h_left_air if is_left else h_right_air, 'v': v_air}
 		else:  # in ground_group
