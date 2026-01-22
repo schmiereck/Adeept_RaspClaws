@@ -215,12 +215,16 @@ def set_servo_smooth(channel, target_pos, steps=0):
 		servo_current_pos[channel] = target_pos
 	else:
 		# Optional interpolation (not recommended in dove functions)
+		step_delay = 0.01 # Small delay between interpolation steps (10ms)
+		print(f"    [set_servo_smooth] Channel {channel}: Interpolating from {current} to {target_pos} in {steps} steps with delay {step_delay}s")
 		for i in range(steps + 1):
 			t = i / steps
 			pos = int(current + (target_pos - current) * t)
 			pwm.set_pwm(channel, 0, pos)
+			time.sleep(step_delay) # Added sleep here
 		# Update tracked position
 		servo_current_pos[channel] = target_pos
+		print(f"    [set_servo_smooth] Channel {channel}: Interpolation finished at {servo_current_pos[channel]}")
 
 
 def set_servo_immediate(channel, target_pos):
@@ -549,6 +553,7 @@ def lower_legs_smoothly(target_vertical_offset=-10, interpolation_steps=10):
 		target_vertical_offset: The target vertical offset (e.g., -10)
 		interpolation_steps: Number of steps for smooth interpolation.
 	"""
+	print(f"[lower_legs_smoothly] Starting smooth lowering with {interpolation_steps} steps.")
 	for leg_name_long in LEG_CONFIG.keys():
 		h_channel, v_channel, base_h, base_v, is_left = LEG_CONFIG[leg_name_long]
 
@@ -564,10 +569,13 @@ def lower_legs_smoothly(target_vertical_offset=-10, interpolation_steps=10):
 			target_v_pwm = base_v - target_vertical_offset
 		
 		# Move vertical servo smoothly
+		print(f"  [lower_legs_smoothly] Leg {leg_name_long} V_channel {v_channel} to {target_v_pwm}")
 		set_servo_smooth(v_channel, target_v_pwm, steps=interpolation_steps)
 		
 		# Also move horizontal servos to base (300) for stability
+		print(f"  [lower_legs_smoothly] Leg {leg_name_long} H_channel {h_channel} to {base_h}")
 		set_servo_smooth(h_channel, base_h, steps=interpolation_steps)
+	print("[lower_legs_smoothly] Finished smooth lowering.")
 
 
 '''
@@ -1012,10 +1020,10 @@ def move_thread():
 			abort_current_movement = False  # Reset flag
 			gait_phase = 0.0  # Reset phase
 			steadyMode = 0 # Ensure steady mode is off after stopping movement
-			rm.pause() # Ensure RobotM thread is paused if it's not already
-	
-			return # IMPORTANT: return here to prevent further movement or stand() from overriding
-	# If no movement command is active, stand still and reset the gait phase
+			# rm.pause() # Pausing the thread is now handled by the calling function.
+
+			return # IMPORTANT: return here to prevent further movement or stand() from overriding	# If no movement command is active, stand still and reset the gait phase
+
 	if not movement_active:
 		handle_stand_or_steady()
 		gait_phase = 0.0  # Reset phase to start clean next time
@@ -1253,23 +1261,51 @@ def set_turn_and_resume(turn):
 
 def set_direction_and_pause(direction):
 	"""Set direction command and pause robot movement"""
-	global direction_command, abort_current_movement
+	global direction_command, abort_current_movement, gait_phase, steadyMode, movement_speed
 	direction_command = direction
 	# Set abort flag to immediately stop any ongoing movement cycle
+	# The abort_current_movement flag is no longer directly used in move_thread for pausing,
+	# but is still set for consistency if needed elsewhere.
 	abort_current_movement = True
 	print(f"[set_direction_and_pause] Setting abort flag, direction={direction}")
-	rm.pause()
+	print(f"[set_direction_and_pause] Initiating smooth lowering...")
+	
+	# Perform smooth lowering immediately. lower_legs_smoothly is now blocking.
+	interpolation_steps = max(5, int(20 - movement_speed / 4))
+	lower_legs_smoothly(target_vertical_offset=-10, interpolation_steps=interpolation_steps)
+
+	print("[set_direction_and_pause] Smooth lowering completed. Pausing thread.")
+	# After smooth lowering is complete, pause the thread and reset flags
+	abort_current_movement = False # Reset abort flag
+	gait_phase = 0.0 # Reset gait phase
+	steadyMode = 0 # Ensure steady mode is off
+	rm.pause() # Pause the RobotM thread now that lowering is complete
+
 
 
 def set_turn_and_pause():
 	"""Set turn to 'no' and pause robot movement"""
-	global turn_command, direction_command, abort_current_movement
+	global turn_command, direction_command, abort_current_movement, gait_phase, steadyMode, movement_speed
 	turn_command = MOVE_NO
 	direction_command = MOVE_NO  # Also reset direction (user released all movement buttons)
 	# Set abort flag to immediately stop any ongoing movement cycle
+	# The abort_current_movement flag is no longer directly used in move_thread for pausing,
+	# but is still set for consistency if needed elsewhere.
 	abort_current_movement = True
 	print("[set_turn_and_pause] Setting abort flag, turn=no, direction=no")
-	rm.pause()
+	print(f"[set_turn_and_pause] Initiating smooth lowering...")
+
+	# Perform smooth lowering immediately. lower_legs_smoothly is now blocking.
+	interpolation_steps = max(5, int(20 - movement_speed / 4))
+	lower_legs_smoothly(target_vertical_offset=-10, interpolation_steps=interpolation_steps)
+
+	print("[set_turn_and_pause] Smooth lowering completed. Pausing thread.")
+	# After smooth lowering is complete, pause the thread and reset flags
+	abort_current_movement = False # Reset abort flag
+	gait_phase = 0.0 # Reset gait phase
+	steadyMode = 0 # Ensure steady mode is off
+	rm.pause() # Pause the RobotM thread now that lowering is complete
+
 
 
 def handle_movement_command(command):
