@@ -556,421 +556,9 @@ def move(step_input, speed, command):
 		time.sleep(0.02)  # 20ms between steps = 100ms total for 5 steps
 
 
-# Global position tracker for smooth continuous movement
-# Store actual leg positions (horizontal offsets) instead of just phase
-# This allows smooth interpolation when direction changes
-_leg_positions = {
-	'L1': 0,  # Left front horizontal position
-	'L2': 0,  # Left middle horizontal position
-	'L3': 0,  # Left rear horizontal position
-	'R1': 0,  # Right front horizontal position
-	'R2': 0,  # Right middle horizontal position
-	'R3': 0   # Right rear horizontal position
-}
-
-# Track last movement command to detect changes
-_last_command = None
-_last_speed_sign = 0
-
-def move_smooth(speed_left, speed_right, cycle_steps=30):
-	"""
-	Smooth continuous movement using sine/cosine curves with position tracking.
-
-	Args:
-		speed_left: Movement amplitude for left legs (negative = forward)
-		speed_right: Movement amplitude for right legs (negative = forward)
-		cycle_steps: Number of steps per full walking cycle (default 30)
-	"""
-	global _leg_positions, _last_command, _last_speed_sign, direction_command, turn_command, abort_current_movement
-
-	# TODO: Refactor command/speed change detection
-	speed = max(abs(speed_left), abs(speed_right))
-	command = turn_command # Temporary for change detection
-	# Detect command or direction change
-	current_speed_sign = 1 if speed > 0 else -1 if speed < 0 else 0
-	command_changed = (command != _last_command) or (current_speed_sign != _last_speed_sign and current_speed_sign != 0 and _last_speed_sign != 0)
-
-	if command_changed:
-		print(f"Movement change detected: cmd={_last_command}→{command}, dir={_last_speed_sign}→{current_speed_sign}")
-
-	_last_command = command
-	_last_speed_sign = current_speed_sign
-
-	# Perform one complete walking cycle
-	for step in range(cycle_steps):
-		# PRIORITY 1: Check abort flag (set by button release handlers)
-		if abort_current_movement:
-			print(f"[move_smooth] ⚡ ABORT FLAG detected at step {step}/{cycle_steps}")
-			# Lower all legs to ground for stable position
-			print("[move_smooth] Lowering legs to stable ground position...")
-			for leg in ['L1', 'L2', 'L3', 'R1', 'R2', 'R3']:
-				# Keep current horizontal position, set vertical to ground level
-				apply_leg_position(leg, _leg_positions[leg], -10)
-			_last_command = None
-			_last_speed_sign = 0
-			# Flag will be reset at end of function
-			break
-
-		# PRIORITY 2: Check if movement should stop (move_stu flag)
-		if not move_stu:
-			# Keep current positions when stopped (don't reset!)
-			# This allows smooth continuation when movement resumes
-			_last_command = None
-			_last_speed_sign = 0
-			break
-
-		# Calculate current phase for this step (0.0 to 1.0)
-		phase = step / cycle_steps
-
-		# Calculate target positions for this phase
-		target_positions = calculate_target_positions(phase, speed_left, speed_right)
-
-		# Interpolate from current to target (smooth transition)
-		# Use ease-in/ease-out interpolation for smooth, non-jerky movements
-		if command_changed and step < 15:
-			# Smooth interpolation for first few steps after direction change
-			# Use cubic easing for smoother acceleration/deceleration
-			t = step / 15
-			# Cubic ease-out: rapid start, slow finish
-			eased_t = 1 - pow(1 - t, 3)
-			alpha = 0.25 + eased_t * 0.5  # 0.25 → 0.75 with cubic easing
-		else:
-			# Normal: gentle continuous interpolation for smooth servo motion
-			alpha = 0.7  # Smooth following, prevents jerky jumps
-
-		# Update and apply positions for each leg
-		for leg in ['L1', 'L2', 'L3', 'R1', 'R2', 'R3']:
-			current = _leg_positions[leg]
-			target = target_positions[leg]['h']
-			vertical = target_positions[leg]['v']
-
-			# Interpolate: new = current + alpha * (target - current)
-			new_horizontal = int(current + alpha * (target - current))
-			_leg_positions[leg] = new_horizontal
-
-			# Apply to servos
-			apply_leg_position(leg, new_horizontal, vertical)
-
-		time.sleep(1.0 / cycle_steps)  # ~33ms per step = 1.0s per cycle (faster movement)
-
-	# Reset abort flag after cycle completes (either normally or via break)
-	abort_current_movement = False
-
-
-def _calculate_gait_phase(phase, speed):
-	"""
-	Determines which leg group is in the air/on the ground based on the phase
-	and calculates the basic timing and vertical positions.
-
-	Args:
-		phase: Current phase in the cycle (0.0 to 1.0)
-		speed: Movement amplitude
-
-	Returns:
-		A tuple containing:
-		- air_group (list of leg names in the air)
-		- ground_group (list of leg names on the ground)
-		- t (normalized time within the half-cycle, 0.0 to 1.0)
-		- v_air (vertical position for air legs)
-		- v_ground (vertical position for ground legs)
-	"""
-	group_a = ['L1', 'R2', 'L3']
-	group_b = ['R1', 'L2', 'R3']
-
-	if phase < 0.5:
-		air_group = group_a
-		ground_group = group_b
-		t = phase * 2
-	else:
-		air_group = group_b
-		ground_group = group_a
-		t = (phase - 0.5) * 2
-
-	v_air = int(3 * abs(speed) * math.sin(t * math.pi))
-	v_ground = -10
-
-	return air_group, ground_group, t, v_air, v_ground
-
-
-def calculate_target_positions(phase, speed_left, speed_right):
-	"""
-	Calculate target horizontal and vertical positions for all legs based on phase and side speeds.
-	This single function handles all movement types (forward, backward, turn, arc).
-
-	Args:
-		phase (float): Current phase of the walk cycle (0.0 to 1.0).
-		speed_left (int): Movement amplitude for the left legs.
-		speed_right (int): Movement amplitude for the right legs.
-
-	Returns:
-		dict: Dictionary with target positions for each leg: {'L1': {'h': ..., 'v': ...}, ...}
-	"""
-	positions = {}
-	# The overall speed determines the leg lift height.
-	speed = max(abs(speed_left), abs(speed_right))
-
-	air_group, ground_group, t, v_air, v_ground = _calculate_gait_phase(phase, speed)
-
-	# Calculate horizontal movement for each side
-	h_left_air = int(speed_left * math.cos(t * math.pi))
-	h_left_ground = -h_left_air
-
-	h_right_air = int(speed_right * math.cos(t * math.pi))
-	h_right_ground = -h_right_air
-
-	# Assign positions to all legs
-	for leg in ['L1', 'L2', 'L3', 'R1', 'R2', 'R3']:
-		is_left = leg.startswith('L')
-		if leg in air_group:
-			positions[leg] = {'h': h_left_air if is_left else h_right_air, 'v': v_air}
-		else:  # in ground_group
-			positions[leg] = {'h': h_left_ground if is_left else h_right_ground, 'v': v_ground}
-
-	return positions
-
-
-def apply_leg_position(leg, horizontal, vertical):
-	"""
-	Apply horizontal and vertical position to a specific leg.
-
-	Args:
-		leg: Leg identifier ('L1', 'L2', 'L3', 'R1', 'R2', 'R3')
-		horizontal: Horizontal offset (-speed to +speed)
-		vertical: Vertical offset (positive = up, negative = down)
-	"""
-	if leg == 'L1':
-		dove_Left_I(horizontal, vertical)
-	elif leg == 'L2':
-		dove_Left_II(horizontal, vertical)
-	elif leg == 'L3':
-		dove_Left_III(horizontal, vertical)
-	elif leg == 'R1':
-		dove_Right_I(horizontal, vertical)
-	elif leg == 'R2':
-		dove_Right_II(horizontal, vertical)
-	elif leg == 'R3':
-		dove_Right_III(horizontal, vertical)
-
-
-
-
-
-
-def stand():
-	pwm.set_pwm(0,0,300)
-	pwm.set_pwm(1,0,300)
-	pwm.set_pwm(2,0,300)
-	pwm.set_pwm(3,0,300)
-	pwm.set_pwm(4,0,300)
-	pwm.set_pwm(5,0,300)
-	pwm.set_pwm(6,0,300)
-	pwm.set_pwm(7,0,300)
-	pwm.set_pwm(8,0,300)
-	pwm.set_pwm(9,0,300)
-	pwm.set_pwm(10,0,300)
-	pwm.set_pwm(11,0,300)
-
-
-'''
----Dove---
-making the servo moves smooth.
-'''
-def dove_Left_I(horizontal, vertical):
-	# Horizontal servo (channel 0)
-	if leftSide_direction:
-		target_h = pwm0 + horizontal
-	else:
-		target_h = pwm0 - horizontal
-	set_servo_smooth(0, target_h, steps=0)
-
-	# Vertical servo (channel 1)
-	if leftSide_height:
-		target_v = pwm1 + vertical
-	else:
-		target_v = pwm1 - vertical
-	set_servo_smooth(1, target_v, steps=0)
-
-
-def dove_Left_II(horizontal, vertical):
-	# Horizontal servo (channel 2)
-	if leftSide_direction:
-		target_h = pwm2 + horizontal
-	else:
-		target_h = pwm2 - horizontal
-	set_servo_smooth(2, target_h, steps=0)
-
-	# Vertical servo (channel 3)
-	if leftSide_height:
-		target_v = pwm3 + vertical
-	else:
-		target_v = pwm3 - vertical
-	set_servo_smooth(3, target_v, steps=0)
-
-
-def dove_Left_III(horizontal, vertical):
-	# Horizontal servo (channel 4)
-	if leftSide_direction:
-		target_h = pwm4 + horizontal
-	else:
-		target_h = pwm4 - horizontal
-	set_servo_smooth(4, target_h, steps=0)
-
-	# Vertical servo (channel 5)
-	if leftSide_height:
-		target_v = pwm5 + vertical
-	else:
-		target_v = pwm5 - vertical
-	set_servo_smooth(5, target_v, steps=0)
-
-
-def dove_Right_I(horizontal, vertical):
-	# Horizontal servo (channel 6)
-	if rightSide_direction:
-		target_h = pwm6 + horizontal
-	else:
-		target_h = pwm6 - horizontal
-	set_servo_smooth(6, target_h, steps=0)
-
-	# Vertical servo (channel 7)
-	if rightSide_height:
-		target_v = pwm7 + vertical
-	else:
-		target_v = pwm7 - vertical
-	set_servo_smooth(7, target_v, steps=0)
-
-
-def dove_Right_II(horizontal, vertical):
-	# Horizontal servo (channel 8)
-	if rightSide_direction:
-		target_h = pwm8 + horizontal
-	else:
-		target_h = pwm8 - horizontal
-	set_servo_smooth(8, target_h, steps=0)
-
-	# Vertical servo (channel 9)
-	if rightSide_height:
-		target_v = pwm9 + vertical
-	else:
-		target_v = pwm9 - vertical
-	set_servo_smooth(9, target_v, steps=0)
-
-
-def dove_Right_III(horizontal, vertical):
-	# Horizontal servo (channel 10)
-	if rightSide_direction:
-		target_h = pwm10 + horizontal
-	else:
-		target_h = pwm10 - horizontal
-	set_servo_smooth(10, target_h, steps=0)
-
-	# Vertical servo (channel 11)
-	if rightSide_height:
-		target_v = pwm11 + vertical
-	else:
-		target_v = pwm11 - vertical
-	set_servo_smooth(11, target_v, steps=0)
-
-
-# ==================== Generic Helper Functions for Movement ====================
-
-def _apply_tripod_group_positions(group_a_h, group_a_v, group_b_h, group_b_v):
-	"""
-	Apply horizontal and vertical positions to both tripod groups.
-
-	Tripod Group A: L1, R2, L3 (front-left, middle-right, rear-left)
-	Tripod Group B: R1, L2, R3 (front-right, middle-left, rear-right)
-
-	Args:
-		group_a_h: Horizontal position for Group A
-		group_a_v: Vertical position for Group A
-		group_b_h: Horizontal position for Group B
-		group_b_v: Vertical position for Group B
-	"""
-	# Group A (L1, R2, L3)
-	dove_Left_I(group_a_h, group_a_v)
-	dove_Right_II(group_a_h, group_a_v)
-	dove_Left_III(group_a_h, group_a_v)
-
-	# Group B (R1, L2, R3)
-	dove_Right_I(group_b_h, group_b_v)
-	dove_Left_II(group_b_h, group_b_v)
-	dove_Right_III(group_b_h, group_b_v)
-
-
-def _interpolate_linear(start, end, t):
-	"""
-	Linear interpolation between start and end.
-
-	Args:
-		start: Start value
-		end: End value
-		t: Interpolation parameter (0.0 to 1.0)
-
-	Returns:
-		Interpolated integer value
-	"""
-	return int(start + (end - start) * t)
-
-
-def _interpolate_vertical_arc(speed, t, descending=False):
-	"""
-	Calculate vertical position for smooth arc movement using sine curve.
-
-	Args:
-		speed: Movement amplitude
-		t: Phase parameter (0.0 to 1.0)
-		descending: If True, arc goes from peak to ground (3*speed → 0)
-		            If False, arc goes from ground to peak (0 → 3*speed)
-
-	Returns:
-		Vertical position as integer
-	"""
-	import math
-	if descending:
-		# Descending arc: 3*speed → 0
-		return int(3 * abs(speed) * math.sin((1 - t) * math.pi))
-	else:
-		# Ascending arc: 0 → 3*speed → 0 (full sine wave)
-		return int(3 * abs(speed) * math.sin(t * math.pi))
-
-
-def _execute_step_loop(num_steps, time_per_step, position_calculator, command):
-	"""
-	Execute a step loop with interpolated positions.
-
-	Args:
-		num_steps: Number of interpolation steps
-		time_per_step: Sleep time between steps
-		position_calculator: Function(t, command) that returns (group_a_h, group_a_v, group_b_h, group_b_v)
-		                     or dict with individual leg positions for turns
-		command: Movement command (MOVE_NO, CMD_LEFT, CMD_RIGHT)
-	"""
-	for i in range(num_steps + 1):
-		# Check if movement should stop
-		if move_stu == 0:
-			break
-
-		# Calculate interpolation parameter
-		t = i / num_steps
-
-		# Get positions from calculator
-		positions = position_calculator(t, command)
-
-		# Apply positions based on return type
-		if isinstance(positions, dict):
-			# Individual leg positions (for turns)
-			dove_Left_I(positions['L1_h'], positions['L1_v'])
-			dove_Right_II(positions['R2_h'], positions['R2_v'])
-			dove_Left_III(positions['L3_h'], positions['L3_v'])
-			dove_Right_I(positions['R1_h'], positions['R1_v'])
-			dove_Left_II(positions['L2_h'], positions['L2_v'])
-			dove_Right_III(positions['R3_h'], positions['R3_v'])
-		else:
-			# Tripod group positions (for forward/backward)
-			group_a_h, group_a_v, group_b_h, group_b_v = positions
-			_apply_tripod_group_positions(group_a_h, group_a_v, group_b_h, group_b_v)
-
-		time.sleep(time_per_step)
+# Global state for continuous, non-blocking movement
+gait_phase = 0.0  # Current phase of the walk cycle (0.0 to 1.0)
+CYCLE_STEPS = 60  # Number of increments for a full walk cycle
 
 
 # ==================== Main Movement Functions ====================
@@ -978,15 +566,8 @@ def _execute_step_loop(num_steps, time_per_step, position_calculator, command):
 def dove(step_input, speed, timeLast, dpi, command):
 	"""
 	Step-based leg movement with 4-phase tripod gait.
-
-	Refactored to use generic helper functions and reduce code duplication.
-
-	Args:
-		step_input: Current step (1-4)
-		speed: Movement amplitude (positive=forward, negative=backward)
-		timeLast: Total time for the movement
-		dpi: Steps per phase (dots per inch - interpolation resolution)
-		command: Movement command (MOVE_NO, CMD_LEFT, CMD_RIGHT)
+	(This function is part of the old, step-based logic and is no longer
+	called by the main movement thread, but kept for potential reference).
 	"""
 	# Adjust for backward movement
 	if speed < 0:
@@ -1390,13 +971,6 @@ def increment_step():
 		step_set = 1
 
 
-def execute_movement_step(speed_left, speed_right):
-	"""
-	Execute a single movement step using smooth sine-curve movement.
-	"""
-	move_smooth(speed_left, speed_right, cycle_steps=30)
-
-
 def handle_stand_or_steady():
 	"""
 	Handle stand command or apply steady mode
@@ -1416,54 +990,78 @@ def handle_stand_or_steady():
 
 def move_thread():
 	"""
-	Main movement thread - calculates side speeds and executes the movement step.
+	Main movement thread. Is called repeatedly by the RobotM thread.
+	Performs one small increment of the walk cycle per call, creating smooth,
+	continuous movement.
 	"""
-	global step_set
+	global gait_phase, direction_command, turn_command, movement_speed, steadyMode
 
-	if not steadyMode:
-		speed_left = 0
-		speed_right = 0
-		movement_active = True
-
-		if direction_command == CMD_FORWARD:
-			if turn_command == MOVE_NO: # Forward
-				speed_left = -movement_speed
-				speed_right = -movement_speed
-			elif turn_command == CMD_FORWARD_LEFT_ARC:
-				speed_left = -movement_speed * (1 - arc_factor)
-				speed_right = -movement_speed
-			elif turn_command == CMD_FORWARD_RIGHT_ARC:
-				speed_left = -movement_speed
-				speed_right = -movement_speed * (1 - arc_factor)
-		
-		elif direction_command == CMD_BACKWARD: # Backward
-			speed_left = movement_speed
-			speed_right = movement_speed
-		
-		elif turn_command == CMD_LEFT: # Turn Left on the spot
-			speed_left = movement_speed
-			speed_right = -movement_speed
-
-		elif turn_command == CMD_RIGHT: # Turn Right on the spot
-			speed_left = -movement_speed
-			speed_right = movement_speed
-
-		else:
-			movement_active = False
-
-		if movement_active:
-			execute_movement_step(speed_left, speed_right)
-		else:
-			# Handle stand OR steady only when NOT moving
-			if turn_command == MOVE_NO and direction_command == MOVE_STAND:
-				stand()
-				step_set = 1
-			else:
-				steady_X()
-				steady()
-	else: # steadyMode is active
+	if steadyMode:
 		steady_X()
 		steady()
+		return
+
+	# Determine speed and direction for each side
+	speed_left = 0
+	speed_right = 0
+	movement_active = True
+
+	if direction_command == CMD_FORWARD:
+		if turn_command == MOVE_NO:  # Forward
+			speed_left = -movement_speed
+			speed_right = -movement_speed
+		elif turn_command == CMD_FORWARD_LEFT_ARC:
+			speed_left = -movement_speed * (1 - arc_factor)
+			speed_right = -movement_speed
+		elif turn_command == CMD_FORWARD_RIGHT_ARC:
+			speed_left = -movement_speed
+			speed_right = -movement_speed * (1 - arc_factor)
+	elif direction_command == CMD_BACKWARD:  # Backward
+		speed_left = movement_speed
+		speed_right = movement_speed
+	elif turn_command == CMD_LEFT:  # Turn Left on the spot
+		speed_left = movement_speed
+		speed_right = -movement_speed
+	elif turn_command == CMD_RIGHT:  # Turn Right on the spot
+		speed_left = -movement_speed
+		speed_right = movement_speed
+	else:
+		movement_active = False
+
+	# If no movement command is active, stand still and reset the gait phase
+	if not movement_active:
+		handle_stand_or_steady()
+		gait_phase = 0.0  # Reset phase to start clean next time
+		return
+
+	# --- Continuous Movement Core Logic ---
+
+	# 1. Advance the gait phase for the next small step
+	gait_phase += 1.0 / CYCLE_STEPS
+	if gait_phase > 1.0:
+		gait_phase -= 1.0
+
+	# 2. Calculate target positions for all legs based on the current phase
+	target_positions = calculate_target_positions(gait_phase, speed_left, speed_right)
+
+	# 3. Smoothly move servos towards the calculated target positions
+	# A high alpha means the servos will react quickly to target changes.
+	alpha = 0.9
+	for leg in ['L1', 'L2', 'L3', 'R1', 'R2', 'R3']:
+		# Get the leg's current tracked horizontal position
+		current_h_pos = _leg_positions.get(leg, 0)
+		target_h_pos = target_positions[leg]['h']
+		vertical_pos = target_positions[leg]['v']
+
+		# Interpolate between current and target for smooth transitions
+		new_horizontal_pos = int(current_h_pos + alpha * (target_h_pos - current_h_pos))
+		
+		# Update the tracked position for the next iteration
+		_leg_positions[leg] = new_horizontal_pos
+
+		# Apply the new calculated position to the leg's servos
+		apply_leg_position(leg, new_horizontal_pos, vertical_pos)
+
 
 class RobotM(threading.Thread):
 	def __init__(self, *args, **kwargs):
@@ -1481,9 +1079,9 @@ class RobotM(threading.Thread):
 		while 1:
 			self.__flag.wait()
 			move_thread()
-			# Small sleep to reduce CPU load and allow quick interruption
-			# The actual movement timing is handled in execute_movement_step()
-			time.sleep(0.01)  # 10ms to check for pause quickly
+			# This sleep controls the overall speed of the gait.
+			# 0.01 (10ms) -> 100 steps/sec. With 60 steps/cycle -> ~1.6 cycles/sec
+			time.sleep(0.01)
 
 rm = RobotM()
 rm.start()
