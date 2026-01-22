@@ -887,6 +887,8 @@ DPI = 15
 new_frame = 0
 direction_command = MOVE_NO
 turn_command = MOVE_NO
+movement_speed_min = 10
+movement_speed_max = 80
 movement_speed = 35 # Default movement speed (10-80 range)
 
 
@@ -958,7 +960,7 @@ def move_thread():
 	Performs one small increment of the walk cycle per call, creating smooth,
 	continuous movement.
 	"""
-	global gait_phase, direction_command, turn_command, movement_speed, steadyMode, abort_current_movement, _last_command, _last_speed_sign
+	global gait_phase, direction_command, turn_command, movement_speed_max, movement_speed, steadyMode, abort_current_movement, _last_command, _last_speed_sign
 
 	if steadyMode:
 		steady_X()
@@ -970,7 +972,7 @@ def move_thread():
 		print("[move_thread] ⚡ ABORT FLAG detected. Lowering legs to stable ground position.")
 		# Calculate interpolation steps based on movement speed for adaptive smoothness
 		# Faster movement speed -> quicker lowering (fewer steps)
-		interpolation_steps = max(5, int(20 - movement_speed / 4))
+		interpolation_steps = min(movement_speed_max, int(movement_speed * 1.5))
 		lower_legs_smoothly(target_vertical_offset=-10, interpolation_steps=interpolation_steps)
 
 		# Reset flags and phase after smooth lowering is complete
