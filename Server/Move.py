@@ -140,72 +140,6 @@ except (OSError, IOError) as e:
 		def set_pwm_freq(self, freq):
 			pass
 	pwm = MockPWM()
-MOCK_MODE = True # Set MOCK_MODE to True if PCA9685 initialization fails
-
-# PCA9685 Register Constants for direct I2C access
-_LED0_ON_L = 0x06
-_LED0_ON_H = 0x07
-_LED0_OFF_L = 0x08
-_LED0_OFF_H = 0x09
-_MODE1 = 0x00 # MODE1 register address
-
-def _batch_set_servos(servo_positions):
-	"""
-	Sets multiple servo PWM positions using a single I2C block write.
-	servo_positions is a dictionary {channel: pwm_value, ...}
-	where pwm_value is the 'off' tick (0-4095).
-	"""
-	global pwm, servo_current_pos
-
-	if MOCK_MODE:
-		# In mock mode, just update internal position tracking
-		for channel, value in servo_positions.items():
-			if 0 <= channel < len(servo_current_pos):
-				servo_current_pos[channel] = value
-		return
-
-	# Prepare the data buffer for all 16 channels, assuming ON is always 0
-	# Each channel needs 4 bytes: ON_L, ON_H, OFF_L, OFF_H
-	# The PCA9685 has registers for LED0_ON_L through LED15_OFF_H contiguously.
-	# We collect all 64 bytes and send in one block write.
-	
-	# Current pwm values from servo_current_pos are used for channels not explicitly
-	# present in servo_positions, to maintain their last known state.
-	
-	data_bytes = bytearray(16 * 4) # 16 channels * 4 bytes/channel
-
-	for channel in range(16):
-		# Default to current tracked position if not in batch update
-		off_val = servo_positions.get(channel, servo_current_pos[channel])
-		
-		# Ensure off_val is within valid range
-		off_val = max(0, min(4095, off_val))
-
-		# Update tracked position
-		servo_current_pos[channel] = off_val
-
-		# Fill byte array (ON_L, ON_H, OFF_L, OFF_H)
-		# ON_L and ON_H are 0 for typical servo control (pulse starts at beginning of cycle)
-		data_bytes[channel * 4 + 0] = 0        # ON_L
-		data_bytes[channel * 4 + 1] = 0        # ON_H
-		data_bytes[channel * 4 + 2] = off_val & 0xFF  # OFF_L
-		data_bytes[channel * 4 + 3] = off_val >> 8    # OFF_H
-
-	try:
-		# Write the entire block of 64 bytes starting from LED0_ON_L register (0x06)
-		pwm._i2c.write_i2c_block_data(pwm._address, _LED0_ON_L, list(data_bytes))
-	except Exception as e:
-		print(f"⚠ I2C batch write failed: {e}")
-		# Fallback to individual writes if batch fails (or simply log error)
-		# For robustness, could implement a retry or fall back to individual pwm.set_pwm,
-		# but for performance, we expect batch to work.
-		# For now, just log and continue to avoid crashing.
-		for channel, value in servo_positions.items():
-			try:
-				pwm.set_pwm(channel, 0, value)
-			except Exception as e_single:
-				print(f"✗ Fallback individual PWM write for channel {channel} failed: {e_single}")
-
 
 kalman_filter_X =  Kalman_filter.Kalman_filter(0.001,0.1)
 kalman_filter_Y =  Kalman_filter.Kalman_filter(0.001,0.1)
@@ -231,6 +165,61 @@ target_Y = 0
 
 
 # ==================== Servo Position Tracking & Smooth Interpolation ====================
+
+def set_servo_smooth(channel, target_pos, steps=0):
+	"""
+	Move servo from current position to target position.
+	Automatically updates servo_current_pos[channel].
+
+	Args:
+		channel: Servo channel (0-15)
+		target_pos: Target PWM position
+		steps: Number of interpolation steps (0 = direct move, no interpolation)
+	"""
+	global servo_current_pos
+
+	if channel < 0 or channel > 15:
+		return
+
+	current = servo_current_pos[channel]
+
+	# If already at target, just set it
+	if abs(current - target_pos) < 2:
+		pwm.set_pwm(channel, 0, target_pos)
+		servo_current_pos[channel] = target_pos
+		return
+
+	# Direct move (no interpolation) for speed
+	if steps == 0:
+		pwm.set_pwm(channel, 0, target_pos)
+		servo_current_pos[channel] = target_pos
+	else:
+		# Optional interpolation (not recommended in dove functions)
+		for i in range(steps + 1):
+			t = i / steps
+			pos = int(current + (target_pos - current) * t)
+			pwm.set_pwm(channel, 0, pos)
+		# Update tracked position
+		servo_current_pos[channel] = target_pos
+
+
+def set_servo_immediate(channel, target_pos):
+	"""
+	Immediately set servo position without interpolation.
+	Updates servo_current_pos[channel].
+
+	Args:
+		channel: Servo channel (0-15)
+		target_pos: Target PWM position
+	"""
+	global servo_current_pos
+
+	if channel < 0 or channel > 15:
+		return
+
+	pwm.set_pwm(channel, 0, target_pos)
+	servo_current_pos[channel] = target_pos
+
 
 def get_servo_pos(channel):
 	"""
@@ -649,24 +638,20 @@ def move_smooth(speed_left, speed_right, cycle_steps=18):
 			# Normal: gentle continuous interpolation for smooth servo motion
 			alpha = 0.7  # Smooth following, prevents jerky jumps
 
-		# Collect all new target PWM values for batch update
-		batch_servo_updates = {}
-		for leg_name in ['L1', 'L2', 'L3', 'R1', 'R2', 'R3']:
-			horizontal_offset = target_positions[leg_name]['h']
-			vertical_offset = target_positions[leg_name]['v']
+		# Update and apply positions for each leg
+		for leg in ['L1', 'L2', 'L3', 'R1', 'R2', 'R3']:
+			current = _leg_positions[leg]
+			target = target_positions[leg]['h']
+			vertical = target_positions[leg]['v']
 
-			# Get interpolated PWM values for this leg's horizontal and vertical servos
-			leg_pwms = _get_interpolated_leg_pwms(leg_name, horizontal_offset, vertical_offset, alpha)
-			
-			for channel, pwm_value in leg_pwms.items():
-				batch_servo_updates[channel] = pwm_value
-				# Update _leg_positions for horizontal tracking
-				if channel in [0, 2, 4]: # Left horizontal servos
-					_leg_positions[leg_name] = pwm_value - pwm0 # Adjust to store offset, not absolute PWM
-				elif channel in [6, 8, 10]: # Right horizontal servos
-					_leg_positions[leg_name] = pwm_value - pwm6 # Adjust to store offset, not absolute PWM
+			# Interpolate: new = current + alpha * (target - current)
+			new_horizontal = int(current + alpha * (target - current))
+			_leg_positions[leg] = new_horizontal
 
-		_batch_set_servos(batch_servo_updates)
+			# Apply to servos
+			apply_leg_position(leg, new_horizontal, vertical)
+
+		# Removed: time.sleep(1.0 / cycle_steps) to allow continuous updates.
 
 	# Reset abort flag after cycle completes (either normally or via break)
 	abort_current_movement = False
@@ -744,58 +729,31 @@ def calculate_target_positions(phase, speed_left, speed_right):
 	return positions
 
 
-def _get_interpolated_leg_pwms(leg_name, horizontal_offset, vertical_offset, alpha):
+def apply_leg_position(leg, horizontal, vertical):
 	"""
-	Calculates interpolated PWM target values for a leg's horizontal and vertical servos.
-	This function replaces the logic formerly spread across dove_* functions and set_servo_smooth.
+	Apply horizontal and vertical position to a specific leg.
 
 	Args:
-		leg_name: Name of the leg ('L1', 'L2', etc.)
-		horizontal_offset: Desired horizontal movement offset.
-		vertical_offset: Desired vertical movement offset.
-		alpha: Interpolation factor (0.0 to 1.0) for the overall gait cycle.
-		interpolation_steps: Number of micro-steps for individual servo smoothness.
-
-	Returns:
-		dict: {'h_channel': final_h_pwm, 'v_channel': final_v_pwm}
+		leg: Leg identifier ('L1', 'L2', 'L3', 'R1', 'R2', 'R3')
+		horizontal: Horizontal offset (-speed to +speed)
+		vertical: Vertical offset (positive = up, negative = down)
 	"""
-	global servo_current_pos
+	if leg == 'L1':
+		dove_Left_I(horizontal, vertical)
+	elif leg == 'L2':
+		dove_Left_II(horizontal, vertical)
+	elif leg == 'L3':
+		dove_Left_III(horizontal, vertical)
+	elif leg == 'R1':
+		dove_Right_I(horizontal, vertical)
+	elif leg == 'R2':
+		dove_Right_II(horizontal, vertical)
+	elif leg == 'R3':
+		dove_Right_III(horizontal, vertical)
 
-	h_channel, v_channel, base_h, base_v, is_left = LEG_CONFIG[leg_name]
 
-	# Determine direction and height flags based on side
-	if is_left:
-		direction_flag = leftSide_direction
-		height_flag = leftSide_height
-	else:
-		direction_flag = rightSide_direction
-		height_flag = rightSide_height
 
-	# --- Horizontal Servo Calculation ---
-	if direction_flag:
-		intermediate_target_h = base_h + horizontal_offset
-	else:
-		intermediate_target_h = base_h - horizontal_offset
 
-	# Interpolate horizontal servo position
-	current_h = servo_current_pos[h_channel]
-	final_h_pwm = int(current_h + (intermediate_target_h - current_h) * alpha)
-	# Clamp to valid range (optional, can be handled by PCA9685 driver implicitly)
-	final_h_pwm = max(100, min(520, final_h_pwm)) # Using max/minPos from RPIservo.py
-
-	# --- Vertical Servo Calculation ---
-	if height_flag:
-		intermediate_target_v = base_v + vertical_offset
-	else:
-		intermediate_target_v = base_v - vertical_offset
-	
-	# Interpolate vertical servo position
-	current_v = servo_current_pos[v_channel]
-	final_v_pwm = int(current_v + (intermediate_target_v - current_v) * alpha)
-	# Clamp to valid range
-	final_v_pwm = max(100, min(520, final_v_pwm)) # Using max/minPos from RPIservo.py
-
-	return {h_channel: final_h_pwm, v_channel: final_v_pwm}
 
 
 def stand():
@@ -811,6 +769,106 @@ def stand():
 	pwm.set_pwm(9,0,300)
 	pwm.set_pwm(10,0,300)
 	pwm.set_pwm(11,0,300)
+
+
+'''
+---Dove---
+making the servo moves smooth.
+'''
+def dove_Left_I(horizontal, vertical):
+	# Horizontal servo (channel 0)
+	if leftSide_direction:
+		target_h = pwm0 + horizontal
+	else:
+		target_h = pwm0 - horizontal
+	set_servo_smooth(0, target_h, steps=5)
+
+	# Vertical servo (channel 1)
+	if leftSide_height:
+		target_v = pwm1 + vertical
+	else:
+		target_v = pwm1 - vertical
+	set_servo_smooth(1, target_v, steps=5)
+
+
+def dove_Left_II(horizontal, vertical):
+	# Horizontal servo (channel 2)
+	if leftSide_direction:
+		target_h = pwm2 + horizontal
+	else:
+		target_h = pwm2 - horizontal
+	set_servo_smooth(2, target_h, steps=5)
+
+	# Vertical servo (channel 3)
+	if leftSide_height:
+		target_v = pwm3 + vertical
+	else:
+		target_v = pwm3 - vertical
+	set_servo_smooth(3, target_v, steps=5)
+
+
+def dove_Left_III(horizontal, vertical):
+	# Horizontal servo (channel 4)
+	if leftSide_direction:
+		target_h = pwm4 + horizontal
+	else:
+		target_h = pwm4 - horizontal
+	set_servo_smooth(4, target_h, steps=5)
+
+	# Vertical servo (channel 5)
+	if leftSide_height:
+		target_v = pwm5 + vertical
+	else:
+		target_v = pwm5 - vertical
+	set_servo_smooth(5, target_v, steps=5)
+
+
+def dove_Right_I(horizontal, vertical):
+	# Horizontal servo (channel 6)
+	if rightSide_direction:
+		target_h = pwm6 + horizontal
+	else:
+		target_h = pwm6 - horizontal
+	set_servo_smooth(6, target_h, steps=5)
+
+	# Vertical servo (channel 7)
+	if rightSide_height:
+		target_v = pwm7 + vertical
+	else:
+		target_v = pwm7 - vertical
+	set_servo_smooth(7, target_v, steps=5)
+
+
+def dove_Right_II(horizontal, vertical):
+	# Horizontal servo (channel 8)
+	if rightSide_direction:
+		target_h = pwm8 + horizontal
+	else:
+		target_h = pwm8 - horizontal
+	set_servo_smooth(8, target_h, steps=5)
+
+	# Vertical servo (channel 9)
+	if rightSide_height:
+		target_v = pwm9 + vertical
+	else:
+		target_v = pwm9 - vertical
+	set_servo_smooth(9, target_v, steps=5)
+
+
+def dove_Right_III(horizontal, vertical):
+	# Horizontal servo (channel 10)
+	if rightSide_direction:
+		target_h = pwm10 + horizontal
+	else:
+		target_h = pwm10 - horizontal
+	set_servo_smooth(10, target_h, steps=5)
+
+	# Vertical servo (channel 11)
+	if rightSide_height:
+		target_v = pwm11 + vertical
+	else:
+		target_v = pwm11 - vertical
+	set_servo_smooth(11, target_v, steps=5)
 
 
 # ==================== Generic Helper Functions for Movement ====================
