@@ -573,8 +573,8 @@ def lower_legs_smoothly(target_vertical_offset=-10, interpolation_steps=10):
 		set_servo_smooth(v_channel, target_v_pwm, steps=interpolation_steps)
 		
 		# Also move horizontal servos to base (300) for stability
-		print(f"  [lower_legs_smoothly] Leg {leg_name_long} H_channel {h_channel} to {base_h}")
-		set_servo_smooth(h_channel, base_h, steps=interpolation_steps)
+		#print(f"  [lower_legs_smoothly] Leg {leg_name_long} H_channel {h_channel} to {base_h}")
+		#set_servo_smooth(h_channel, base_h, steps=interpolation_steps)
 	print("[lower_legs_smoothly] Finished smooth lowering.")
 
 
