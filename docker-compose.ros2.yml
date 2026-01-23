@@ -14,6 +14,9 @@ services:
     image: adeept_raspclaws-raspclaws_ros2:latest
     network_mode: host
     container_name: raspclaws_ros2
+    privileged: true  # <--- ERMÖGLICHT HARDWARE-ZUGRIFF (I2C)
+    devices:
+      - "/dev/i2c-1:/dev/i2c-1" # <--- DIREKTE MAP AN DIE SERVOS
     environment:
       - ROS_DISCOVERY_SERVER=127.0.0.1:11811
       - ROS_DOMAIN_ID=0
