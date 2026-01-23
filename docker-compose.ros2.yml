@@ -64,8 +64,6 @@ services:
       - ROS_LOCALHOST_ONLY=0           # Allow network communication
       - PYTHONUNBUFFERED=1
       - SKIP_SERVO_AUTO_INIT=1         # Skip PWM initialization at import (lazy init)
-      # Note: Servo initialization is now lazy (on first command)
-      # No ROS_SKIP_SERVOS variable needed anymore!
 
     # Restart policy
     restart: unless-stopped
