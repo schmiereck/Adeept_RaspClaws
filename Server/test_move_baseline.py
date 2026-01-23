@@ -1,9 +1,11 @@
 """
 Unit Tests für Move.py - Baseline Tests für FT40 Implementation
-Diese Tests sichern den aktuellen Zustand ab, bevor Änderungen gemacht werden.
+Diese Tests sichern den aktuellen Zustand ab.
 
 Datum: 2026-01-23
 Zweck: Regression-Tests während FT40 Verbesserungen
+
+WICHTIG: Diese Tests laufen auf Windows ohne Raspberry Pi Hardware!
 """
 
 import unittest
@@ -11,8 +13,19 @@ from unittest.mock import Mock, patch, MagicMock
 import sys
 import os
 
-# Add parent directory to path to import Move
+# Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# Mock all hardware modules BEFORE importing Move
+sys.modules['mpu6050'] = MagicMock()
+sys.modules['Adafruit_PCA9685'] = MagicMock()
+sys.modules['RPi'] = MagicMock()
+sys.modules['RPi.GPIO'] = MagicMock()
+sys.modules['picamera'] = MagicMock()
+sys.modules['smbus'] = MagicMock()
+
+# Now we can safely import Move
+import Move
 
 
 class TestMoveBaseline(unittest.TestCase):
@@ -20,52 +33,123 @@ class TestMoveBaseline(unittest.TestCase):
 
     def setUp(self):
         """Setup vor jedem Test"""
-        # Mock the hardware dependencies
-        self.patcher_pwm = patch('Move.pwm', MagicMock())
-        self.patcher_time = patch('Move.time', MagicMock())
-
-        self.mock_pwm = self.patcher_pwm.start()
-        self.mock_time = self.patcher_time.start()
-
-        # Import Move after patching
-        import Move
-        self.Move = Move
-
         # Reset global state
-        self.Move.gait_phase = 0.0
-        self.Move._leg_positions = {
+        Move.gait_phase = 0.0
+        Move._leg_positions = {
             'L1': 0, 'L2': 0, 'L3': 0,
             'R1': 0, 'R2': 0, 'R3': 0
         }
-        self.Move._last_command = None
-        self.Move._last_speed_sign = 0
-        self.Move.direction_command = self.Move.MOVE_NO
-        self.Move.turn_command = self.Move.MOVE_NO
-        self.Move.movement_speed = 35
-        self.Move.steadyMode = 0
-        self.Move.abort_current_movement = False
-
-    def tearDown(self):
-        """Cleanup nach jedem Test"""
-        self.patcher_pwm.stop()
-        self.patcher_time.stop()
+        Move._last_command = None
+        Move._last_speed_sign = 0
+        Move._steps_since_change = 0
+        Move._direction_changed = False
+        Move._stop_counter = 0
+        Move.direction_command = Move.MOVE_NO
+        Move.turn_command = Move.MOVE_NO
+        Move.movement_speed = 35
+        Move.steadyMode = 0
+        Move.abort_current_movement = False
 
     # ==================== Test: Leg Positions Dictionary ====================
 
     def test_leg_positions_exist(self):
         """Test: _leg_positions Dictionary existiert und hat korrekte Struktur"""
-        self.assertIsInstance(self.Move._leg_positions, dict)
-        self.assertEqual(len(self.Move._leg_positions), 6)
+        self.assertIsInstance(Move._leg_positions, dict)
+        self.assertEqual(len(Move._leg_positions), 6)
 
         expected_keys = ['L1', 'L2', 'L3', 'R1', 'R2', 'R3']
         for key in expected_keys:
-            self.assertIn(key, self.Move._leg_positions)
-            self.assertIsInstance(self.Move._leg_positions[key], int)
+            self.assertIn(key, Move._leg_positions)
+            self.assertIsInstance(Move._leg_positions[key], int)
 
     def test_leg_positions_initial_zero(self):
         """Test: _leg_positions sind initial alle 0"""
-        for leg, pos in self.Move._leg_positions.items():
+        for leg, pos in Move._leg_positions.items():
             self.assertEqual(pos, 0, f"Leg {leg} should start at position 0")
+
+    # ==================== Test: Calculate Target Positions ====================
+
+    def test_calculate_target_positions_exists(self):
+        """Test: calculate_target_positions Funktion existiert"""
+        self.assertTrue(hasattr(Move, 'calculate_target_positions'))
+        self.assertTrue(callable(Move.calculate_target_positions))
+
+    def test_calculate_target_positions_forward(self):
+        """Test: calculate_target_positions für Forward-Bewegung"""
+        # Forward: speed_left = speed_right = negative
+        positions = Move.calculate_target_positions(
+            phase=0.0,
+            speed_left=-35,
+            speed_right=-35
+        )
+
+        # Check structure
+        self.assertEqual(len(positions), 6)
+        for leg in ['L1', 'L2', 'L3', 'R1', 'R2', 'R3']:
+            self.assertIn(leg, positions)
+            self.assertIn('h', positions[leg])
+            self.assertIn('v', positions[leg])
+            self.assertIsInstance(positions[leg]['h'], int)
+            self.assertIsInstance(positions[leg]['v'], int)
+
+    def test_calculate_target_positions_backward(self):
+        """Test: calculate_target_positions für Backward-Bewegung"""
+        # Backward: speed_left = speed_right = positive
+        positions = Move.calculate_target_positions(
+            phase=0.0,
+            speed_left=35,
+            speed_right=35
+        )
+
+        self.assertEqual(len(positions), 6)
+
+    def test_calculate_target_positions_turn_left(self):
+        """Test: calculate_target_positions für Links-Drehung"""
+        # Turn left: speed_left = positive, speed_right = negative
+        positions = Move.calculate_target_positions(
+            phase=0.5,
+            speed_left=35,
+            speed_right=-35
+        )
+
+        self.assertEqual(len(positions), 6)
+
+    # ==================== Test: Apply Leg Position ====================
+
+    def test_apply_leg_position_exists(self):
+        """Test: apply_leg_position Funktion existiert"""
+        self.assertTrue(hasattr(Move, 'apply_leg_position'))
+        self.assertTrue(callable(Move.apply_leg_position))
+
+    # ==================== Test: Gait Phase ====================
+
+    def test_gait_phase_initial_zero(self):
+        """Test: gait_phase ist initial 0.0"""
+        self.assertEqual(Move.gait_phase, 0.0)
+
+    # ==================== Test: Tracking Variables ====================
+
+    def test_last_command_exists(self):
+        """Test: _last_command Variable existiert"""
+        self.assertTrue(hasattr(Move, '_last_command'))
+
+    def test_last_speed_sign_exists(self):
+        """Test: _last_speed_sign Variable existiert"""
+        self.assertTrue(hasattr(Move, '_last_speed_sign'))
+
+    def test_last_command_initial_none(self):
+        """Test: _last_command ist initial None"""
+        self.assertIsNone(Move._last_command)
+
+    def test_last_speed_sign_initial_zero(self):
+        """Test: _last_speed_sign ist initial 0"""
+        self.assertEqual(Move._last_speed_sign, 0)
+
+
+if __name__ == '__main__':
+    # Run tests with verbose output
+    unittest.main(verbosity=2)
+
 
     # ==================== Test: Calculate Target Positions ====================
 

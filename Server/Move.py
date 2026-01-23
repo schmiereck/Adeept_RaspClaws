@@ -1094,9 +1094,10 @@ def move_thread():
 
 	# FT40 Phase 3: Variable alpha for smooth transitions during direction changes
 	if _direction_changed and _steps_since_change < 5:
-		# Gradual transition: Start with gentle interpolation (0.3) and increase to full (1.0) over 5 steps
+		# Gradual transition: Start with gentle interpolation (0.2) and increase to full (1.0) over 5 steps
 		# This prevents jerky movements when changing direction
-		alpha = 0.3 + (_steps_since_change / 5.0) * 0.7
+		# Extra gentle first step (0.2) reduces "backward jerk" when switching forward/backward
+		alpha = 0.2 + (_steps_since_change / 5.0) * 0.8
 		print(f"[FT40] Smooth transition: step={_steps_since_change}, alpha={alpha:.2f}")
 	else:
 		# Normal continuous movement: high responsiveness
