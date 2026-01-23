@@ -1,15 +1,15 @@
 services:
 #  # Teil 1: Der Leuchtturm (Discovery Server)
-#  discovery-server:
-#    image: adeept_raspclaws-raspclaws_ros2:latest  # Nutze dein vorhandenes Image
-#    network_mode: host
-#    container_name: ros2_leuchtturm
-#    command: >
-#      bash -c "source /opt/ros/humble/setup.bash &&
-#      /opt/ros/humble/bin/fast-discovery-server -i 0 -l 0.0.0.0 -p 11811"
-#    restart: always
+  discovery-server:
+    image: adeept_raspclaws-raspclaws_ros2:latest
+    network_mode: host
+    container_name: ros2_leuchtturm
+    command: >
+      bash -c "source /opt/ros/humble/setup.bash && 
+      /opt/ros/humble/bin/fast-discovery-server -i 0 -l 0.0.0.0 -p 11811"
+    restart: always
 
-    # Teil 2: Der Roboter (RaspClaws Node)  raspclaws_ros2:
+  # Teil 2: Der Roboter (RaspClaws Node)  raspclaws_ros2:
   raspclaws_ros2:
     image: adeept_raspclaws-raspclaws_ros2:latest
     network_mode: host
@@ -18,11 +18,11 @@ services:
     devices:
       - "/dev/i2c-1:/dev/i2c-1" # <--- DIREKTE MAP AN DIE SERVOS
     environment:
-      #- ROS_DISCOVERY_SERVER=127.0.0.1:11811
+      - ROS_DISCOVERY_SERVER=127.0.0.1:11811
       - ROS_DOMAIN_ID=0
       - PYTHONPATH=/ros2_ws
-    #depends_on:
-    #  - discovery-server
+    depends_on:
+      - discovery-server
     volumes:
       - /home/pi/adeept_raspclaws:/ros2_ws
       - /dev:/dev  # Gibt dem Container direkten Zugriff auf Kamera und I2C
@@ -30,13 +30,13 @@ services:
     #command: >
     #  bash -c "sleep 10 && source /opt/ros/humble/setup.bash &&
     #  python3 /ros2_ws/Server/ROSServer.py"
-    #command: >
-    #  bash -c "sleep 12 && source /opt/ros/humble/setup.bash &&
-    #  export ROS_DISCOVERY_SERVER=127.0.0.1:11811 &&
-    #  python3 /ros2_ws/Server/ROSServer.py"
     command: >
-      bash -c "source /opt/ros/humble/setup.bash && 
-      python3 /ros2_ws/Server/ROSServer.py"    
+      bash -c "sleep 12 && source /opt/ros/humble/setup.bash &&
+      export ROS_DISCOVERY_SERVER=127.0.0.1:11811 &&
+      python3 /ros2_ws/Server/ROSServer.py"
+    #command: >
+    #  bash -c "source /opt/ros/humble/setup.bash &&
+    #  python3 /ros2_ws/Server/ROSServer.py"
 
     restart: always
 
