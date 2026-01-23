@@ -418,6 +418,9 @@ def main(args=None):
     # Initialize ROS 2
     rclpy.init(args=args)
 
+    # Kurze Pause, damit die Middleware den Server findet
+    time.sleep(1.0)
+
     # Create node
     node = None
     try:
