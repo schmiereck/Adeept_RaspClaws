@@ -11,7 +11,7 @@ services:
 
     # Teil 2: Der Roboter (RaspClaws Node)  raspclaws_ros2:
   raspclaws_ros2:
-    image: smk_raspclaws_image
+    image: adeept_raspclaws-raspclaws_ros2:latest
     network_mode: host
     container_name: raspclaws_ros2
     environment:
