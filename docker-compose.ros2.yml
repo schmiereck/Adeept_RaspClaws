@@ -43,6 +43,9 @@ services:
       - /dev/i2c-1:/dev/i2c-1        # I2C for PCA9685 servos
       - /dev/spidev0.0:/dev/spidev0.0 # SPI for WS2812 LEDs (optional)
       - /dev/gpiomem:/dev/gpiomem    # GPIO access
+      - /dev/video0:/dev/video0 # Die Kamera
+      - /dev/vchiq:/dev/vchiq   # GPU Interface (für ältere Pi-Modelle)
+      - /dev/dma_heap:/dev/dma_heap # Wichtig für libcamera
 
     # Environment variables
     environment:
