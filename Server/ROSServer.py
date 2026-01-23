@@ -113,6 +113,15 @@ class RaspClawsNode(Node):
         try:
             self.get_logger().info('Initializing robot hardware...')
 
+            # Check if we should skip servo initialization (for USB-only testing)
+            skip_servos = os.getenv('ROS_SKIP_SERVOS', '0') == '1'
+
+            if skip_servos:
+                self.get_logger().warn('⚠️  SERVO INITIALIZATION SKIPPED (ROS_SKIP_SERVOS=1)')
+                self.get_logger().warn('⚠️  Robot will NOT move - USB testing mode only!')
+                self.ws2812 = None
+                return
+
             # Initialize switches
             switch.switchSetup()
             switch.set_all_switch_off()

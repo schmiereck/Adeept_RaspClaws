@@ -112,6 +112,21 @@ docker-compose -f docker-compose.ros2.yml up -d
 docker-compose -f docker-compose.ros2.yml logs -f
 ```
 
+### 5. USB-Tests ohne Akku (Optional)
+
+Für Tests ohne Batterie/Akku (nur über USB-Stromversorgung):
+
+```bash
+# Servo-Initialisierung überspringen
+export ROS_SKIP_SERVOS=1
+sudo -E python3 Server/ROSServer.py
+
+# Oder in docker-compose.ros2.yml:
+# - ROS_SKIP_SERVOS=1  # Set to 1 for USB testing without servos
+```
+
+**Hinweis:** Im USB-Test-Modus werden die Servos NICHT initialisiert. Der Roboter kann sich nicht bewegen, aber alle ROS 2 Topics/Services funktionieren für Verbindungstests.
+
 ---
 
 ## ROS 2 Topics & Services
