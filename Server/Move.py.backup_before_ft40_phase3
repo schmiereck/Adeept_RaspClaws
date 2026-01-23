@@ -1075,17 +1075,7 @@ def move_thread():
 
 	# 3. Smoothly move servos towards the calculated target positions
 	# A high alpha means the servos will react quickly to target changes.
-
-	# FT40 Phase 3: Variable alpha for smooth transitions during direction changes
-	if _direction_changed and _steps_since_change < 5:
-		# Gradual transition: Start with gentle interpolation (0.3) and increase to full (1.0) over 5 steps
-		# This prevents jerky movements when changing direction
-		alpha = 0.3 + (_steps_since_change / 5.0) * 0.7
-		print(f"[FT40] Smooth transition: step={_steps_since_change}, alpha={alpha:.2f}")
-	else:
-		# Normal continuous movement: high responsiveness
-		alpha = 0.9
-
+	alpha = 0.9
 	for leg in ['L1', 'L2', 'L3', 'R1', 'R2', 'R3']:
 		# Get the leg's current tracked horizontal position
 		current_h_pos = _leg_positions.get(leg, 0)
