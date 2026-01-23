@@ -1,11 +1,16 @@
-version: '3.8'
-
 services:
   raspclaws_ros2:
     build:
       context: .
       dockerfile: Dockerfile.ros2
     container_name: raspclaws_ros2
+
+    volumes:
+      - /home/pi/adeept_raspclaws:/ros2_ws  # Mountet den ganzen Ordner nach /ros2_ws
+    working_dir: /ros2_ws                   # Setzt den Startpunkt für Python
+
+    # Wir rufen das Skript im Unterordner auf
+    command: python3 Server/ROSServer.py
 
     # Privileged mode for hardware access (I2C, GPIO, SPI)
     privileged: true
@@ -21,6 +26,7 @@ services:
 
     # Environment variables
     environment:
+      - ROS_DISCOVERY_SERVER=192.168.2.121:11811 # Deine Windows-IP
       - ROS_DOMAIN_ID=0                # ROS 2 domain ID (0-232)
       - ROS_LOCALHOST_ONLY=0           # Allow network communication
       - PYTHONUNBUFFERED=1

@@ -49,6 +49,7 @@ sudo sh get-docker.sh
 
 # User zur docker Gruppe hinzufügen
 sudo usermod -aG docker $USER
+newgrp docker
 
 # Neustart oder neu einloggen
 # Dann Docker testen:
@@ -69,13 +70,15 @@ sudo pip3 install docker-compose
 # ODER ganz neuer Version:
 # Deine neuen Befehle für den Raspberry Pi:
 
-Bauen:
+# Bauen:
+# Gehe in dein Projektverzeichnis
+cd /home/pi/adeept_raspclaws
 docker compose -f docker-compose.ros2.yml build
 
-Starten:
+# Starten:
 docker compose -f docker-compose.ros2.yml up -d
 
-Logs:
+# Logs:
 docker compose -f docker-compose.ros2.yml logs -f
 
 ```
