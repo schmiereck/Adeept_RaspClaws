@@ -13,9 +13,11 @@ services:
     #command: python3 Server/ROSServer.py
     # Wir nutzen die "Shell-Form", um sicherzugehen, dass source und python3 nacheinander laufen
     # Robuster Startbefehl 1
-    command: bash -c "source /opt/ros/humble/setup.bash && python3 Server/ROSServer.py"
+    #command: bash -c "source /opt/ros/humble/setup.bash && python3 Server/ROSServer.py"
     # Robuster Startbefehl 2
     #command: ["python3", "Server/ROSServer.py"]
+    # KEIN extra "bash -c" hier, da das Dockerfile es schon liefert!
+    command: "source /opt/ros/humble/setup.bash && python3 Server/ROSServer.py"
 
     # WICHTIG: Begrenze die Ressourcen, damit der Pi nicht stirbt!
     deploy:
