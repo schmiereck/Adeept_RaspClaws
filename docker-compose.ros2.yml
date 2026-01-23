@@ -12,8 +12,15 @@ services:
     # Wir rufen das Skript im Unterordner auf
     #command: python3 Server/ROSServer.py
     # Wir nutzen die "Shell-Form", um sicherzugehen, dass source und python3 nacheinander laufen
-    command: >
-      bash -c "source /opt/ros/humble/setup.bash && python3 Server/ROSServer.py"
+    #command: >
+    #  bash -c "source /opt/ros/humble/setup.bash && python3 Server/ROSServer.py"
+    command: ["python3", "Server/ROSServer.py"]
+
+    # WICHTIG: Begrenze die Ressourcen, damit der Pi nicht stirbt!
+    deploy:
+      resources:
+        limits:
+          memory: 512M # Der Pi 3+ hat nur 1GB, geben wir dem Container max. die Hälfte
 
     # Privileged mode for hardware access (I2C, GPIO, SPI)
     privileged: true
