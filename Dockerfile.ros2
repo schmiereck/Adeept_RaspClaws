@@ -22,7 +22,8 @@ RUN pip3 install --no-cache-dir \
     Adafruit-GPIO \
     pyzmq \
     opencv-python-headless \
-    numpy
+    numpy \
+    mpu6050-raspberrypi
 
 # Arbeitsverzeichnis erstellen
 WORKDIR /ros2_ws
