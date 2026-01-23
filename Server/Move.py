@@ -153,19 +153,27 @@ Y_pid.SetKd(I)
 Y_pid.SetKi(D)
 
 # Try to initialize PCA9685, use mock mode if hardware not available
-try:
-	pwm = Adafruit_PCA9685.PCA9685(address=0x40, busnum=1)  # Changed from 0x5F to 0x40
-	pwm.set_pwm_freq(50)
-	print("PCA9685 initialized in Move.py on address 0x40")
-except (OSError, IOError) as e:
-	print(f"\033[38;5;3mWarning:\033[0m Could not initialize PCA9685 in Move.py: {e}")
-	print("Running in MOCK MODE - servo commands will be ignored")
-	class MockPWM:
-		def set_pwm(self, channel, on, off):
-			pass
-		def set_pwm_freq(self, freq):
-			pass
-	pwm = MockPWM()
+# Check if auto-initialization should be skipped (for lazy initialization in ROSServer)
+SKIP_AUTO_INIT = os.getenv('SKIP_SERVO_AUTO_INIT', '0') == '1'
+
+if not SKIP_AUTO_INIT:
+	try:
+		pwm = Adafruit_PCA9685.PCA9685(address=0x40, busnum=1)  # Changed from 0x5F to 0x40
+		pwm.set_pwm_freq(50)
+		print("PCA9685 initialized in Move.py on address 0x40")
+	except (OSError, IOError) as e:
+		print(f"\033[38;5;3mWarning:\033[0m Could not initialize PCA9685 in Move.py: {e}")
+		print("Running in MOCK MODE - servo commands will be ignored")
+		class MockPWM:
+			def set_pwm(self, channel, on, off):
+				pass
+			def set_pwm_freq(self, freq):
+				pass
+		pwm = MockPWM()
+else:
+	# Lazy initialization mode - pwm will be initialized later
+	print("⏸️  Servo auto-initialization SKIPPED (lazy mode)")
+	pwm = None  # Will be initialized by init_pwm() when needed
 
 kalman_filter_X =  Kalman_filter.Kalman_filter(0.001,0.1)
 kalman_filter_Y =  Kalman_filter.Kalman_filter(0.001,0.1)
@@ -343,7 +351,24 @@ def mpu6050Test():
 
 		
 def init_all():
-	global servo_current_pos
+	global servo_current_pos, pwm
+
+	# Initialize PWM if not done yet (lazy initialization)
+	if pwm is None:
+		try:
+			print("🔧 Initializing PCA9685 on first use...")
+			pwm = Adafruit_PCA9685.PCA9685(address=0x40, busnum=1)
+			pwm.set_pwm_freq(50)
+			print("PCA9685 initialized in Move.py on address 0x40")
+		except (OSError, IOError) as e:
+			print(f"\033[38;5;3mWarning:\033[0m Could not initialize PCA9685 in Move.py: {e}")
+			print("Running in MOCK MODE - servo commands will be ignored")
+			class MockPWM:
+				def set_pwm(self, channel, on, off):
+					pass
+				def set_pwm_freq(self, freq):
+					pass
+			pwm = MockPWM()
 
 	# Initialize all servos to base positions
 	pwm.set_pwm(0, 0, pwm0)
