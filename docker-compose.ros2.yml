@@ -21,13 +21,13 @@ services:
     # KEIN extra "bash -c" hier, da das Dockerfile es schon liefert!
     #command: "source /opt/ros/humble/setup.bash && python3 Server/ROSServer.py"
     # Kein mühsames 'source' mehr hier nötig, das macht der Entrypoint im Dockerfile.ros2 jetzt automatisch.
-    #command: python3 Server/ROSServer.py
+    command: python3 Server/ROSServer.py
     # Der Leuchtturm Prozess: Starte den Fast Discovery Server und dann den ROSServer
-    command: >
-      bash -c "source /opt/ros/humble/setup.bash &&
-      /opt/ros/humble/bin/fast-discovery-server -i 0 -l 0.0.0.0 -p 11811 &
-      sleep 2 &&
-      python3 /ros2_ws/Server/ROSServer.py"
+    #command: >
+    #  bash -c "source /opt/ros/humble/setup.bash &&
+    #  /opt/ros/humble/bin/fast-discovery-server -i 0 -l 0.0.0.0 -p 11811 &
+    #  sleep 2 &&
+    #  python3 /ros2_ws/Server/ROSServer.py"
 
     # WICHTIG: Begrenze die Ressourcen, damit der Pi nicht stirbt!
     deploy:
