@@ -37,7 +37,8 @@ RUN pip3 install --no-cache-dir \
     adafruit-pca9685 \
     adafruit-gpio \
     mpu6050-raspberrypi \
-    smbus2 \             # <--- Zur Sicherheit SMBUS auch hier
+    # Zur Sicherheit SMBUS auch hier
+    smbus2 \
     gpiozero \
     # Wichtig: lgpio ist für neuere Systeme (wie dein Debian Trixie)
     # der stabilere Ersatz für RPi.GPIO innerhalb von Docker
