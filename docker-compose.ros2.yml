@@ -28,10 +28,10 @@ services:
     # Network mode: host for ROS 2 DDS discovery
     network_mode: host
 
-    # um den Container "wach" zu halten:
-    tty: true
-    stdin_open: true
-
+    # um den Container "wach" zu halten: true
+    # TTY erst mal aus, wir wollen saubere Logs: false
+    tty: false
+    stdin_open: false
 
     # Device access
     devices:
