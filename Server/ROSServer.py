@@ -42,6 +42,7 @@ try:
     import rclpy
     from rclpy.node import Node
     from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
+    from rclpy.executors import ExternalShutdownException
 
     from std_msgs.msg import Float32, String
     from geometry_msgs.msg import Twist, Point
@@ -53,6 +54,9 @@ except ImportError as e:
     print(f"WARNING: ROS 2 not available: {e}")
     print("Running in MOCK MODE - ROS 2 features disabled")
     ROS2_AVAILABLE = False
+    # Create mock exception for when ROS2 is not available
+    class ExternalShutdownException(Exception):
+        pass
 
 # Import existing robot modules
 try:
@@ -424,13 +428,14 @@ def main(args=None):
             rclpy.spin(node)
         except KeyboardInterrupt:
             node.get_logger().info('Keyboard interrupt received')
+        except ExternalShutdownException:
+            # This is a normal ROS 2 shutdown signal - not an error
+            node.get_logger().info('External shutdown signal received - shutting down gracefully')
         except Exception as e:
-            # Handle ExternalShutdownException and other shutdown signals gracefully
-            if 'ExternalShutdownException' in str(type(e).__name__):
-                node.get_logger().info('External shutdown signal received')
-            else:
-                node.get_logger().error(f'Error during spin: {e}')
-                raise
+            node.get_logger().error(f'Unexpected error during spin: {e}')
+            import traceback
+            traceback.print_exc()
+            raise
 
     except Exception as e:
         print(f"FATAL ERROR: Failed to create node:")
