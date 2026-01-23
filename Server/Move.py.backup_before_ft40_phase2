@@ -115,8 +115,6 @@ _leg_positions = {
 # Track last movement command to detect changes
 _last_command = None
 _last_speed_sign = 0
-_steps_since_change = 0  # Counter for steps since last direction/command change
-_direction_changed = False  # Flag indicating if direction recently changed
 
 
 '''
@@ -962,7 +960,7 @@ def move_thread():
 	Performs one small increment of the walk cycle per call, creating smooth,
 	continuous movement.
 	"""
-	global gait_phase, direction_command, turn_command, movement_speed_max, movement_speed, steadyMode, abort_current_movement, _last_command, _last_speed_sign, _steps_since_change, _direction_changed
+	global gait_phase, direction_command, turn_command, movement_speed_max, movement_speed, steadyMode, abort_current_movement, _last_command, _last_speed_sign
 
 	if steadyMode:
 		steady_X()
@@ -1032,36 +1030,6 @@ def move_thread():
 		handle_stand_or_steady()
 		gait_phase = 0.0  # Reset phase to start clean next time
 		return
-
-	# --- FT40 Phase 2: Direction Change Detection ---
-	# Detect command change (forward/backward/left/right)
-	current_command = (direction_command, turn_command)
-	command_changed = (current_command != _last_command) and (_last_command is not None)
-
-	# Detect direction change (forward ↔ backward flip based on speed sign)
-	current_direction_value = (speed_left + speed_right) / 2.0
-	current_sign = 1 if current_direction_value < 0 else (-1 if current_direction_value > 0 else 0)
-
-	direction_changed = (current_sign != 0 and
-						_last_speed_sign != 0 and
-						current_sign != _last_speed_sign)
-
-	# Update tracking variables
-	if command_changed or direction_changed:
-		_steps_since_change = 0
-		_direction_changed = True
-		if direction_changed:
-			print(f"[FT40] Direction change detected: {_last_speed_sign} → {current_sign}")
-		if command_changed:
-			print(f"[FT40] Command change detected: {_last_command} → {current_command}")
-	else:
-		_steps_since_change += 1
-		if _steps_since_change > 10:
-			_direction_changed = False
-
-	_last_command = current_command
-	_last_speed_sign = current_sign
-	# --- End FT40 Phase 2 ---
 
 	# --- Continuous Movement Core Logic ---
 
