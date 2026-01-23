@@ -1,12 +1,5 @@
 # ROS 2 Integration für Adeept RaspClaws
 
-**⚠️ WICHTIG**: Die ROS 2 Integration befindet sich im **`ros2` Branch**!
-
-```bash
-# Auf dem richtigen Branch arbeiten:
-git checkout ros2
-```
-
 ## Übersicht
 
 ROS 2 Integration für den RaspClaws Roboter mit folgender Architektur:
@@ -65,11 +58,26 @@ docker --version
 ### 2. Docker Compose installieren
 
 ```bash
+# (NICHT machen!)
 sudo apt-get update
 sudo apt-get install -y docker-compose
 
-# Oder neuere Version:
+# ODER neuere Version (NICHT machen!):
 sudo pip3 install docker-compose
+
+
+# ODER ganz neuer Version:
+# Deine neuen Befehle für den Raspberry Pi:
+
+Bauen:
+docker compose -f docker-compose.ros2.yml build
+
+Starten:
+docker compose -f docker-compose.ros2.yml up -d
+
+Logs:
+docker compose -f docker-compose.ros2.yml logs -f
+
 ```
 
 ### 3. Projekt auf Pi übertragen
