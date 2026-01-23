@@ -9,7 +9,7 @@ ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH="/ros2_ws:/ros2_ws/Server:${PYTHONPATH}"
 
 # System-Abhängigkeiten installieren
-RUN sudo apt-get update && sudo apt-get install -y \
+RUN apt-get update && sudo apt-get install -y \
     python3-pip \
     python3-setuptools \
     python3-wheel \
@@ -18,7 +18,8 @@ RUN sudo apt-get update && sudo apt-get install -y \
     libgpiod-dev \
     # Notwendig für libcamera / picamera2
     libcamera-dev \
-    python3-libcamera \
+    libcamera-tools \
+    libcap-dev \
     # Notwendig für OpenCV (selbst in der Headless-Version)
     libgl1 \
     libglib2.0-0 \
