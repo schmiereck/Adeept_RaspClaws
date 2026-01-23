@@ -1,0 +1,53 @@
+# Dockerfile for RaspClaws ROS 2 Server
+# Base: ros-humble-ros-base (Bare Bones)
+# Target: Raspberry Pi (ARM64)
+
+FROM ros:humble-ros-base
+
+# Set environment variables
+ENV DEBIAN_FRONTEND=noninteractive
+ENV ROS_DISTRO=humble
+ENV PYTHONUNBUFFERED=1
+
+# Install Python 3 and dependencies
+RUN apt-get update && apt-get install -y \
+    python3-pip \
+    python3-setuptools \
+    python3-wheel \
+    i2c-tools \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies for robot control
+RUN pip3 install --no-cache-dir \
+    Adafruit-PCA9685 \
+    Adafruit-GPIO \
+    pyzmq \
+    opencv-python-headless \
+    numpy
+
+# Create workspace
+WORKDIR /ros2_ws
+
+# Copy robot server code
+COPY Server/ROSServer.py /ros2_ws/
+COPY Server/Move.py /ros2_ws/
+COPY Server/RPIservo.py /ros2_ws/
+COPY Server/Switch.py /ros2_ws/
+COPY Server/RobotLight.py /ros2_ws/
+COPY Server/Voltage.py /ros2_ws/
+COPY Server/Kalman_Filter.py /ros2_ws/
+COPY Server/PID.py /ros2_ws/
+
+# Make ROSServer.py executable
+RUN chmod +x /ros2_ws/ROSServer.py
+
+# Source ROS 2 setup in bashrc
+RUN echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
+
+# Expose ROS 2 DDS ports (for network communication)
+EXPOSE 7400-7500/udp
+EXPOSE 11811/tcp
+
+# Set entrypoint
+ENTRYPOINT ["/bin/bash", "-c"]
+CMD ["source /opt/ros/humble/setup.bash && python3 /ros2_ws/ROSServer.py"]

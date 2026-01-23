@@ -37,6 +37,8 @@ MOVE_NO = 'no'  # No movement command
 # Speed and arc commands
 CMD_SET_SPEED = 'setSpeed:'  # Set movement speed (format: "setSpeed:35")
 CMD_SET_ARC_FACTOR = 'setArcFactor:'  # Set arc factor (format: "setArcFactor:0.7")
+CMD_FAST = 'fast'  # Fast movement mode (higher speed)
+CMD_SLOW = 'slow'  # Slow movement mode (smooth, lower speed)
 
 
 # ==================== Camera Commands ====================
