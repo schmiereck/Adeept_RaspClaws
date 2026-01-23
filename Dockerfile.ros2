@@ -9,21 +9,41 @@ ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH="/ros2_ws:/ros2_ws/Server:${PYTHONPATH}"
 
 # System-Abhängigkeiten installieren
-RUN apt-get update && apt-get install -y \
+RUN sudo apt-get update && sudo apt-get install -y \
     python3-pip \
     python3-setuptools \
     python3-wheel \
+    python3-smbus \
     i2c-tools \
+    libgpiod-dev \
+    # Notwendig für libcamera / picamera2
+    libcamera-dev \
+    python3-libcamera \
+    # Notwendig für OpenCV (selbst in der Headless-Version)
+    libgl1 \
+    libglib2.0-0 \
+    # Prozess-Management
+    python3-psutil \
     && rm -rf /var/lib/apt/lists/*
 
 # Python-Abhängigkeiten für die Hardware
 RUN pip3 install --no-cache-dir \
-    Adafruit-PCA9685 \
-    Adafruit-GPIO \
-    pyzmq \
-    opencv-python-headless \
     numpy \
-    mpu6050-raspberrypi
+    opencv-python-headless \
+    pyzmq \
+    imutils \
+    psutil \
+    # Hardware / Motoren
+    adafruit-pca9685 \
+    adafruit-gpio \
+    mpu6050-raspberrypi \
+    smbus2 \             # <--- Zur Sicherheit SMBUS auch hier
+    gpiozero \
+    # Wichtig: lgpio ist für neuere Systeme (wie dein Debian Trixie)
+    # der stabilere Ersatz für RPi.GPIO innerhalb von Docker
+    lgpio \
+    # Kamera
+    picamera2
 
 # Arbeitsverzeichnis erstellen
 WORKDIR /ros2_ws
