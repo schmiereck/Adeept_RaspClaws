@@ -112,20 +112,33 @@ docker-compose -f docker-compose.ros2.yml up -d
 docker-compose -f docker-compose.ros2.yml logs -f
 ```
 
-### 5. USB-Tests ohne Akku (Optional)
+### 5. USB-Tests ohne Akku (Lazy Initialization)
 
-Für Tests ohne Batterie/Akku (nur über USB-Stromversorgung):
+Der ROSServer verwendet **Lazy Initialization**:
+- **Beim Start:** Servos werden NICHT initialisiert → Servos bleiben weich
+- **Bei erstem Befehl:** Servos werden automatisch initialisiert
+
+**Vorteil:** Du kannst über USB testen, ohne dass Servos steif werden. Erst wenn ein Bewegungsbefehl kommt, wird die Hardware initialisiert.
 
 ```bash
-# Servo-Initialisierung überspringen
-export ROS_SKIP_SERVOS=1
-sudo -E python3 Server/ROSServer.py
+# Einfach starten (USB-Strom reicht):
+sudo python3 Server/ROSServer.py
 
-# Oder in docker-compose.ros2.yml:
-# - ROS_SKIP_SERVOS=1  # Set to 1 for USB testing without servos
+# Ausgabe:
+# 💤 Lazy initialization enabled - hardware will be initialized on first command
+#    (Servos stay soft until first movement/head command)
 ```
 
-**Hinweis:** Im USB-Test-Modus werden die Servos NICHT initialisiert. Der Roboter kann sich nicht bewegen, aber alle ROS 2 Topics/Services funktionieren für Verbindungstests.
+Bei erstem Bewegungsbefehl:
+```bash
+ros2 topic pub /raspclaws/cmd_vel geometry_msgs/Twist "{linear: {x: 0.5}}"
+
+# Auf dem Pi:
+# 🤖 Initializing robot hardware on first command...
+# ✓ Robot hardware initialized successfully
+```
+
+**Details:** Siehe `Server/ROSServer_USB_TEST_MODE.md`
 
 ---
 
