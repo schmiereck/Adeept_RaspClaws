@@ -23,9 +23,9 @@ services:
     volumes:
       - /home/pi/adeept_raspclaws:/ros2_ws
       - /dev:/dev  # Gibt dem Container direkten Zugriff auf Kamera und I2C
-    # Wir geben dem Server 5 Sekunden Vorsprung
+    # Wir geben dem Server 10 Sekunden Vorsprung
     command: >
-      bash -c "sleep 5 && source /opt/ros/humble/setup.bash && 
+      bash -c "sleep 10 && source /opt/ros/humble/setup.bash && 
       python3 /ros2_ws/ROSServer.py"
     restart: always
 
