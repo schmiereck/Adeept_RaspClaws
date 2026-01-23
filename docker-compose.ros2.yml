@@ -1,7 +1,7 @@
 services:
   # Teil 1: Der Leuchtturm (Discovery Server)
   discovery-server:
-    image: smk_raspclaws_image  # Nutze dein vorhandenes Image
+    image: adeept_raspclaws-raspclaws_ros2:latest  # Nutze dein vorhandenes Image
     network_mode: host
     container_name: ros2_leuchtturm
     command: >
