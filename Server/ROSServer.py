@@ -415,6 +415,7 @@ def main(args=None):
     rclpy.init(args=args)
 
     # Create node
+    node = None
     try:
         node = RaspClawsNode()
 
@@ -423,21 +424,36 @@ def main(args=None):
             rclpy.spin(node)
         except KeyboardInterrupt:
             node.get_logger().info('Keyboard interrupt received')
-
-        # Cleanup
-        node.shutdown()
-        node.destroy_node()
+        except Exception as e:
+            # Handle ExternalShutdownException and other shutdown signals gracefully
+            if 'ExternalShutdownException' in str(type(e).__name__):
+                node.get_logger().info('External shutdown signal received')
+            else:
+                node.get_logger().error(f'Error during spin: {e}')
+                raise
 
     except Exception as e:
-        print(f"FATAL ERROR: Failed to create node: {e}")
+        print(f"FATAL ERROR: Failed to create node:")
+        print(f"{type(e).__name__}: {e}")
         import traceback
         traceback.print_exc()
         return 1
 
     finally:
+        # Cleanup
+        if node is not None:
+            try:
+                node.shutdown()
+                node.destroy_node()
+            except Exception as e:
+                print(f"Warning: Error during cleanup: {e}")
+
         # Shutdown ROS 2
-        if rclpy.ok():
-            rclpy.shutdown()
+        try:
+            if rclpy.ok():
+                rclpy.shutdown()
+        except Exception as e:
+            print(f"Warning: Error during ROS 2 shutdown: {e}")
 
     return 0
 

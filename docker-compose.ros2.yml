@@ -68,10 +68,10 @@ services:
         max-size: "10m"
         max-file: "3"
 
-    # Health check
+    # Health check - give node time to start
     healthcheck:
-      test: ["CMD", "ros2", "node", "list"]
+      test: ["CMD-SHELL", "ros2 node list | grep raspclaws_node || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 30s  # Give node 30s to start before checking
