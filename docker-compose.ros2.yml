@@ -12,9 +12,10 @@ services:
     # Wir rufen das Skript im Unterordner auf
     #command: python3 Server/ROSServer.py
     # Wir nutzen die "Shell-Form", um sicherzugehen, dass source und python3 nacheinander laufen
-    #command: >
-    #  bash -c "source /opt/ros/humble/setup.bash && python3 Server/ROSServer.py"
-    command: ["python3", "Server/ROSServer.py"]
+    # Robuster Startbefehl 1
+    command: bash -c "source /opt/ros/humble/setup.bash && python3 Server/ROSServer.py"
+    # Robuster Startbefehl 2
+    #command: ["python3", "Server/ROSServer.py"]
 
     # WICHTIG: Begrenze die Ressourcen, damit der Pi nicht stirbt!
     deploy:
