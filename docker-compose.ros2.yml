@@ -57,15 +57,16 @@ services:
 
     # Environment variables
     environment:
-      #- ROS_DISCOVERY_SERVER=192.168.2.121:11811 # Deine Windows-IP, geht nicht mit Windows 10 pro und WSL2
-      - ROS_DISCOVERY_SERVER=127.0.0.1:11811 # Lokaler ROS 2 Discovery Server (für reine Pi-Netzwerke)
-      #- ROS_DISCOVERY_SERVER=192.168.2.126:11811 # Nutze doch die echte IP des Pi, nicht 127.0.0.1!
-      - ROS_DOMAIN_ID=0                # ROS 2 domain ID (0-232)
+      # ROS_DISCOVERY_SERVER: Only use if you have a Discovery Server running!
+      # For normal DDS discovery, LEAVE THIS COMMENTED OUT!
+      #- ROS_DISCOVERY_SERVER=192.168.2.121:11811 # Windows PC Discovery Server
+      #- ROS_DISCOVERY_SERVER=127.0.0.1:11811     # Local Discovery Server
+      #- ROS_DISCOVERY_SERVER=192.168.2.126:11811 # Pi Discovery Server
+
+      - ROS_DOMAIN_ID=0                # ROS 2 domain ID (0-232) - must match PC!
       - ROS_LOCALHOST_ONLY=0           # Allow network communication
       - PYTHONUNBUFFERED=1
       - SKIP_SERVO_AUTO_INIT=1         # Skip PWM initialization at import (lazy init)
-      # Note: Servo initialization is now lazy (on first command)
-      # No ROS_SKIP_SERVOS variable needed anymore!
 
     # Restart policy
     restart: unless-stopped
