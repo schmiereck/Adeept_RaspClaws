@@ -90,9 +90,12 @@ class RaspClawsNode(Node):
         self.current_twist = Twist()
         self.current_head_pos = Point()
 
-        # Initialize robot hardware
-        if ROBOT_MODULES_AVAILABLE:
-            self.init_robot_hardware()
+        # Lazy initialization state
+        self.hardware_initialized = False
+        self.ws2812 = None
+
+        self.get_logger().info('💤 Lazy initialization enabled - hardware will be initialized on first command')
+        self.get_logger().info('   (Servos stay soft until first movement/head command)')
 
         # Create publishers
         self.create_publishers()
@@ -109,18 +112,12 @@ class RaspClawsNode(Node):
         self.get_logger().info('RaspClaws ROS 2 Node initialized successfully!')
 
     def init_robot_hardware(self):
-        """Initialize robot hardware components"""
+        """Initialize robot hardware components (called on first movement command)"""
+        if self.hardware_initialized:
+            return  # Already initialized
+
         try:
-            self.get_logger().info('Initializing robot hardware...')
-
-            # Check if we should skip servo initialization (for USB-only testing)
-            skip_servos = os.getenv('ROS_SKIP_SERVOS', '0') == '1'
-
-            if skip_servos:
-                self.get_logger().warn('⚠️  SERVO INITIALIZATION SKIPPED (ROS_SKIP_SERVOS=1)')
-                self.get_logger().warn('⚠️  Robot will NOT move - USB testing mode only!')
-                self.ws2812 = None
-                return
+            self.get_logger().info('🤖 Initializing robot hardware on first command...')
 
             # Initialize switches
             switch.switchSetup()
@@ -142,7 +139,8 @@ class RaspClawsNode(Node):
                 self.ws2812 = None
                 self.get_logger().warn('WS2812 LEDs not available')
 
-            self.get_logger().info('Robot hardware initialized')
+            self.hardware_initialized = True
+            self.get_logger().info('✓ Robot hardware initialized successfully')
         except Exception as e:
             self.get_logger().error(f'Failed to initialize robot hardware: {e}')
             raise
@@ -242,6 +240,10 @@ class RaspClawsNode(Node):
             return
 
         try:
+            # Lazy initialization: Initialize hardware on first movement command
+            if not self.hardware_initialized:
+                self.init_robot_hardware()
+
             # Convert Twist to robot commands
             linear_x = msg.linear.x    # Forward/backward (-1.0 to 1.0)
             angular_z = msg.angular.z  # Left/right rotation (-1.0 to 1.0)
@@ -274,6 +276,10 @@ class RaspClawsNode(Node):
             return
 
         try:
+            # Lazy initialization: Initialize hardware on first head command
+            if not self.hardware_initialized:
+                self.init_robot_hardware()
+
             # msg.x: left/right (-1.0 to 1.0)
             # msg.y: up/down (-1.0 to 1.0)
 
@@ -296,6 +302,10 @@ class RaspClawsNode(Node):
         """Service callback to reset all servos"""
         try:
             if ROBOT_MODULES_AVAILABLE:
+                # Lazy initialization: Initialize hardware on first service call
+                if not self.hardware_initialized:
+                    self.init_robot_hardware()
+
                 move.look_home()
                 self.get_logger().info('Servos reset to home position')
                 response.success = True
