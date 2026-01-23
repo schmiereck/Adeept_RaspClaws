@@ -7,6 +7,7 @@ from __future__ import division
 import time
 import Adafruit_PCA9685
 import threading
+import os
 
 import random
 '''
@@ -14,22 +15,31 @@ change this form 1 to -1 to reverse servos
 '''
 
 # Try to initialize PCA9685, use mock mode if hardware not available
-try:
-	pwm = Adafruit_PCA9685.PCA9685(address=0x40, busnum=1)  # Changed from 0x5F to 0x40
-	pwm.set_pwm_freq(50)
+# Check if auto-initialization should be skipped (for lazy initialization in ROSServer)
+SKIP_AUTO_INIT = os.getenv('SKIP_SERVO_AUTO_INIT', '0') == '1'
+
+if not SKIP_AUTO_INIT:
+	try:
+		pwm = Adafruit_PCA9685.PCA9685(address=0x40, busnum=1)  # Changed from 0x5F to 0x40
+		pwm.set_pwm_freq(50)
+		MOCK_MODE = False
+		print("PCA9685 initialized successfully on address 0x40")
+	except (OSError, IOError) as e:
+		print(f"\033[38;5;3mWarning:\033[0m Could not initialize PCA9685 servo controller: {e}")
+		print("Running in MOCK MODE - servo commands will be ignored")
+		MOCK_MODE = True
+		# Create a mock pwm object
+		class MockPWM:
+			def set_pwm(self, channel, on, off):
+				pass  # Do nothing in mock mode
+			def set_pwm_freq(self, freq):
+				pass
+		pwm = MockPWM()
+else:
+	# Lazy initialization mode - pwm will be initialized later by Move.init_all()
+	print("⏸️  Servo auto-initialization SKIPPED in RPIservo.py (lazy mode)")
 	MOCK_MODE = False
-	print("PCA9685 initialized successfully on address 0x40")
-except (OSError, IOError) as e:
-	print(f"\033[38;5;3mWarning:\033[0m Could not initialize PCA9685 servo controller: {e}")
-	print("Running in MOCK MODE - servo commands will be ignored")
-	MOCK_MODE = True
-	# Create a mock pwm object
-	class MockPWM:
-		def set_pwm(self, channel, on, off):
-			pass  # Do nothing in mock mode
-		def set_pwm_freq(self, freq):
-			pass
-	pwm = MockPWM()
+	pwm = None  # Will be initialized later
 
 init_pwm0 = 300
 init_pwm1 = 300
