@@ -7,6 +7,8 @@ services:
 
     volumes:
       - /home/pi/adeept_raspclaws:/ros2_ws  # Mountet den ganzen Ordner nach /ros2_ws
+      - /dev:/dev  # Gibt dem Container direkten Zugriff auf Kamera und I2C
+
     working_dir: /ros2_ws                   # Setzt den Startpunkt für Python
 
     # Wir rufen das Skript im Unterordner auf
