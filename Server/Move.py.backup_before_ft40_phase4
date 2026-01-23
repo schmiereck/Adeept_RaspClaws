@@ -118,10 +118,6 @@ _last_speed_sign = 0
 _steps_since_change = 0  # Counter for steps since last direction/command change
 _direction_changed = False  # Flag indicating if direction recently changed
 
-# FT40 Phase 4: Track stop duration to decide when to reset phase
-_stop_counter = 0  # Counter for how many iterations we've been stopped
-_stop_threshold = 30  # Reset phase after ~0.5 seconds of stop (30 iterations at ~60Hz)
-
 
 '''
 change these variable to adjuest the steady function.
@@ -966,7 +962,7 @@ def move_thread():
 	Performs one small increment of the walk cycle per call, creating smooth,
 	continuous movement.
 	"""
-	global gait_phase, direction_command, turn_command, movement_speed_max, movement_speed, steadyMode, abort_current_movement, _last_command, _last_speed_sign, _steps_since_change, _direction_changed, _stop_counter
+	global gait_phase, direction_command, turn_command, movement_speed_max, movement_speed, steadyMode, abort_current_movement, _last_command, _last_speed_sign, _steps_since_change, _direction_changed
 
 	if steadyMode:
 		steady_X()
@@ -1034,20 +1030,8 @@ def move_thread():
 
 	if not movement_active:
 		handle_stand_or_steady()
-
-		# FT40 Phase 4: Don't immediately reset phase - allow smooth restart after short stops
-		_stop_counter += 1
-		if _stop_counter > _stop_threshold:
-			# Only reset phase after prolonged stop (~0.5 seconds)
-			# This allows smooth restart after brief button releases
-			if gait_phase != 0.0:
-				print(f"[FT40] Phase reset after long stop (counter={_stop_counter})")
-				gait_phase = 0.0
-		# If stop is brief, phase is preserved for smooth continuation
+		gait_phase = 0.0  # Reset phase to start clean next time
 		return
-
-	# Movement is active - reset stop counter
-	_stop_counter = 0
 
 	# --- FT40 Phase 2: Direction Change Detection ---
 	# Detect command change (forward/backward/left/right)
