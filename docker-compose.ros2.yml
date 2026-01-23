@@ -26,7 +26,7 @@ services:
     # Wir geben dem Server 10 Sekunden Vorsprung
     command: >
       bash -c "sleep 10 && source /opt/ros/humble/setup.bash && 
-      python3 /ros2_ws/ROSServer.py"
+      python3 /ros2_ws/Server/ROSServer.py"
     restart: always
 
     # Alternative Einzeldefinition des RaspClaws ROS 2 Containers
