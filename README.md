@@ -9,6 +9,7 @@ Enhanced version of the Adeept RaspClaws hexapod robot with smooth movement, imp
 **Based on:** [Adeept RaspClaws (ADR015)](https://github.com/adeept/adeept_raspclaws) - Official Adeept Project
 
 ---
+![GUI-Screenshot](Docu/GUI-Screenshot.png){ align=right }
 
 ## 🎯 Key Features
 
