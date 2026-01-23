@@ -1069,7 +1069,7 @@ def create_status_labels(root, color_text, color_bg, color_btn):
 
 	# Logo
 	try:
-		logo = tk.PhotoImage(file='logo.png')
+		logo = tk.PhotoImage(file='logo2.png')
 		l_logo = tk.Label(root, image=logo, bg=color_bg)
 		l_logo.image = logo  # Keep a reference!
 		l_logo.place(x=30, y=13)
@@ -1341,7 +1341,7 @@ def loop():
 
 		# Create main window
 		root = tk.Tk()
-		root.title('Adeept RaspClaws (schmiereck)')
+		root.title('RaspClaws (schmiereck)')
 		root.geometry('565x680')
 		root.config(bg=color_bg)
 

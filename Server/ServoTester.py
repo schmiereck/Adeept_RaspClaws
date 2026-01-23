@@ -115,7 +115,7 @@ class ServoTesterGUI:
 
     def __init__(self, root):
         self.root = root
-        self.root.title('Adeept RaspClaws - Servo Tester')
+        self.root.title('RaspClaws - Servo Tester')
         self.root.geometry('850x600')  # Kompakter: 850x600 statt 900x750
         self.root.configure(bg='#1E1E1E')
 

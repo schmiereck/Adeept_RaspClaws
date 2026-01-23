@@ -122,7 +122,7 @@ def loop():
         
         # Window erstellen
         root = tk.Tk()
-        root.title('Adeept RaspClaws (schmiereck)')
+        root.title('RaspClaws (schmiereck)')
         root.geometry('565x680')
         root.config(bg=color_bg)
         
