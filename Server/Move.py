@@ -400,7 +400,11 @@ def init_all():
 	]
 
 
-init_all()
+# Initialize servos at module level (unless lazy initialization is enabled)
+if not SKIP_AUTO_INIT:
+	init_all()
+else:
+	print("⏸️  Skipping init_all() at module import (lazy mode)")
 
 def ctrl_range(raw, max_genout, min_genout):
 	if raw > max_genout:
