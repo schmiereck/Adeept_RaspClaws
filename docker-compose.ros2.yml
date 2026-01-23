@@ -18,6 +18,10 @@ services:
     # Network mode: host for ROS 2 DDS discovery
     network_mode: host
 
+    # um den Container "wach" zu halten:
+    tty: true
+    stdin_open: true
+
     # Device access
     devices:
       - /dev/i2c-1:/dev/i2c-1        # I2C for PCA9685 servos
