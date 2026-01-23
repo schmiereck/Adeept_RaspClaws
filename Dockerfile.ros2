@@ -41,5 +41,11 @@ EXPOSE 7400-7500/udp
 EXPOSE 11811/tcp
 
 # Startbefehl: Wir starten im Hauptverzeichnis und rufen den Unterordner auf
-ENTRYPOINT ["/bin/bash", "-c"]
-CMD ["source /opt/ros/humble/setup.bash && python3 Server/ROSServer.py"]
+#ENTRYPOINT ["/bin/bash", "-c"]
+#CMD ["source /opt/ros/humble/setup.bash && python3 Server/ROSServer.py"]
+
+# Wir nutzen den eingebauten ROS-Entrypoint, der das 'source' automatisch macht
+ENTRYPOINT ["/ros_entrypoint.sh"]
+
+# Als Standard-Befehl starten wir unser Skript
+CMD ["python3", "Server/ROSServer.py"]

@@ -17,7 +17,9 @@ services:
     # Robuster Startbefehl 2
     #command: ["python3", "Server/ROSServer.py"]
     # KEIN extra "bash -c" hier, da das Dockerfile es schon liefert!
-    command: "source /opt/ros/humble/setup.bash && python3 Server/ROSServer.py"
+    #command: "source /opt/ros/humble/setup.bash && python3 Server/ROSServer.py"
+    # Kein mühsames 'source' mehr hier nötig, das macht der Entrypoint im Dockerfile.ros2 jetzt automatisch.
+    command: python3 Server/ROSServer.py
 
     # WICHTIG: Begrenze die Ressourcen, damit der Pi nicht stirbt!
     deploy:
