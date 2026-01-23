@@ -27,7 +27,7 @@ services:
       bash -c "source /opt/ros/humble/setup.bash &&
       /opt/ros/humble/bin/fast-discovery-server -i 0 -l 0.0.0.0 -p 11811 &
       sleep 2 &&
-      python3 /ros2_ws/ROSServer.py"
+      python3 /ros2_ws/Server/ROSServer.py"
 
     # WICHTIG: Begrenze die Ressourcen, damit der Pi nicht stirbt!
     deploy:
