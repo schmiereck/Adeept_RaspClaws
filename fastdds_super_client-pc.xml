@@ -3,7 +3,7 @@
     <!-- PC version pointing to Raspberry Pi IP address
 
     Im WSL2-Terminal:
-    bashexport ROS_DOMAIN_ID=0
+    export ROS_DOMAIN_ID=0
     export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
     export FASTRTPS_DEFAULT_PROFILES_FILE=/mnt/c/Users/thoma/Adeept_RaspClaws/fastdds_super_client-pc.xml
 

@@ -14,6 +14,6 @@ services:
       - /home/pi/adeept_raspclaws:/ros2_ws
       - /dev:/dev
     command: >
-      bash -c "source /opt/ros/humble/setup.bash && 
+      bash -c "source /opt/ros/humble/setup.bash &&
       python3 /ros2_ws/Server/ROSServer.py"
     restart: always
