@@ -6,7 +6,7 @@ services:
     environment:
       - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
     command: >
-      bash -c "source /opt/ros/humble/setup.bash && 
+      bash -c "source /opt/ros/humble/setup.bash &&
       fastdds discovery -i 0 -l 0.0.0.0 -p 11811"
   #      bash -c "source /opt/ros/humble/setup.bash &&
   #      /opt/ros/humble/bin/fast-discovery-server -i 0 -l 0.0.0.0 -p 11811"
@@ -25,10 +25,9 @@ services:
     devices:
       - "/dev/i2c-1:/dev/i2c-1" # <--- DIREKTE MAP AN DIE SERVOS
     environment:
-      #- ROS_DISCOVERY_SERVER=127.0.0.1:11811
+      - ROS_DISCOVERY_SERVER=127.0.0.1:11811
       - ROS_DOMAIN_ID=0
       - RMW_IMPLEMENTATION=rmw_fastrtps_cpp # Erzwingt die richtige Middleware
-      - FASTRTPS_DEFAULT_PROFILES_FILE=/ros2_ws/fastdds_super_client.xml
       - PYTHONPATH=/ros2_ws:/ros2_ws/
     depends_on:
       discovery-server:
@@ -37,6 +36,6 @@ services:
       - /home/pi/adeept_raspclaws:/ros2_ws
       - /dev:/dev  # Gibt dem Container direkten Zugriff auf Kamera und I2C
     command: >
-      bash -c "sleep 30 && source /opt/ros/humble/setup.bash && 
+      bash -c "sleep 30 && source /opt/ros/humble/setup.bash &&
       python3 /ros2_ws/Server/ROSServer.py"
     restart: always
