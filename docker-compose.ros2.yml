@@ -7,7 +7,7 @@ services:
       - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
     command: >
       bash -c "source /opt/ros/humble/setup.bash && 
-      fastdds discovery --server-id 0 --ip-address 0.0.0.0 --port 11811 -t 0"
+      fastdds discovery -i 0 -l 0.0.0.0 -p 11811"
   #      bash -c "source /opt/ros/humble/setup.bash &&
   #      /opt/ros/humble/bin/fast-discovery-server -i 0 -l 0.0.0.0 -p 11811"
     restart: always
