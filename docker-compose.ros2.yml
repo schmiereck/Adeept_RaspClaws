@@ -12,7 +12,7 @@ services:
   #      /opt/ros/humble/bin/fast-discovery-server -i 0 -l 0.0.0.0 -p 11811"
     restart: always
     healthcheck:
-      test: ["CMD", "netstat", "-tuln", "|", "grep", "11811"]
+      test: ["CMD-SHELL", "pgrep -f 'fastdds discovery' || exit 1"]
       interval: 5s
       timeout: 3s
       retries: 3
