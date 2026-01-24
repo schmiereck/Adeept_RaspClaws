@@ -1,15 +1,22 @@
 services:
-#  # Teil 1: Der Leuchtturm (Discovery Server)
-#  discovery-server:
-#    image: adeept_raspclaws-raspclaws_ros2:latest
-#    network_mode: host
-#    container_name: ros2_leuchtturm
-#    command: >
-#      bash -c "source /opt/ros/humble/setup.bash &&
-#      /opt/ros/humble/bin/fast-discovery-server -i 0 -l 0.0.0.0 -p 11811"
-#    restart: always
+  discovery-server:
+    image: adeept_raspclaws-raspclaws_ros2:latest
+    network_mode: host
+    container_name: discovery-server
+    environment:
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+    command: >
+      bash -c "source /opt/ros/humble/setup.bash && 
+      fastdds discovery --server-id 0 --ip-address 0.0.0.0 --port 11811 -t 0"
+  #      bash -c "source /opt/ros/humble/setup.bash &&
+  #      /opt/ros/humble/bin/fast-discovery-server -i 0 -l 0.0.0.0 -p 11811"
+    restart: always
+    healthcheck:
+      test: ["CMD", "netstat", "-tuln", "|", "grep", "11811"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
 
-  # Teil 2: Der Roboter (RaspClaws Node)  raspclaws_ros2:
   raspclaws_ros2:
     image: adeept_raspclaws-raspclaws_ros2:latest
     network_mode: host
@@ -18,116 +25,17 @@ services:
     devices:
       - "/dev/i2c-1:/dev/i2c-1" # <--- DIREKTE MAP AN DIE SERVOS
     environment:
-      #- ROS_DISCOVERY_SERVER=127.0.0.1:11811
+      - ROS_DISCOVERY_SERVER=127.0.0.1:11811
       - ROS_DOMAIN_ID=0
-      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp  # Erzwingt die richtige Middleware
-      - PYTHONPATH=/ros2_ws
-    #depends_on:
-    #  - discovery-server
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp # Erzwingt die richtige Middleware
+      - PYTHONPATH=/ros2_ws:/ros2_ws/
+    depends_on:
+      discovery-server:
+        condition: service_healthy  # Warte bis Server wirklich bereit ist
     volumes:
       - /home/pi/adeept_raspclaws:/ros2_ws
       - /dev:/dev  # Gibt dem Container direkten Zugriff auf Kamera und I2C
-    # Wir geben dem Server 10 Sekunden Vorsprung
-    #command: >
-    #  bash -c "sleep 10 && source /opt/ros/humble/setup.bash &&
-    #  python3 /ros2_ws/Server/ROSServer.py"
-    #command: >
-    #  bash -c "sleep 12 && source /opt/ros/humble/setup.bash &&
-    #  export ROS_DISCOVERY_SERVER=127.0.0.1:11811 &&
-    #  python3 /ros2_ws/Server/ROSServer.py"
-    #command: >
-    #  bash -c "source /opt/ros/humble/setup.bash &&
-    #  python3 /ros2_ws/Server/ROSServer.py"
-    # ALLES IN EINEM BEFEHL:
     command: >
-      bash -c "source /opt/ros/humble/setup.bash && 
-      fast-discovery-server -i 0 -l 192.168.2.126 -p 11811 & 
-      sleep 10 && 
-      export ROS_DISCOVERY_SERVER=192.168.2.126:11811 && 
+      bash -c "sleep 30 && source /opt/ros/humble/setup.bash && 
       python3 /ros2_ws/Server/ROSServer.py"
-
     restart: always
-
-    # Alternative Einzeldefinition des RaspClaws ROS 2 Containers
-#    build:
-#      context: .
-#      dockerfile: Dockerfile.ros2
-#    container_name: raspclaws_ros2
-#
-#    volumes:
-#      - /home/pi/adeept_raspclaws:/ros2_ws  # Mountet den ganzen Ordner nach /ros2_ws
-#      - /dev:/dev  # Gibt dem Container direkten Zugriff auf Kamera und I2C
-#
-#    working_dir: /ros2_ws                   # Setzt den Startpunkt für Python
-#
-#    # Wir rufen das Skript im Unterordner auf
-#    #command: python3 Server/ROSServer.py
-#    # Wir nutzen die "Shell-Form", um sicherzugehen, dass source und python3 nacheinander laufen
-#    # Robuster Startbefehl 1
-#    #command: bash -c "source /opt/ros/humble/setup.bash && python3 Server/ROSServer.py"
-#    # Robuster Startbefehl 2
-#    #command: ["python3", "Server/ROSServer.py"]
-#    # KEIN extra "bash -c" hier, da das Dockerfile es schon liefert!
-#    #command: "source /opt/ros/humble/setup.bash && python3 Server/ROSServer.py"
-#    # Kein mühsames 'source' mehr hier nötig, das macht der Entrypoint im Dockerfile.ros2 jetzt automatisch.
-#    #command: python3 Server/ROSServer.py
-#    # Der Leuchtturm Prozess: Starte den Fast Discovery Server und dann den ROSServer
-#    command: >
-#      bash -c "source /opt/ros/humble/setup.bash &&
-#      /opt/ros/humble/bin/fast-discovery-server -i 0 -l 0.0.0.0 -p 11811 &
-#      sleep 2 &&
-#      python3 /ros2_ws/Server/ROSServer.py"
-#
-#    # WICHTIG: Begrenze die Ressourcen, damit der Pi nicht stirbt!
-#    deploy:
-#      resources:
-#        limits:
-#          memory: 512M # Der Pi 3+ hat nur 1GB, geben wir dem Container max. die Hälfte
-#
-#    # Privileged mode for hardware access (I2C, GPIO, SPI)
-#    privileged: true
-#
-#    # Network mode: host for ROS 2 DDS discovery
-#    network_mode: host
-#
-#    # um den Container "wach" zu halten: true
-#    # TTY erst mal aus, wir wollen saubere Logs: false
-#    tty: false
-#    stdin_open: false
-#
-#    # Device access
-#    devices:
-#      - /dev/i2c-1:/dev/i2c-1        # I2C for PCA9685 servos
-#      - /dev/spidev0.0:/dev/spidev0.0 # SPI for WS2812 LEDs (optional)
-#      - /dev/gpiomem:/dev/gpiomem    # GPIO access
-#      - /dev/video0:/dev/video0 # Die Kamera
-#      - /dev/vchiq:/dev/vchiq   # GPU Interface (für ältere Pi-Modelle)
-#      - /dev/dma_heap:/dev/dma_heap # Wichtig für libcamera
-#
-#    # Environment variables
-#    environment:
-#      #- ROS_DISCOVERY_SERVER=192.168.2.121:11811 # Deine Windows-IP, geht nicht mit Windows 10 pro und WSL2
-#      - ROS_DISCOVERY_SERVER=127.0.0.1:11811 # Lokaler ROS 2 Discovery Server (für reine Pi-Netzwerke)
-#      #- ROS_DISCOVERY_SERVER=192.168.2.126:11811 # Nutze doch die echte IP des Pi, nicht 127.0.0.1!
-#      - ROS_DOMAIN_ID=0                # ROS 2 domain ID (0-232)
-#      - ROS_LOCALHOST_ONLY=0           # Allow network communication
-#      - PYTHONUNBUFFERED=1
-#      - SKIP_SERVO_AUTO_INIT=1         # Skip PWM initialization at import (lazy init)
-#
-#    # Restart policy
-#    restart: unless-stopped
-#
-#    # Logging
-#    logging:
-#      driver: "json-file"
-#      options:
-#        max-size: "10m"
-#        max-file: "3"
-#
-#    # Health check - give node time to start
-#    healthcheck:
-#      test: ["CMD-SHELL", "ros2 node list | grep raspclaws_node || exit 1"]
-#      interval: 30s
-#      timeout: 10s
-#      retries: 3
-#      start_period: 30s  # Give node 30s to start before checking
