@@ -5,7 +5,7 @@ services:
     network_mode: host
     container_name: discovery-server
     command: >
-      bash -c "source /opt/ros/humble/setup.bash && 
+      bash -c "source /opt/ros/humble/setup.bash &&
       fast-discovery-server -i 0 -l 0.0.0.0 -p 11811"
     restart: always
     healthcheck:
@@ -33,6 +33,6 @@ services:
       - /home/pi/adeept_raspclaws:/ros2_ws
       - /dev:/dev  # Gibt dem Container direkten Zugriff auf Kamera und I2C
     command: >
-      bash -c "sleep 20 && source /opt/ros/humble/setup.bash && 
+      bash -c "sleep 20 && source /opt/ros/humble/setup.bash &&
       python3 /ros2_ws/Server/ROSServer.py"
     restart: always
