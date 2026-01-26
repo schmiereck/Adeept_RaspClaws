@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<profiles xmlns="http://www.eprosima.com/XMLSchemas/fastRTPS_Profiles">
+    <library_settings>
+        <intraprocess_delivery>OFF</intraprocess_delivery>
+    </library_settings>
+
+    <participant profile_name="super_client_profile" is_default_profile="true">
+        <rtps>
+            <builtin>
+                <discovery_config>
+                    <discoveryProtocol>SUPER_CLIENT</discoveryProtocol>
+                    <discoveryServerList>
+                        <locator>
+                            <udpv4>
+                                <address>127.0.0.1</address>
+                                <port>11811</port>
+                            </udpv4>
+                        </locator>
+                    </discoveryServerList>
+                </discovery_config>
+            </builtin>
+        </rtps>
+    </participant>
+</profiles>
