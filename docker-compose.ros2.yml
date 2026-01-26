@@ -32,9 +32,9 @@ services:
       # Stattdessen sagen wir ihm, er soll nur auf sich selbst und später auf den PC hören:
       - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
       - PYTHONPATH=/ros2_ws:/ros2_ws/Server
-    depends_on:
-      discovery-server:
-        condition: service_healthy  # Warte bis Server wirklich bereit ist
+    #depends_on:
+    #  discovery-server:
+    #    condition: service_healthy  # Warte bis Server wirklich bereit ist
     volumes:
       - /home/pi/adeept_raspclaws:/ros2_ws
       - /dev:/dev  # Gibt dem Container direkten Zugriff auf Kamera und I2C
