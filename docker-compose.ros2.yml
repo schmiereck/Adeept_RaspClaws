@@ -1,20 +1,20 @@
 services:
-  # run with: pi_discovery_fix.xml
-  discovery-server:
-    image: adeept_raspclaws-raspclaws_ros2:latest
-    network_mode: host
-    container_name: discovery-server
-    command: >
-      bash -c "source /opt/ros/humble/setup.bash && 
-      fast-discovery-server -i 0 -l 0.0.0.0 -p 11811"
-    environment:
-      - FASTRTPS_DEFAULT_PROFILES_FILE=/ros2_ws/pi_discovery_fix.xml
-    restart: always
-    healthcheck:
-      test: ["CMD-SHELL", "pgrep -f 'fast-discovery-server' || exit 1"]
-      interval: 5s
-      timeout: 3s
-      retries: 3
+#  # run with: pi_discovery_fix.xml
+#  discovery-server:
+#    image: adeept_raspclaws-raspclaws_ros2:latest
+#    network_mode: host
+#    container_name: discovery-server
+#    command: >
+#      bash -c "source /opt/ros/humble/setup.bash &&
+#      fast-discovery-server -i 0 -l 0.0.0.0 -p 11811"
+#    environment:
+#      - FASTRTPS_DEFAULT_PROFILES_FILE=/ros2_ws/pi_discovery_fix.xml
+#    restart: always
+#    healthcheck:
+#      test: ["CMD-SHELL", "pgrep -f 'fast-discovery-server' || exit 1"]
+#      interval: 5s
+#      timeout: 3s
+#      retries: 3
 
   raspclaws_ros2:
     image: adeept_raspclaws-raspclaws_ros2:latest
@@ -25,8 +25,12 @@ services:
       - "/dev/i2c-1:/dev/i2c-1" # <--- DIREKTE MAP AN DIE SERVOS
     environment:
       - ROS_DOMAIN_ID=0
-      - FASTRTPS_DEFAULT_PROFILES_FILE=/ros2_ws/pi_discovery_fix.xml # <--- XML laden
-      - ROS_DISCOVERY_SERVER=127.0.0.1:11811
+      #- FASTRTPS_DEFAULT_PROFILES_FILE=/ros2_ws/pi_discovery_fix.xml # <--- XML laden
+      #- ROS_DISCOVERY_SERVER=127.0.0.1:11811
+      #- PYTHONPATH=/ros2_ws:/ros2_ws/Server
+      # Wir löschen ROS_DISCOVERY_SERVER!
+      # Stattdessen sagen wir ihm, er soll nur auf sich selbst und später auf den PC hören:
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
       - PYTHONPATH=/ros2_ws:/ros2_ws/Server
     depends_on:
       discovery-server:
@@ -35,6 +39,6 @@ services:
       - /home/pi/adeept_raspclaws:/ros2_ws
       - /dev:/dev  # Gibt dem Container direkten Zugriff auf Kamera und I2C
     command: >
-      bash -c "sleep 20 && source /opt/ros/humble/setup.bash && 
-      python3 /ros2_ws/Server/ROSServer.py"
+      bash -c "source /opt/ros/humble/setup.bash && 
+            python3 /ros2_ws/Server/ROSServer.py"
     restart: always
