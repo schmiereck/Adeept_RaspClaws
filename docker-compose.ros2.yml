@@ -28,10 +28,14 @@ services:
       #- FASTRTPS_DEFAULT_PROFILES_FILE=/ros2_ws/pi_discovery_fix.xml # <--- XML laden
       #- ROS_DISCOVERY_SERVER=127.0.0.1:11811
       #- PYTHONPATH=/ros2_ws:/ros2_ws/Server
+      # ------------------
       # Wir löschen ROS_DISCOVERY_SERVER!
       # Stattdessen sagen wir ihm, er soll nur auf sich selbst und später auf den PC hören:
       - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
       - PYTHONPATH=/ros2_ws:/ros2_ws/Server
+      # ------------------
+      # Wir sagen dem Pi, er soll den PC direkt anrufen:
+      - ROS_STATIC_PEERS=192.168.2.121  # <--- HIER DEINE NOTIERTE IP EINTRAGEN
     #depends_on:
     #  discovery-server:
     #    condition: service_healthy  # Warte bis Server wirklich bereit ist
