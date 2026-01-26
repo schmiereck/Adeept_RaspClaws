@@ -32,7 +32,7 @@ services:
       # Wir löschen ROS_DISCOVERY_SERVER!
       # Stattdessen sagen wir ihm, er soll nur auf sich selbst und später auf den PC hören:
       - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
-      - FASTRTPS_DEFAULT_PROFILES_FILE=/ros2_ws/pi_unicast_only.xml
+      #- FASTRTPS_DEFAULT_PROFILES_FILE=/ros2_ws/pi_unicast_only.xml
       - PYTHONPATH=/ros2_ws:/ros2_ws/Server
       # ------------------
       # Wir sagen dem Pi, er soll den PC direkt anrufen:
