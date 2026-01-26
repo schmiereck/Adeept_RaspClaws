@@ -5,18 +5,20 @@
             <builtin>
                 <discovery_config>
                     <discoveryProtocol>SUPER_CLIENT</discoveryProtocol>
-                    <remote_servers>
+                    <discoveryServerList>
                         <remote_server prefix="44.53.00.5f.45.50.52.4f.53.49.4d.41">
                             <metatraffic_locators>
-                                <locator>
-                                    <udpv4>
-                                        <address>127.0.0.1</address>
-                                        <port>11811</port>
-                                    </udpv4>
-                                </locator>
+                                <initial_peers_list>
+                                    <locator>
+                                        <udpv4>
+                                            <address>127.0.0.1</address>
+                                            <port>11811</port>
+                                        </udpv4>
+                                    </locator>
+                                </initial_peers_list>
                             </metatraffic_locators>
                         </remote_server>
-                    </remote_servers>
+                    </discoveryServerList>
                 </discovery_config>
             </builtin>
         </rtps>
