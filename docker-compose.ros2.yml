@@ -18,6 +18,9 @@ services:
 
   raspclaws_ros2:
     image: adeept_raspclaws-raspclaws_ros2:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.ros2
     network_mode: host
     container_name: raspclaws_ros2
     privileged: true  # <--- ERMÖGLICHT HARDWARE-ZUGRIFF (I2C)
@@ -48,9 +51,11 @@ services:
             python3 /ros2_ws/Server/ROSServer.py"
     restart: always
 
-
   raspclaws_camera:
     image: adeept_raspclaws-raspclaws_ros2:latest  # Gleiches Image wie raspclaws_ros2
+    build:
+      context: .
+      dockerfile: Dockerfile.ros2
     container_name: raspclaws_camera
     network_mode: host  # ROS2 DDS braucht host network
     privileged: true    # Für Kamera-Zugriff
