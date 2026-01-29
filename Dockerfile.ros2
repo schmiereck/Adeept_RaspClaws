@@ -21,21 +21,21 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Kamera und Grafik-Abhängigkeiten
+# Note: python3-libcamera and python3-kms++ not available in Ubuntu 22.04 (Jammy)
+# We'll install picamera2 which includes these dependencies via pip
 RUN apt-get update && apt-get install -y \
     libcamera-dev \
     libcamera-tools \
-    python3-libcamera \
-    python3-kms++ \
     libcap-dev \
     libgl1 \
     libglib2.0-0 \
+    libcamera0 \
     && rm -rf /var/lib/apt/lists/*
 
 # ROS2 spezifische System-Pakete
 RUN apt-get update && apt-get install -y \
     ros-humble-cv-bridge \
     python3-psutil \
-    python3-picamera2 \
     && rm -rf /var/lib/apt/lists/*
 
 # Python-Abhängigkeiten für die Hardware
@@ -51,15 +51,15 @@ RUN pip3 install --no-cache-dir \
     adafruit-pca9685 \
     adafruit-gpio \
     mpu6050-raspberrypi \
-    # Zur Sicherheit SMBUS auch hier
     smbus2 \
     gpiozero \
-    # Wichtig: lgpio ist für neuere Systeme (wie dein Debian Trixie)
-    # der stabilere Ersatz für RPi.GPIO innerhalb von Docker
     lgpio \
     imutils \
     psutil
-    # picamera2 wird über apt installiert (siehe unten)
+
+# Kamera-Libs (separat, da komplexer)
+# picamera2 inkludiert die benötigten libcamera Python-Bindings
+RUN pip3 install --no-cache-dir picamera2
 
 # Arbeitsverzeichnis erstellen
 WORKDIR /ros2_ws
