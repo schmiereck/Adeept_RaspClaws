@@ -266,9 +266,12 @@ class CameraPublisher(Node):
     def publish_compressed_image(self, frame, timestamp):
         """Publish JPEG compressed image"""
         try:
+            # Convert RGB to BGR (cv2.imencode expects BGR)
+            frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+
             # Encode as JPEG
             encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), self.config.JPEG_QUALITY]
-            _, buffer = cv2.imencode('.jpg', frame, encode_param)
+            _, buffer = cv2.imencode('.jpg', frame_bgr, encode_param)
 
             # Create CompressedImage message
             msg = CompressedImage()

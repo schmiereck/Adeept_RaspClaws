@@ -47,3 +47,23 @@ services:
       bash -c "source /opt/ros/humble/setup.bash && 
             python3 /ros2_ws/Server/ROSServer.py"
     restart: always
+
+
+  raspclaws_camera:
+    image: adeept_raspclaws-raspclaws_ros2:latest  # Gleiches Image wie raspclaws_ros2
+    container_name: raspclaws_camera
+    network_mode: host  # ROS2 DDS braucht host network
+    privileged: true    # Für Kamera-Zugriff
+    devices:
+      - /dev/video0:/dev/video0  # Kamera device
+    environment:
+      - ROS_DOMAIN_ID=0  # Gleiche Domain wie raspclaws_ros2
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+      - PYTHONPATH=/ros2_ws:/ros2_ws/Server
+      - ROS_STATIC_PEERS=192.168.2.121  # Gleicher PC wie raspclaws_ros2
+    volumes:
+      - /home/pi/adeept_raspclaws:/ros2_ws  # Gleiches Volume wie raspclaws_ros2
+    command: >
+      bash -c "source /opt/ros/humble/setup.bash && 
+            python3 /ros2_ws/Server/FPV_ROS2.py"
+    restart: unless-stopped
