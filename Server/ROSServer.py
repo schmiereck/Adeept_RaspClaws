@@ -11,9 +11,14 @@ This server provides ROS 2 topics and services for controlling the robot.
 Designed to run in a Docker container with ros-humble-ros-base on Raspberry Pi.
 
 Topics Published:
-- /raspclaws/battery (std_msgs/Float32): Battery voltage
-- /raspclaws/cpu_usage (std_msgs/Float32): CPU usage percentage
-- /raspclaws/camera/image (sensor_msgs/Image): Camera feed
+- /raspclaws/battery (std_msgs/Float32): Battery voltage in Volts
+- /raspclaws/cpu_temp (std_msgs/Float32): CPU temperature in °C
+- /raspclaws/cpu_usage (std_msgs/Float32): CPU usage percentage (0-100)
+- /raspclaws/ram_usage (std_msgs/Float32): RAM usage percentage (0-100)
+- /raspclaws/servo_positions (std_msgs/String): Current servo positions (formatted string)
+- /raspclaws/gyro_data (std_msgs/String): MPU6050 gyro/accelerometer data (formatted string)
+- /raspclaws/status (std_msgs/String): Robot status messages
+- /raspclaws/camera/image (sensor_msgs/Image): Camera feed (TODO)
 
 Topics Subscribed:
 - /raspclaws/cmd_vel (geometry_msgs/Twist): Movement commands
@@ -22,6 +27,7 @@ Topics Subscribed:
 Services:
 - /raspclaws/reset_servos (std_srvs/Trigger): Reset all servos to default
 - /raspclaws/set_smooth_mode (std_srvs/SetBool): Enable/disable smooth mode
+- /raspclaws/set_smooth_cam (std_srvs/SetBool): Enable/disable smooth camera mode
 """
 
 import sys
@@ -64,6 +70,7 @@ try:
     import RPIservo
     import Switch as switch
     import RobotLight as robotLight
+    import Info
     ROBOT_MODULES_AVAILABLE = True
 except ImportError as e:
     print(f"WARNING: Robot modules not available: {e}")
@@ -164,10 +171,38 @@ class RaspClawsNode(Node):
             self.qos_profile
         )
 
+        # CPU temperature
+        self.cpu_temp_pub = self.create_publisher(
+            Float32,
+            '/raspclaws/cpu_temp',
+            self.qos_profile
+        )
+
         # CPU usage
         self.cpu_pub = self.create_publisher(
             Float32,
             '/raspclaws/cpu_usage',
+            self.qos_profile
+        )
+
+        # RAM usage
+        self.ram_pub = self.create_publisher(
+            Float32,
+            '/raspclaws/ram_usage',
+            self.qos_profile
+        )
+
+        # Servo positions (as formatted string)
+        self.servo_positions_pub = self.create_publisher(
+            String,
+            '/raspclaws/servo_positions',
+            self.qos_profile
+        )
+
+        # MPU6050 Gyro/Accelerometer data (as formatted string)
+        self.gyro_pub = self.create_publisher(
+            String,
+            '/raspclaws/gyro_data',
             self.qos_profile
         )
 
@@ -378,19 +413,86 @@ class RaspClawsNode(Node):
     def publish_system_info(self):
         """Publish system information periodically"""
         try:
-            # Publish battery voltage (placeholder - integrate with Voltage.py later)
+            if not ROBOT_MODULES_AVAILABLE:
+                # MOCK MODE: Publish placeholder data
+                battery_msg = Float32()
+                battery_msg.data = 7.4
+                self.battery_pub.publish(battery_msg)
+
+                cpu_temp_msg = Float32()
+                cpu_temp_msg.data = 45.0
+                self.cpu_temp_pub.publish(cpu_temp_msg)
+
+                cpu_msg = Float32()
+                cpu_msg.data = 25.0
+                self.cpu_pub.publish(cpu_msg)
+
+                ram_msg = Float32()
+                ram_msg.data = 50.0
+                self.ram_pub.publish(ram_msg)
+
+                status_msg = String()
+                status_msg.data = f'MOCK MODE - Smooth: {self.smooth_mode}, SmoothCam: {self.smooth_cam_mode}'
+                self.status_pub.publish(status_msg)
+
+                return
+
+            # ==================== REAL DATA ====================
+
+            # Battery voltage (from Info.py)
+            battery_voltage_str = Info.get_battery_voltage()
             battery_msg = Float32()
-            battery_msg.data = 7.4  # Placeholder
+            try:
+                battery_msg.data = float(battery_voltage_str)
+            except ValueError:
+                battery_msg.data = 0.0
             self.battery_pub.publish(battery_msg)
 
-            # Publish CPU usage (placeholder - integrate with Info.py later)
+            # CPU temperature (from Info.py)
+            cpu_temp_str = Info.get_cpu_tempfunc()
+            cpu_temp_msg = Float32()
+            try:
+                cpu_temp_msg.data = float(cpu_temp_str)
+            except ValueError:
+                cpu_temp_msg.data = 0.0
+            self.cpu_temp_pub.publish(cpu_temp_msg)
+
+            # CPU usage (from Info.py)
+            cpu_use_str = Info.get_cpu_use()
             cpu_msg = Float32()
-            cpu_msg.data = 25.0  # Placeholder
+            try:
+                cpu_msg.data = float(cpu_use_str)
+            except ValueError:
+                cpu_msg.data = 0.0
             self.cpu_pub.publish(cpu_msg)
 
-            # Publish status
+            # RAM usage (from Info.py)
+            ram_use_str = Info.get_ram_info()
+            ram_msg = Float32()
+            try:
+                ram_msg.data = float(ram_use_str)
+            except ValueError:
+                ram_msg.data = 0.0
+            self.ram_pub.publish(ram_msg)
+
+            # Servo positions (from Move.py) - only if hardware is initialized
+            if self.hardware_initialized:
+                servo_positions = move.get_servo_positions_info()
+                servo_msg = String()
+                servo_msg.data = servo_positions
+                self.servo_positions_pub.publish(servo_msg)
+
+            # MPU6050 Gyro/Accelerometer data (from Move.py) - only if hardware is initialized
+            if self.hardware_initialized:
+                gyro_data = move.get_mpu6050_data()
+                gyro_msg = String()
+                gyro_msg.data = gyro_data
+                self.gyro_pub.publish(gyro_msg)
+
+            # Status message
             status_msg = String()
-            status_msg.data = f'Running - Smooth: {self.smooth_mode}, SmoothCam: {self.smooth_cam_mode}'
+            hw_status = "HW_READY" if self.hardware_initialized else "HW_LAZY"
+            status_msg.data = f'{hw_status} - Smooth: {self.smooth_mode}, SmoothCam: {self.smooth_cam_mode}'
             self.status_pub.publish(status_msg)
 
         except Exception as e:
