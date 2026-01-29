@@ -19,7 +19,9 @@ Topics Published:
 - /raspclaws/imu (sensor_msgs/Imu): MPU6050 gyro/accelerometer data (structured) **PREFERRED**
 - /raspclaws/gyro_data (std_msgs/String): MPU6050 data (formatted string) **DEPRECATED - use /raspclaws/imu**
 - /raspclaws/status (std_msgs/String): Robot status messages
-- /raspclaws/camera/image (sensor_msgs/Image): Camera feed (TODO)
+- /raspclaws/camera/image_raw (sensor_msgs/Image): Camera feed (uncompressed)
+- /raspclaws/camera/image_compressed (sensor_msgs/CompressedImage): Camera feed (JPEG compressed)
+- /raspclaws/camera/camera_info (sensor_msgs/CameraInfo): Camera calibration info
 
 Topics Subscribed:
 - /raspclaws/cmd_vel (geometry_msgs/Twist): Movement commands
@@ -30,6 +32,7 @@ Services:
 - /raspclaws/set_smooth_mode (std_srvs/SetBool): Enable/disable smooth mode
 - /raspclaws/set_smooth_cam (std_srvs/SetBool): Enable/disable smooth camera mode
 - /raspclaws/set_servo_standby (std_srvs/SetBool): Set servo standby mode (True=Standby, False=Wakeup)
+- /raspclaws/set_camera_pause (std_srvs/SetBool): Pause/resume camera stream (True=Pause, False=Resume)
 """
 
 import sys
@@ -73,11 +76,13 @@ try:
     import Switch as switch
     import RobotLight as robotLight
     import Info
+    from FPV_ROS2 import CameraPublisher
     ROBOT_MODULES_AVAILABLE = True
 except ImportError as e:
     print(f"WARNING: Robot modules not available: {e}")
     print("Running in MOCK MODE - robot control disabled")
     ROBOT_MODULES_AVAILABLE = False
+    CameraPublisher = None  # Set to None if not available
 
 
 # ==================== ROS 2 Node ====================
@@ -107,6 +112,7 @@ class RaspClawsNode(Node):
         # Lazy initialization state
         self.hardware_initialized = False
         self.ws2812 = None
+        self.camera_publisher = None  # Camera publisher (separate node)
 
         self.get_logger().info('💤 Lazy initialization enabled - hardware will be initialized on first command')
         self.get_logger().info('   (Servos stay soft until first movement/head command)')
@@ -157,6 +163,18 @@ class RaspClawsNode(Node):
             except:
                 self.ws2812 = None
                 self.get_logger().warn('WS2812 LEDs not available')
+
+            # Initialize camera publisher (optional)
+            try:
+                if CameraPublisher is not None:
+                    self.get_logger().info('🎥 Initializing camera publisher...')
+                    self.camera_publisher = CameraPublisher()
+                    self.get_logger().info('✓ Camera publisher initialized')
+                else:
+                    self.get_logger().warn('Camera publisher not available')
+            except Exception as e:
+                self.get_logger().warn(f'Camera publisher initialization failed: {e}')
+                self.camera_publisher = None
 
             self.hardware_initialized = True
             self.get_logger().info('✓ Robot hardware initialized successfully')
@@ -280,6 +298,13 @@ class RaspClawsNode(Node):
             SetBool,
             '/raspclaws/set_servo_standby',
             self.set_servo_standby_callback
+        )
+
+        # Camera pause/resume service
+        self.camera_pause_srv = self.create_service(
+            SetBool,
+            '/raspclaws/set_camera_pause',
+            self.set_camera_pause_callback
         )
 
         self.get_logger().info('Services created')
@@ -465,6 +490,39 @@ class RaspClawsNode(Node):
 
         return response
 
+    def set_camera_pause_callback(self, request, response):
+        """Service callback to pause/resume camera stream"""
+        try:
+            pause_requested = request.data  # True = Pause, False = Resume
+
+            if not ROBOT_MODULES_AVAILABLE or self.camera_publisher is None:
+                self.get_logger().info(f'MOCK: Camera pause set to {pause_requested}')
+                response.success = True
+                response.message = f'MOCK: Camera pause set to {pause_requested}'
+                return response
+
+            if pause_requested:
+                # PAUSE: Stop camera streaming (save CPU/power)
+                self.get_logger().info('📷 CAMERA PAUSE - Stopping video stream')
+                self.camera_publisher.pause()
+                response.success = True
+                response.message = 'Camera stream PAUSED - saving CPU/power'
+            else:
+                # RESUME: Restart camera streaming
+                self.get_logger().info('📷 CAMERA RESUME - Restarting video stream')
+                self.camera_publisher.resume()
+                response.success = True
+                response.message = 'Camera stream RESUMED'
+
+            self.get_logger().info(f'Camera pause mode: {pause_requested}')
+
+        except Exception as e:
+            self.get_logger().error(f'Error setting camera pause mode: {e}')
+            response.success = False
+            response.message = f'Error: {e}'
+
+        return response
+
     # ==================== Periodic Tasks ====================
 
     def publish_system_info(self):
@@ -615,7 +673,14 @@ class RaspClawsNode(Node):
 
         if ROBOT_MODULES_AVAILABLE:
             try:
+                # Cleanup camera
+                if self.camera_publisher is not None:
+                    self.camera_publisher.shutdown()
+
+                # Cleanup movement
                 move.clean_all()
+
+                # Cleanup LEDs
                 if self.ws2812:
                     self.ws2812.led_close()
             except Exception as e:
