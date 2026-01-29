@@ -9,6 +9,8 @@ ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH="/ros2_ws:/ros2_ws/Server:${PYTHONPATH}"
 
 # System-Abhängigkeiten installieren
+
+# Basis-Tools und I2C
 RUN apt-get update && apt-get install -y \
     python3-pip \
     python3-setuptools \
@@ -16,27 +18,33 @@ RUN apt-get update && apt-get install -y \
     python3-smbus \
     i2c-tools \
     libgpiod-dev \
-    # Notwendig für libcamera / picamera2
+    && rm -rf /var/lib/apt/lists/*
+
+# Kamera und Grafik-Abhängigkeiten
+RUN apt-get update && apt-get install -y \
     libcamera-dev \
     libcamera-tools \
     libcap-dev \
-    # Notwendig für OpenCV (selbst in der Headless-Version)
     libgl1 \
     libglib2.0-0 \
-    # Prozess-Management
-    python3-psutil \
-    # ROS2 cv_bridge für Image-Konvertierung
+    && rm -rf /var/lib/apt/lists/*
+
+# ROS2 spezifische System-Pakete
+RUN apt-get update && apt-get install -y \
     ros-humble-cv-bridge \
+    python3-psutil \
     && rm -rf /var/lib/apt/lists/*
 
 # Python-Abhängigkeiten für die Hardware
+
+# Große Python Bibliotheken
 RUN pip3 install --no-cache-dir \
     numpy \
     opencv-python-headless \
-    pyzmq \
-    imutils \
-    psutil \
-    # Hardware / Motoren
+    pyzmq
+
+# Hardware-Treiber und spezialisierte Libs
+RUN pip3 install --no-cache-dir \
     adafruit-pca9685 \
     adafruit-gpio \
     mpu6050-raspberrypi \
@@ -46,8 +54,12 @@ RUN pip3 install --no-cache-dir \
     # Wichtig: lgpio ist für neuere Systeme (wie dein Debian Trixie)
     # der stabilere Ersatz für RPi.GPIO innerhalb von Docker
     lgpio \
+    imutils \
+    psutil \
     # Kamera
     picamera2
+    # HIER DEINE NEUE LIBRARY:
+    #meine-neue-roboter-lib
 
 # Arbeitsverzeichnis erstellen
 WORKDIR /ros2_ws
