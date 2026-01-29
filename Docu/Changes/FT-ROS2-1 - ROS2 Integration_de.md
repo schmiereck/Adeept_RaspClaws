@@ -1,4 +1,4 @@
-# ROS 2 Integration für Adeept RaspClaws
+# FT-ROS2-1: ROS 2 Integration für Adeept RaspClaws
 
 ## Übersicht
 

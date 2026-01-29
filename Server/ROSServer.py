@@ -123,11 +123,16 @@ class RaspClawsNode(Node):
         try:
             self.get_logger().info('🤖 Initializing robot hardware on first command...')
 
+            # ⚡ JETZT ERST Servos aktivieren!
+            self.get_logger().info('⚡ Aktiviere PCA9685 Servo-Controller...')
+            RPIservo.initialize_pwm()  # <--- EXPLIZITER AUFRUF
+
             # Initialize switches
             switch.switchSetup()
             switch.set_all_switch_off()
 
             # Initialize servos
+            self.get_logger().info('🔧 Initialisiere Servo-Positionen...')
             move.init_all()
 
             # Initialize LEDs (optional)
@@ -136,7 +141,7 @@ class RaspClawsNode(Node):
                 if self.ws2812.check_spi_state() != 0:
                     self.ws2812.start()
                     self.ws2812.breath(70, 70, 255)
-                    self.get_logger().info('WS2812 LEDs initialized')
+                    self.get_logger().info('✓ WS2812 LEDs initialized')
                 else:
                     self.ws2812 = None
             except:
@@ -145,6 +150,7 @@ class RaspClawsNode(Node):
 
             self.hardware_initialized = True
             self.get_logger().info('✓ Robot hardware initialized successfully')
+            self.get_logger().info('🔥 Servos sind jetzt AKTIV und STEIF!')
         except Exception as e:
             self.get_logger().error(f'Failed to initialize robot hardware: {e}')
             raise
