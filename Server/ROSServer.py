@@ -525,6 +525,17 @@ class RaspClawsNode(Node):
                 ram_msg.data = 0.0
             self.ram_pub.publish(ram_msg)
 
+            # MPU6050 Gyro/Accelerometer data (from Move.py)
+            # Gyro sensor is independent of servos, so we can publish even before hardware init
+            try:
+                gyro_data = move.get_mpu6050_data()
+                gyro_msg = String()
+                gyro_msg.data = gyro_data
+                self.gyro_pub.publish(gyro_msg)
+                self.get_logger().debug(f'Published gyro_data: {gyro_data}')
+            except Exception as e:
+                self.get_logger().error(f'Error getting/publishing gyro data: {e}')
+
             # Servo positions (from Move.py) - only if hardware is initialized
             if self.hardware_initialized:
                 servo_positions = move.get_servo_positions_info()
@@ -532,12 +543,6 @@ class RaspClawsNode(Node):
                 servo_msg.data = servo_positions
                 self.servo_positions_pub.publish(servo_msg)
 
-            # MPU6050 Gyro/Accelerometer data (from Move.py) - only if hardware is initialized
-            if self.hardware_initialized:
-                gyro_data = move.get_mpu6050_data()
-                gyro_msg = String()
-                gyro_msg.data = gyro_data
-                self.gyro_pub.publish(gyro_msg)
 
             # Status message
             status_msg = String()

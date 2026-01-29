@@ -148,14 +148,22 @@ def publish_system_info(self):
 
 #### Lazy Initialization
 
-- **Servo-Positionen** und **Gyro-Daten** werden nur gesendet, wenn Hardware initialisiert ist
-- **System-Daten** (Battery, CPU, RAM) werden immer gesendet (auch im Lazy Mode)
+**System-Daten** werden IMMER gesendet (auch im Lazy Mode):
+- Battery, CPU Temp, CPU Usage, RAM Usage
+- **Gyro-Daten** (MPU6050 ist unabhängig von Servos!)
+
+**Servo-Daten** werden NUR gesendet, wenn Hardware initialisiert ist:
+- Servo-Positionen (benötigt initialisierte Servos)
 
 ```python
+# IMMER gesendet:
+battery_voltage = Info.get_battery_voltage()
+cpu_temp = Info.get_cpu_tempfunc()
+gyro_data = move.get_mpu6050_data()  # ✅ Unabhängig von Servos!
+
+# NUR nach Hardware-Init:
 if self.hardware_initialized:
-    # Nur nach erstem Bewegungsbefehl
     servo_positions = move.get_servo_positions_info()
-    gyro_data = move.get_mpu6050_data()
 ```
 
 #### MOCK MODE
@@ -212,7 +220,7 @@ ros2 topic echo /raspclaws/status
 # Servo Positionen (nur nach Hardware-Init)
 ros2 topic echo /raspclaws/servo_positions
 
-# Gyro Data (nur nach Hardware-Init)
+# Gyro Data (IMMER verfügbar - MPU6050 ist unabhängig von Servos)
 ros2 topic echo /raspclaws/gyro_data
 ```
 
@@ -232,17 +240,20 @@ $ ros2 topic echo /raspclaws/ram_usage
 data: 42.1
 
 $ ros2 topic echo /raspclaws/status
-data: 'HW_LAZY - Smooth: False, SmoothCam: False'
+data: 'HW_LAZY - Servos: ACTIVE, Smooth: False, SmoothCam: False'
+
+# Gyro-Daten sind SOFORT verfügbar (auch im Lazy Mode):
+$ ros2 topic echo /raspclaws/gyro_data
+data: 'G:1.23,0.45,-0.12 A:0.15,0.08,9.81'
+# oder wenn Sensor nicht verbunden:
+data: 'MPU:N/A'
 
 # Nach erstem Bewegungsbefehl:
 $ ros2 topic echo /raspclaws/status
-data: 'HW_READY - Smooth: False, SmoothCam: False'
+data: 'HW_READY - Servos: ACTIVE, Smooth: False, SmoothCam: False'
 
 $ ros2 topic echo /raspclaws/servo_positions
 data: 'L1:266,310 L2:334,279 L3:266,310 R1:266,321 R2:334,290 R3:266,321'
-
-$ ros2 topic echo /raspclaws/gyro_data
-data: 'X:0.12 Y:-0.08 Z:9.81'
 ```
 
 ## Vergleich mit GUIServer
