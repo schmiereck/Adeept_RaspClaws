@@ -76,13 +76,26 @@ try:
     import Switch as switch
     import RobotLight as robotLight
     import Info
-    from FPV_ROS2 import CameraPublisher
     ROBOT_MODULES_AVAILABLE = True
 except ImportError as e:
     print(f"WARNING: Robot modules not available: {e}")
     print("Running in MOCK MODE - robot control disabled")
     ROBOT_MODULES_AVAILABLE = False
-    CameraPublisher = None  # Set to None if not available
+    move = None
+    RPIservo = None
+    switch = None
+    robotLight = None
+    Info = None
+
+# Import camera module separately (optional, may fail if libcamera not available)
+CameraPublisher = None
+try:
+    from FPV_ROS2 import CameraPublisher
+    print("✓ Camera module available")
+except ImportError as e:
+    print(f"⚠ Camera module not available: {e}")
+    print("  (Camera features will be disabled, but robot control still works)")
+    CameraPublisher = None
 
 
 # ==================== ROS 2 Node ====================
