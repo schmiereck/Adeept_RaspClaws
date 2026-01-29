@@ -28,6 +28,7 @@ Services:
 - /raspclaws/reset_servos (std_srvs/Trigger): Reset all servos to default
 - /raspclaws/set_smooth_mode (std_srvs/SetBool): Enable/disable smooth mode
 - /raspclaws/set_smooth_cam (std_srvs/SetBool): Enable/disable smooth camera mode
+- /raspclaws/set_servo_standby (std_srvs/SetBool): Set servo standby mode (True=Standby, False=Wakeup)
 """
 
 import sys
@@ -98,6 +99,7 @@ class RaspClawsNode(Node):
         # Robot state
         self.smooth_mode = False
         self.smooth_cam_mode = False
+        self.servo_standby_active = False
         self.current_twist = Twist()
         self.current_head_pos = Point()
 
@@ -265,6 +267,13 @@ class RaspClawsNode(Node):
             self.set_smooth_cam_callback
         )
 
+        # Servo standby/wakeup service
+        self.servo_standby_srv = self.create_service(
+            SetBool,
+            '/raspclaws/set_servo_standby',
+            self.set_servo_standby_callback
+        )
+
         self.get_logger().info('Services created')
 
     def create_timers(self):
@@ -408,6 +417,46 @@ class RaspClawsNode(Node):
 
         return response
 
+    def set_servo_standby_callback(self, request, response):
+        """Service callback to set servo standby mode"""
+        try:
+            standby_requested = request.data  # True = Standby, False = Wakeup
+
+            if not ROBOT_MODULES_AVAILABLE:
+                self.get_logger().info(f'MOCK: Servo standby set to {standby_requested}')
+                self.servo_standby_active = standby_requested
+                response.success = True
+                response.message = f'MOCK: Servo standby set to {standby_requested}'
+                return response
+
+            # Lazy initialization: Initialize hardware before standby/wakeup
+            if not self.hardware_initialized:
+                self.init_robot_hardware()
+
+            if standby_requested:
+                # STANDBY: Put servos to sleep (soft, low power)
+                self.get_logger().info('🔋 SERVO STANDBY - Stopping PWM signals')
+                move.standby()
+                self.servo_standby_active = True
+                response.success = True
+                response.message = 'Servos in STANDBY mode - legs are soft, low power'
+            else:
+                # WAKEUP: Restore servos to stand position
+                self.get_logger().info('⚡ SERVO WAKEUP - Restoring servo positions')
+                move.wakeup()
+                self.servo_standby_active = False
+                response.success = True
+                response.message = 'Servos WAKEUP - robot ready in stand position'
+
+            self.get_logger().info(f'Servo standby mode: {self.servo_standby_active}')
+
+        except Exception as e:
+            self.get_logger().error(f'Error setting servo standby mode: {e}')
+            response.success = False
+            response.message = f'Error: {e}'
+
+        return response
+
     # ==================== Periodic Tasks ====================
 
     def publish_system_info(self):
@@ -432,7 +481,8 @@ class RaspClawsNode(Node):
                 self.ram_pub.publish(ram_msg)
 
                 status_msg = String()
-                status_msg.data = f'MOCK MODE - Smooth: {self.smooth_mode}, SmoothCam: {self.smooth_cam_mode}'
+                servo_status = "STANDBY" if self.servo_standby_active else "ACTIVE"
+                status_msg.data = f'MOCK MODE - Servos: {servo_status}, Smooth: {self.smooth_mode}, SmoothCam: {self.smooth_cam_mode}'
                 self.status_pub.publish(status_msg)
 
                 return
@@ -492,7 +542,8 @@ class RaspClawsNode(Node):
             # Status message
             status_msg = String()
             hw_status = "HW_READY" if self.hardware_initialized else "HW_LAZY"
-            status_msg.data = f'{hw_status} - Smooth: {self.smooth_mode}, SmoothCam: {self.smooth_cam_mode}'
+            servo_status = "STANDBY" if self.servo_standby_active else "ACTIVE"
+            status_msg.data = f'{hw_status} - Servos: {servo_status}, Smooth: {self.smooth_mode}, SmoothCam: {self.smooth_cam_mode}'
             self.status_pub.publish(status_msg)
 
         except Exception as e:
