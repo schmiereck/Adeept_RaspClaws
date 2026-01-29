@@ -16,7 +16,8 @@ Topics Published:
 - /raspclaws/cpu_usage (std_msgs/Float32): CPU usage percentage (0-100)
 - /raspclaws/ram_usage (std_msgs/Float32): RAM usage percentage (0-100)
 - /raspclaws/servo_positions (std_msgs/String): Current servo positions (formatted string)
-- /raspclaws/gyro_data (std_msgs/String): MPU6050 gyro/accelerometer data (formatted string)
+- /raspclaws/imu (sensor_msgs/Imu): MPU6050 gyro/accelerometer data (structured) **PREFERRED**
+- /raspclaws/gyro_data (std_msgs/String): MPU6050 data (formatted string) **DEPRECATED - use /raspclaws/imu**
 - /raspclaws/status (std_msgs/String): Robot status messages
 - /raspclaws/camera/image (sensor_msgs/Image): Camera feed (TODO)
 
@@ -52,8 +53,8 @@ try:
     from rclpy.executors import ExternalShutdownException
 
     from std_msgs.msg import Float32, String
-    from geometry_msgs.msg import Twist, Point
-    from sensor_msgs.msg import Image
+    from geometry_msgs.msg import Twist, Point, Vector3, Quaternion
+    from sensor_msgs.msg import Image, Imu
     from std_srvs.srv import Trigger, SetBool
 
     ROS2_AVAILABLE = True
@@ -201,10 +202,17 @@ class RaspClawsNode(Node):
             self.qos_profile
         )
 
-        # MPU6050 Gyro/Accelerometer data (as formatted string)
+        # MPU6050 Gyro/Accelerometer data (as formatted string) - DEPRECATED, use /raspclaws/imu instead
         self.gyro_pub = self.create_publisher(
             String,
             '/raspclaws/gyro_data',
+            self.qos_profile
+        )
+
+        # MPU6050 IMU data (structured) - PREFERRED
+        self.imu_pub = self.create_publisher(
+            Imu,
+            '/raspclaws/imu',
             self.qos_profile
         )
 
@@ -529,9 +537,56 @@ class RaspClawsNode(Node):
             # Gyro sensor is independent of servos, so we can publish even before hardware init
             try:
                 gyro_data = move.get_mpu6050_data()
+
+                # Publish as String (DEPRECATED - for backward compatibility)
                 gyro_msg = String()
                 gyro_msg.data = gyro_data
                 self.gyro_pub.publish(gyro_msg)
+
+                # Publish as structured IMU message (PREFERRED)
+                if gyro_data != "MPU:N/A" and gyro_data != "MPU:ERROR":
+                    # Parse gyro_data string: "G:x,y,z A:x,y,z"
+                    try:
+                        parts = gyro_data.split(' ')
+                        gyro_part = parts[0].split(':')[1]  # "x,y,z"
+                        accel_part = parts[1].split(':')[1]  # "x,y,z"
+
+                        gyro_values = [float(x) for x in gyro_part.split(',')]
+                        accel_values = [float(x) for x in accel_part.split(',')]
+
+                        # Create IMU message
+                        imu_msg = Imu()
+
+                        # Header
+                        imu_msg.header.stamp = self.get_clock().now().to_msg()
+                        imu_msg.header.frame_id = 'imu_link'
+
+                        # Angular velocity (rad/s) - convert from deg/s
+                        imu_msg.angular_velocity.x = gyro_values[0] * 0.017453293  # deg to rad
+                        imu_msg.angular_velocity.y = gyro_values[1] * 0.017453293
+                        imu_msg.angular_velocity.z = gyro_values[2] * 0.017453293
+
+                        # Linear acceleration (m/s²) - already in m/s²
+                        imu_msg.linear_acceleration.x = accel_values[0]
+                        imu_msg.linear_acceleration.y = accel_values[1]
+                        imu_msg.linear_acceleration.z = accel_values[2]
+
+                        # Orientation (not available from MPU6050 directly - set to unknown)
+                        imu_msg.orientation.x = 0.0
+                        imu_msg.orientation.y = 0.0
+                        imu_msg.orientation.z = 0.0
+                        imu_msg.orientation.w = 0.0  # Invalid quaternion = orientation unknown
+
+                        # Covariance (set first element to -1 to indicate unknown)
+                        imu_msg.orientation_covariance[0] = -1.0
+                        imu_msg.angular_velocity_covariance[0] = 0.0  # Assume known
+                        imu_msg.linear_acceleration_covariance[0] = 0.0  # Assume known
+
+                        self.imu_pub.publish(imu_msg)
+                        self.get_logger().debug(f'Published IMU data: gyro={gyro_values}, accel={accel_values}')
+                    except Exception as parse_error:
+                        self.get_logger().warn(f'Failed to parse gyro_data for IMU message: {parse_error}')
+
                 self.get_logger().debug(f'Published gyro_data: {gyro_data}')
             except Exception as e:
                 self.get_logger().error(f'Error getting/publishing gyro data: {e}')
