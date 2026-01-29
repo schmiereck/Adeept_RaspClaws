@@ -11,9 +11,38 @@
 
 ### 2. **Dockerfile.ros2**
 - ✅ `ros-humble-cv-bridge` installiert (benötigt für Image-Konvertierung)
+- ✅ `python3-libcamera` installiert (Python-Bindings für libcamera)
+- ✅ `python3-kms++` installiert (Display-System für libcamera)
+- ✅ `python3-picamera2` über apt statt pip (enthält korrekte libcamera-Bindings)
+- ✅ `picamera2` aus pip entfernt (Konflikt mit System-Package)
 
 ### 3. **FPV_ROS2.py**
 - ✅ RGB → BGR Konvertierung für JPEG-Encoding (OpenCV erwartet BGR)
+
+---
+
+## 🔧 WICHTIG: libcamera Problem gelöst!
+
+**Problem:** `ModuleNotFoundError: No module named 'libcamera'`
+
+**Ursache:** 
+- `picamera2` über pip installiert findet die System-Python-Bindings nicht
+- `python3-libcamera` muss über apt installiert werden
+- `picamera2` muss auch über apt kommen (nicht pip)
+
+**Lösung:**
+```dockerfile
+# In Dockerfile.ros2:
+
+# System-Pakete (apt):
+RUN apt-get install -y \
+    python3-libcamera \      # ✅ Python-Bindings für libcamera
+    python3-kms++ \          # ✅ Display-System
+    python3-picamera2        # ✅ Picamera2 mit korrekten Bindings
+
+# NICHT mehr über pip:
+# picamera2  ❌ ENTFERNT
+```
 
 ---
 

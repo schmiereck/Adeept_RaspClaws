@@ -24,6 +24,8 @@ RUN apt-get update && apt-get install -y \
 RUN apt-get update && apt-get install -y \
     libcamera-dev \
     libcamera-tools \
+    python3-libcamera \
+    python3-kms++ \
     libcap-dev \
     libgl1 \
     libglib2.0-0 \
@@ -33,6 +35,7 @@ RUN apt-get update && apt-get install -y \
 RUN apt-get update && apt-get install -y \
     ros-humble-cv-bridge \
     python3-psutil \
+    python3-picamera2 \
     && rm -rf /var/lib/apt/lists/*
 
 # Python-Abhängigkeiten für die Hardware
@@ -55,11 +58,8 @@ RUN pip3 install --no-cache-dir \
     # der stabilere Ersatz für RPi.GPIO innerhalb von Docker
     lgpio \
     imutils \
-    psutil \
-    # Kamera
-    picamera2
-    # HIER DEINE NEUE LIBRARY:
-    #meine-neue-roboter-lib
+    psutil
+    # picamera2 wird über apt installiert (siehe unten)
 
 # Arbeitsverzeichnis erstellen
 WORKDIR /ros2_ws
