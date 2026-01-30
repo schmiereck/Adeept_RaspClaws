@@ -518,7 +518,7 @@ def handle_power_management_command(data):
 def run():
 	global direction_command, turn_command, SmoothMode, steadyMode, ws2812
 	info_threading=threading.Thread(target=info_send_client)   #Define a thread for communication
-	info_threading.setDaemon(True)                             #'True' means it is a front thread,it would close when the mainloop() closes
+	info_threading.daemon = True                               #'True' means it is a front thread,it would close when the mainloop() closes
 	info_threading.start()                                     #Thread starts
 
 	Y_pitch = 300
@@ -587,7 +587,7 @@ def start_video_thread():
 	global fps_threading
 	print("Starting FPV video stream thread (runs continuously)...")
 	fps_threading = threading.Thread(target=FPV_thread)
-	fps_threading.setDaemon(True)
+	fps_threading.daemon = True
 	fps_threading.start()
 	print("FPV thread started. Clients can connect to video stream.")
 
@@ -602,7 +602,7 @@ def check_network_and_start_ap(ws2812):
 		print(ipaddr_check)
 	except:
 		ap_threading = threading.Thread(target=ap_thread)
-		ap_threading.setDaemon(True)
+		ap_threading.daemon = True
 		ap_threading.start()
 
 		if ws2812:
