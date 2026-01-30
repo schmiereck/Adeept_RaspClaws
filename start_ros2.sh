@@ -15,11 +15,41 @@ case "$1" in
 
     start)
         echo "Starting RaspClaws ROS 2 Server..."
+        echo ""
+        echo "Step 1: Checking for running GUIServer processes..."
+        if pgrep -f "Server/GUIServer.py" > /dev/null; then
+            echo "⚠️  GUIServer is running - stopping it first (camera conflict)"
+            sudo bash Server/stop_guiserver.sh
+            echo "Waiting 2 seconds for ports to be released..."
+            sleep 2
+        else
+            echo "✓ No GUIServer running"
+        fi
+        echo ""
+        echo "Step 2: Starting Docker containers..."
         docker-compose -f $COMPOSE_FILE up -d
         echo "✓ ROS 2 Server started"
         echo ""
         echo "Check logs with: ./start_ros2.sh logs"
         echo "Stop with: ./start_ros2.sh stop"
+        ;;
+
+    start-fg)
+        echo "Starting RaspClaws ROS 2 Server (foreground)..."
+        echo ""
+        echo "Step 1: Checking for running GUIServer processes..."
+        if pgrep -f "Server/GUIServer.py" > /dev/null; then
+            echo "⚠️  GUIServer is running - stopping it first (camera conflict)"
+            sudo bash Server/stop_guiserver.sh
+            echo "Waiting 2 seconds for ports to be released..."
+            sleep 2
+        else
+            echo "✓ No GUIServer running"
+        fi
+        echo ""
+        echo "Step 2: Starting Docker containers (foreground)..."
+        echo "Press Ctrl+C to stop"
+        docker-compose -f $COMPOSE_FILE up
         ;;
 
     stop)
@@ -69,7 +99,8 @@ case "$1" in
         echo ""
         echo "Commands:"
         echo "  build     - Build Docker image"
-        echo "  start     - Start ROS 2 server"
+        echo "  start     - Start ROS 2 server (background, auto-stops GUIServer)"
+        echo "  start-fg  - Start ROS 2 server (foreground, auto-stops GUIServer)"
         echo "  stop      - Stop ROS 2 server"
         echo "  restart   - Restart ROS 2 server"
         echo "  logs      - Show logs (follow mode)"
@@ -77,7 +108,9 @@ case "$1" in
         echo "  shell     - Open bash shell in container"
         echo "  test      - Run basic connectivity tests"
         echo ""
-        echo "Example: $0 build && $0 start"
+        echo "Example: $0 start"
+        echo ""
+        echo "Note: 'start' and 'start-fg' automatically stop GUIServer to avoid camera conflicts"
         exit 1
         ;;
 esac

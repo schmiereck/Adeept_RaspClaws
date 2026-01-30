@@ -57,6 +57,9 @@ services:
   # Camera container - starts both FPV.py (camera capture) and FPV_ROS2_simple.py (ROS2 publisher)
   # FPV.py handles camera hardware and provides frames via ZMQ
   # FPV_ROS2_simple.py reads those frames and publishes to ROS2 topics
+  # Camera container - publishes camera frames to ROS2 topics
+  # OPTIONAL: Only needed if you want camera stream in ROS2
+  # Disable this if no camera is connected
   raspclaws_camera:
     image: adeept_raspclaws-raspclaws_ros2:latest
     build:
@@ -65,16 +68,41 @@ services:
     container_name: raspclaws_camera
     network_mode: host  # ROS2 DDS braucht host network
     privileged: true    # Für Kamera-Zugriff
+    # Map ALL camera-related devices
     devices:
-      - /dev/video0:/dev/video0  # Kamera device
+      - /dev/video0:/dev/video0  # V4L2 camera device
+      - /dev/video10:/dev/video10  # ISP device (if exists)
+      - /dev/video11:/dev/video11  # ISP device (if exists)
+      - /dev/video12:/dev/video12  # ISP device (if exists)
+      - /dev/video13:/dev/video13  # ISP device (if exists)
+      - /dev/video14:/dev/video14  # ISP device (if exists)
+      - /dev/video15:/dev/video15  # ISP device (if exists)
+      - /dev/video16:/dev/video16  # ISP device (if exists)
+      - /dev/media0:/dev/media0    # Media controller
+      - /dev/media1:/dev/media1    # Media controller (if exists)
+      - /dev/media2:/dev/media2    # Media controller (if exists)
+      - /dev/media3:/dev/media3    # Media controller (if exists)
     environment:
       - ROS_DOMAIN_ID=0  # Gleiche Domain wie raspclaws_ros2
       - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
       - PYTHONPATH=/ros2_ws:/ros2_ws/Server
       - ROS_STATIC_PEERS=192.168.2.121  # Gleicher PC wie raspclaws_ros2
+      # libcamera environment variables
+      - LIBCAMERA_LOG_LEVELS=*:ERROR  # Reduce log spam
     volumes:
       - /home/pi/adeept_raspclaws:/ros2_ws
-      - /dev:/dev  # Gibt dem Container direkten Zugriff auf Kamera und I2C
+      - /dev:/dev  # Gibt dem Container direkten Zugriff auf alle Devices
+      - /sys:/sys  # Für Hardware-Erkennung
+      - /run/udev:/run/udev:ro  # udev rules (readonly)
     command: >
       bash /ros2_ws/Server/start_camera_ros2.sh
-    restart: unless-stopped
+    # Only restart if container crashes (exit code != 0)
+    # Will NOT restart if camera is not available (script sleeps with exit 0)
+    restart: on-failure
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f 'FPV.py' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
