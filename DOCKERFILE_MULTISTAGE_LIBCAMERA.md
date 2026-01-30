@@ -13,21 +13,38 @@
 
 ---
 
-## Lösung: Multi-Stage Docker Build
+## Lösung: Multi-Stage Docker Build (korrigiert)
 
-### Stage 1: Debian Bookworm (für libcamera)
+### Problem mit Debian Bookworm
+
+**Ursprünglicher Plan:** `python3-libcamera` aus Debian Bookworm  
+**Problem:** Diese Pakete existieren **NUR in Raspberry Pi OS**, nicht in Standard Debian!
+
+```bash
+# In Standard Debian Bookworm:
+apt-cache search python3-libcamera
+# Keine Ergebnisse! ❌
+```
+
+### Korrigierte Strategie
+
+**Hybrid-Ansatz:**
+1. **libcamera C-Library** aus Debian Bookworm (`libcamera0.2`)
+2. **picamera2** via pip (enthält Python-Bindings)
+
+### Stage 1: Debian Bookworm + pip
 
 ```dockerfile
 FROM debian:bookworm-slim AS camera-builder
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        python3-libcamera \      # ✅ Verfügbar in Bookworm!
-        python3-picamera2 \      # ✅ Verfügbar in Bookworm!
-        libcamera0.3 \
-        libcamera-ipa && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+# C-Library aus apt
+RUN apt-get install -y \
+    libcamera0.2 \          # ✅ Verfügbar in Debian!
+    libcamera-ipa \
+    libcamera-tools
+
+# Python-Bindings aus pip
+RUN pip3 install picamera2  # ✅ Enthält libcamera Python-Bindings
 ```
 
 ### Stage 2: ROS 2 Humble + libcamera
@@ -57,28 +74,31 @@ COPY --from=camera-builder /usr/lib/python3/dist-packages/picamera2 /usr/lib/pyt
 
 ## Was wird kopiert?
 
-### C-Libraries:
+### C-Libraries (aus Debian apt):
 ```
 /usr/lib/aarch64-linux-gnu/
-├── libcamera.so.0.3.0        # Haupt-Library
-├── libcamera.so.0.3 -> ...   # Symlink
+├── libcamera.so.0.2.0        # Haupt-Library
+├── libcamera.so.0.2 -> ...   # Symlink
 ├── libpisp.so.0.0.2          # ISP Support
-└── libcamera/                # IPA Plugins
+└── libcamera-ipa/            # IPA Plugins
     ├── ipa_rpi.so
     ├── ipa_rkisp1.so
     └── ...
 ```
 
-### Python-Bindings:
+### Python-Bindings (aus pip):
 ```
-/usr/lib/python3/dist-packages/
+/usr/local/lib/python3.11/dist-packages/  (Stage 1)
+→ kopiert nach:
+/usr/lib/python3/dist-packages/           (Stage 2, ROS2 Container)
+
 ├── libcamera/                # Python libcamera Module
 │   ├── __init__.py
 │   └── ...
 ├── picamera2/                # Picamera2 Module
 │   ├── __init__.py
 │   └── ...
-└── _libcamera*.so            # Native Extension
+└── _libcamera*.so            # Native Extension (compiled)
 ```
 
 ---
