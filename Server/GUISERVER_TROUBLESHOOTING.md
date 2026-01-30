@@ -59,20 +59,32 @@ sudo kill -9 <PID>
 
 **Sauberes Beenden:**
 
-⚠️ **WICHTIG:** Verwende **Ctrl+C** zum Beenden, **NICHT Ctrl+Z**!
+⚠️ **WICHTIG:** Verwende **Ctrl+C** zum Beenden!
 
-- **Ctrl+C** (✅ richtig): Beendet den Prozess sauber (Signal Handler schließt Sockets)
-- **Ctrl+Z** (❌ falsch): Pausiert den Prozess nur - läuft im Hintergrund weiter und blockiert Ports!
+- **Ctrl+C** (✅ empfohlen): Beendet den Prozess sauber (Signal Handler schließt Sockets)
+- **Ctrl+Z** (⚠️ funktioniert jetzt auch): Ab Version mit SIGTSTP-Handler wird auch bei Ctrl+Z ein sauberes Shutdown durchgeführt
 
-Wenn du versehentlich Ctrl+Z gedrückt hast:
+**Neu ab Version 2026-01-30:**
+Der GUIServer fängt jetzt auch Ctrl+Z ab und führt ein sauberes Shutdown durch, statt den Prozess zu suspendieren:
+
+```
+⚠️  WARNING: Ctrl+Z detected!
+Ctrl+Z suspends the process and keeps ports blocked!
+
+❌ DO NOT USE Ctrl+Z
+✅ USE Ctrl+C instead
+
+I will now perform a clean shutdown for you...
+```
+
+Der Server beendet sich trotzdem sauber und gibt alle Ports frei.
+
+**Falls du einen alten GUIServer mit suspendiertem Prozess hast:**
 ```bash
 # Liste pausierte Jobs
 jobs
 
-# Prozess im Vordergrund fortsetzen und dann mit Ctrl+C beenden
-fg
-
-# ODER direkt töten
+# NICHT fortsetzen! Direkt töten:
 bash Server/stop_guiserver.sh
 ```
 
@@ -173,39 +185,60 @@ Bei weiteren Problemen:
 
 ## ⚠️ WICHTIG: Ctrl+Z vs Ctrl+C
 
-**Verwende IMMER Ctrl+C zum Beenden, NIEMALS Ctrl+Z!**
+**Neu ab 2026-01-30:** Der GUIServer fängt jetzt auch Ctrl+Z ab und führt ein sauberes Shutdown durch!
 
-| Tastenkombination | Effekt | Sockets/Ports | Richtig? |
-|-------------------|--------|---------------|----------|
-| **Ctrl+C** | Beendet Prozess sauber | ✅ Werden freigegeben | ✅ **JA** |
-| **Ctrl+Z** | Pausiert Prozess nur | ❌ Bleiben blockiert | ❌ **NEIN** |
+| Tastenkombination | Effekt (neue Version) | Sockets/Ports | Status |
+|-------------------|----------------------|---------------|--------|
+| **Ctrl+C** | Beendet Prozess sauber | ✅ Werden freigegeben | ✅ **Empfohlen** |
+| **Ctrl+Z** | **Wird abgefangen** → sauberes Shutdown | ✅ Werden freigegeben | ⚠️ **Funktioniert jetzt** |
 
-**Wenn du versehentlich Ctrl+Z gedrückt hast:**
-```bash
-# Job-Liste anzeigen
-jobs
+**Was passiert bei Ctrl+Z (neue Version):**
+```
+⚠️  WARNING: Ctrl+Z detected!
+Ctrl+Z suspends the process and keeps ports blocked!
 
-# Prozess zurückholen und mit Ctrl+C beenden
-fg
+❌ DO NOT USE Ctrl+Z
+✅ USE Ctrl+C instead
 
-# ODER direkt alle Prozesse töten
-bash Server/stop_guiserver.sh
+I will now perform a clean shutdown for you...
+
+============================================================
+✅ GUIServer shutdown complete
+============================================================
 ```
 
-Der GUIServer hat jetzt einen Signal Handler, der bei Ctrl+C:
-- ✅ Sockets sauber schließt
-- ✅ Video-Thread stoppt
-- ✅ LEDs ausschaltet
-- ✅ Move-Module aufräumt
-- ✅ Ports freigibt
+Der Server beendet sich trotzdem sauber, auch wenn du versehentlich Ctrl+Z drückst!
 
-**Vermeide "Stopped" Prozesse:**
+**Alte Version (ohne SIGTSTP-Handler):**
+
+| Tastenkombination | Effekt (alte Version) | Sockets/Ports | Problem |
+|-------------------|----------------------|---------------|---------|
+| **Ctrl+Z** | Pausiert Prozess nur | ❌ Bleiben blockiert | ❌ **Schlecht!** |
+
+**Wenn du einen alten suspendierten Prozess hast:**
 ```bash
 # Prüfe auf gestoppte Prozesse
 jobs
+# Zeigt: [1]+ Stopped sudo python3 Server/GUIServer.py
 
-# Oder systemweit
+# NICHT fortsetzen! Direkt alle töten:
+bash Server/stop_guiserver.sh
+```
+
+Der GUIServer hat jetzt Signal Handler für:
+- ✅ **SIGINT** (Ctrl+C): Sauberes Shutdown
+- ✅ **SIGTERM** (kill): Sauberes Shutdown  
+- ✅ **SIGTSTP** (Ctrl+Z): **NEU!** Warnt und führt sauberes Shutdown durch
+- ✅ Sockets werden geschlossen
+- ✅ Video-Thread stoppt
+- ✅ LEDs werden ausgeschaltet
+- ✅ Move-Module werden aufgeräumt
+- ✅ Ports werden freigegeben
+
+**Vermeide "Stopped" Prozesse:**
+```bash
+# Systemweit prüfen
 ps aux | grep GUIServer
-# Wenn "T" in der Status-Spalte steht = Stopped (schlecht!)
+# Wenn "T" in der Status-Spalte steht = Stopped (nur bei alter Version)
 ```
 

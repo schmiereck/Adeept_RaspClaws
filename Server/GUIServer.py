@@ -86,9 +86,35 @@ def signal_handler(sig, frame):
 
 	sys.exit(0)
 
+
+def sigtstp_handler(sig, frame):
+	"""Handle Ctrl+Z (SIGTSTP) - warn user and perform cleanup instead of suspending"""
+	print("\n\n" + "="*60)
+	print("⚠️  WARNING: Ctrl+Z detected!")
+	print("="*60)
+	print("Ctrl+Z suspends the process and keeps ports blocked!")
+	print("")
+	print("❌ DO NOT USE Ctrl+Z")
+	print("✅ USE Ctrl+C instead")
+	print("")
+	print("I will now perform a clean shutdown for you...")
+	print("="*60 + "\n")
+
+	# Call the normal signal handler to do cleanup
+	signal_handler(sig, frame)
+
+
 # Register signal handlers
 signal.signal(signal.SIGINT, signal_handler)   # Ctrl+C
 signal.signal(signal.SIGTERM, signal_handler)  # kill command
+
+# Intercept Ctrl+Z and redirect to clean shutdown
+try:
+	signal.signal(signal.SIGTSTP, sigtstp_handler)  # Ctrl+Z
+	print("✓ Ctrl+Z handler registered (will perform clean shutdown instead of suspend)")
+except AttributeError:
+	# SIGTSTP might not be available on some systems (e.g., Windows)
+	print("⚠️  SIGTSTP (Ctrl+Z) handler not available on this system")
 
 # ==================== End Shutdown Handler ====================
 
