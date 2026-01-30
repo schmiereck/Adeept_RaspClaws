@@ -617,11 +617,30 @@ def check_network_and_start_ap(ws2812):
 
 def setup_server_socket(addr):
 	"""Create and configure server socket"""
-	tcpSerSock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	tcpSerSock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-	tcpSerSock.bind(addr)
-	tcpSerSock.listen(5)
-	return tcpSerSock
+	try:
+		tcpSerSock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+		tcpSerSock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+		tcpSerSock.bind(addr)
+		tcpSerSock.listen(5)
+		return tcpSerSock
+	except OSError as e:
+		if e.errno == 98:  # Address already in use
+			print("\n" + "="*60)
+			print("❌ ERROR: Address already in use")
+			print("="*60)
+			print(f"Port {addr[1]} is already in use by another process.")
+			print("\nThis usually means:")
+			print("  1. Another GUIServer is already running")
+			print("  2. A crashed GUIServer didn't release the port")
+			print("\nTo fix this, run:")
+			print("  bash Server/stop_guiserver.sh")
+			print("\nOr manually find and kill the process:")
+			print(f"  sudo lsof -i :{addr[1]}")
+			print(f"  sudo kill -9 <PID>")
+			print("="*60 + "\n")
+			raise  # Re-raise to exit the program
+		else:
+			raise  # Re-raise other errors
 
 
 def set_led_connected_state(ws2812):

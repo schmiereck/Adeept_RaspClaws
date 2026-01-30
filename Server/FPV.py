@@ -168,7 +168,21 @@ class FPV:
 		footage_socket.setsockopt(zmq.SNDHWM, 1)
 
 		print(f"Video server binding to port 5555 (PUB socket, allows multiple clients)")
-		footage_socket.bind('tcp://*:5555')  # Server binds, clients subscribe
+		try:
+			footage_socket.bind('tcp://*:5555')  # Server binds, clients subscribe
+		except zmq.error.ZMQError as e:
+			if 'Address already in use' in str(e):
+				print("\n" + "="*60)
+				print("❌ ERROR: Video port 5555 already in use")
+				print("="*60)
+				print("Another FPV/GUIServer process is already using port 5555.")
+				print("\nTo fix this, run:")
+				print("  bash Server/stop_guiserver.sh")
+				print("\nOr manually find and kill the process:")
+				print("  sudo lsof -i :5555")
+				print("  sudo kill -9 <PID>")
+				print("="*60 + "\n")
+			raise  # Re-raise to stop the thread
 
 		# Give ZMQ time to establish the socket
 		time.sleep(0.5)
