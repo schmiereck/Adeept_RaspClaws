@@ -58,8 +58,8 @@ services:
   # FPV.py handles camera hardware and provides frames via ZMQ
   # FPV_ROS2_simple.py reads those frames and publishes to ROS2 topics
   # Camera container - publishes camera frames to ROS2 topics
-  # OPTIONAL: Only needed if you want camera stream in ROS2
-  # Disable this if no camera is connected
+  # libcamera and picamera2 are now built into the Docker image via Multi-Stage Build
+  # from Debian Bookworm (which has native python3-libcamera support)
   raspclaws_camera:
     image: adeept_raspclaws-raspclaws_ros2:latest
     build:
@@ -68,66 +68,35 @@ services:
     container_name: raspclaws_camera
     network_mode: host  # ROS2 DDS braucht host network
     privileged: true    # Für Kamera-Zugriff
-    # Map ALL camera-related devices
+    # Map camera devices (no library mounts needed - they're in the image!)
     devices:
       - /dev/video0:/dev/video0  # V4L2 camera device
       - /dev/video10:/dev/video10  # ISP device (if exists)
-      - /dev/video11:/dev/video11  # ISP device (if exists)
-      - /dev/video12:/dev/video12  # ISP device (if exists)
-      - /dev/video13:/dev/video13  # ISP device (if exists)
-      - /dev/video14:/dev/video14  # ISP device (if exists)
-      - /dev/video15:/dev/video15  # ISP device (if exists)
-      - /dev/video16:/dev/video16  # ISP device (if exists)
-      - /dev/media0:/dev/media0    # Media controller
-      - /dev/media1:/dev/media1    # Media controller (if exists)
-      - /dev/media2:/dev/media2    # Media controller (if exists)
-      - /dev/media3:/dev/media3    # Media controller (if exists)
-    environment:
-      - ROS_DOMAIN_ID=0  # Gleiche Domain wie raspclaws_ros2
-      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
-      - PYTHONPATH=/ros2_ws:/ros2_ws/Server
-      - ROS_STATIC_PEERS=192.168.2.121  # Gleicher PC wie raspclaws_ros2
-      # libcamera environment variables
-      - LIBCAMERA_LOG_LEVELS=*:ERROR  # Reduce log spam
-    volumes:
-      - /home/pi/adeept_raspclaws:/ros2_ws
-      - /dev:/dev  # Gibt dem Container direkten Zugriff auf alle Devices
-      - /sys:/sys  # Für Hardware-Erkennung
-      - /run/udev:/run/udev:ro  # udev rules (readonly)
-      - ./Server:/workspace/Server:rw
-      - ./client:/workspace/client:ro
-      - ./protocol.py:/workspace/protocol.py:ro
-      # Camera access
-      - /dev/video0:/dev/video0
-      - /dev/video10:/dev/video10
       - /dev/video11:/dev/video11
       - /dev/video12:/dev/video12
       - /dev/video13:/dev/video13
       - /dev/video14:/dev/video14
       - /dev/video15:/dev/video15
       - /dev/video16:/dev/video16
-      - /dev/media0:/dev/media0
+      - /dev/media0:/dev/media0    # Media controller
       - /dev/media1:/dev/media1
       - /dev/media2:/dev/media2
       - /dev/media3:/dev/media3
-      # ✅ NEU: Host libcamera in Container mounten
-      # ❌ ENTFERNEN (funktioniert nicht mit Symlinks):
-      #- /usr/lib/aarch64-linux-gnu/libcamera.so.0:/usr/lib/aarch64-linux-gnu/libcamera.so.0:ro
-      # ✅ STATTDESSEN: Ganzes libcamera-Verzeichnis mounten
-      #- /usr/lib/aarch64-linux-gnu/libcamera:/usr/lib/aarch64-linux-gnu/libcamera.so.0.6.0:ro
-      # picamera2 bleibt (ist ein Verzeichnis, kein Symlink)
-      - /usr/lib/python3/dist-packages/picamera2:/usr/lib/python3/dist-packages/picamera2:ro
+    environment:
+      - ROS_DOMAIN_ID=0
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+      - PYTHONPATH=/ros2_ws:/ros2_ws/Server
+      - ROS_STATIC_PEERS=192.168.2.121
+      - LIBCAMERA_LOG_LEVELS=*:ERROR  # Reduce libcamera log spam
+    volumes:
+      # Project files
+      - /home/pi/adeept_raspclaws:/ros2_ws
+      # Device access for hardware detection
+      - /dev:/dev
+      - /sys:/sys
+      - /run/udev:/run/udev:ro
     command: >
-      #bash /ros2_ws/Server/start_camera_ros2.sh
-      bash -c "
-      apt-get update &&
-      apt-get install -y --no-install-recommends libcamera0.0.1 python3-libcamera &&
-      apt-get clean &&
-      rm -rf /var/lib/apt/lists/* &&
-      python3 /workspace/Server/FPV.py
-      "
-    # Only restart if container crashes (exit code != 0)
-    # Will NOT restart if camera is not available (script sleeps with exit 0)
+      bash /ros2_ws/Server/start_camera_ros2.sh
     restart: on-failure
     healthcheck:
       test: ["CMD-SHELL", "pgrep -f 'FPV.py' || exit 1"]

@@ -1,12 +1,37 @@
-# Dockerfile for RaspClaws ROS 2 Server
+# ==================== STAGE 1: Camera Libraries from Debian Bookworm ====================
+# Debian Bookworm has native python3-libcamera and python3-picamera2 support
+# We extract these libraries and copy them to the ROS2 image
+FROM debian:bookworm-slim AS camera-builder
+
+# Install libcamera and picamera2 with all dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        python3-libcamera \
+        python3-picamera2 \
+        python3-numpy \
+        python3-opencv \
+        libcamera0.3 \
+        libcamera-ipa \
+        libcamera-tools && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# ==================== STAGE 2: Main ROS 2 Humble Image ====================
 FROM ros:humble-ros-base
 
 # Umgebungsvariablen
 ENV DEBIAN_FRONTEND=noninteractive
 ENV ROS_DISTRO=humble
 ENV PYTHONUNBUFFERED=1
-# Das hier ist der wichtigste Teil für deine Imports!
 ENV PYTHONPATH="/ros2_ws:/ros2_ws/Server:${PYTHONPATH}"
+ENV LIBCAMERA_LOG_LEVELS=*:ERROR
+
+# Copy libcamera libraries and Python bindings from Debian Bookworm
+COPY --from=camera-builder /usr/lib/aarch64-linux-gnu/libcamera* /usr/lib/aarch64-linux-gnu/
+COPY --from=camera-builder /usr/lib/aarch64-linux-gnu/libpisp* /usr/lib/aarch64-linux-gnu/
+COPY --from=camera-builder /usr/lib/python3/dist-packages/libcamera /usr/lib/python3/dist-packages/libcamera/
+COPY --from=camera-builder /usr/lib/python3/dist-packages/picamera2 /usr/lib/python3/dist-packages/picamera2/
+COPY --from=camera-builder /usr/lib/python3/dist-packages/_libcamera*.so /usr/lib/python3/dist-packages/
 
 # System-Abhängigkeiten installieren
 
@@ -21,27 +46,19 @@ RUN apt-get update && apt-get install -y \
     lsof \
     && rm -rf /var/lib/apt/lists/*
 
-# Kamera und Grafik-Abhängigkeiten
-# Note: python3-libcamera and python3-kms++ not available in Ubuntu 22.04 (Jammy)
-# We'll install picamera2 which includes these dependencies via pip
+# Kamera-Abhängigkeiten (minimal, da Libraries aus Bookworm kopiert wurden)
+# Wir brauchen nur die Runtime-Dependencies, nicht die Dev-Packages
 RUN apt-get update && apt-get install -y \
-    libcamera-dev \
-    libcamera-tools \
     libcap-dev \
     libgl1 \
     libglib2.0-0 \
-    libcamera0 \
-    && rm -rf /var/lib/apt/lists/*
-
-# ROS2 spezifische System-Pakete
-RUN apt-get update && apt-get install -y \
     ros-humble-cv-bridge \
     python3-psutil \
     && rm -rf /var/lib/apt/lists/*
 
 # Python-Abhängigkeiten für die Hardware
 
-# Große Python Bibliotheken
+# Große Python Bibliotheken (ohne picamera2 - kommt aus Bookworm)
 RUN pip3 install --no-cache-dir \
     numpy \
     opencv-python-headless \
@@ -58,9 +75,8 @@ RUN pip3 install --no-cache-dir \
     imutils \
     psutil
 
-# Kamera-Libs (separat, da komplexer)
-# picamera2 inkludiert die benötigten libcamera Python-Bindings
-RUN pip3 install --no-cache-dir picamera2
+# Hinweis: picamera2 und libcamera Python-Bindings kommen aus Debian Bookworm (Stage 1)
+# und sind bereits im Image vorhanden
 
 # Arbeitsverzeichnis erstellen
 WORKDIR /ros2_ws
