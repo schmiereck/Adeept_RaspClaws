@@ -155,6 +155,13 @@ class FPV:
 			cv2.line(frame_image, (300, 240), (340, 240), (128, 255, 128), 1)
 			cv2.line(frame_image, (320, 220), (320, 260), (128, 255, 128), 1)
 
+			# Share frame with ROS2 (if available, optional)
+			try:
+				from FPV_ROS2_simple import set_latest_frame
+				set_latest_frame(frame_image)
+			except:
+				pass  # ROS2 not available or not needed, continue normal operation
+
 			# Check if camera is paused - skip frame sending if paused
 			if not camera_paused:
 				# Frame encoding and sending (only when NOT paused)
