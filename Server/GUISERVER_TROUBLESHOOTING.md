@@ -58,7 +58,23 @@ sudo kill -9 <PID>
 ### Prävention:
 
 **Sauberes Beenden:**
-Beende GUIServer immer sauber mit Ctrl+C und warte auf das vollständige Shutdown.
+
+⚠️ **WICHTIG:** Verwende **Ctrl+C** zum Beenden, **NICHT Ctrl+Z**!
+
+- **Ctrl+C** (✅ richtig): Beendet den Prozess sauber (Signal Handler schließt Sockets)
+- **Ctrl+Z** (❌ falsch): Pausiert den Prozess nur - läuft im Hintergrund weiter und blockiert Ports!
+
+Wenn du versehentlich Ctrl+Z gedrückt hast:
+```bash
+# Liste pausierte Jobs
+jobs
+
+# Prozess im Vordergrund fortsetzen und dann mit Ctrl+C beenden
+fg
+
+# ODER direkt töten
+bash Server/stop_guiserver.sh
+```
 
 **Vor Neustart prüfen:**
 ```bash
@@ -152,3 +168,44 @@ Bei weiteren Problemen:
 1. Logs sammeln
 2. Prozessliste sammeln: `ps aux | grep python`
 3. Port-Status sammeln: `sudo netstat -tulpn | grep -E '5555|10223'`
+
+---
+
+## ⚠️ WICHTIG: Ctrl+Z vs Ctrl+C
+
+**Verwende IMMER Ctrl+C zum Beenden, NIEMALS Ctrl+Z!**
+
+| Tastenkombination | Effekt | Sockets/Ports | Richtig? |
+|-------------------|--------|---------------|----------|
+| **Ctrl+C** | Beendet Prozess sauber | ✅ Werden freigegeben | ✅ **JA** |
+| **Ctrl+Z** | Pausiert Prozess nur | ❌ Bleiben blockiert | ❌ **NEIN** |
+
+**Wenn du versehentlich Ctrl+Z gedrückt hast:**
+```bash
+# Job-Liste anzeigen
+jobs
+
+# Prozess zurückholen und mit Ctrl+C beenden
+fg
+
+# ODER direkt alle Prozesse töten
+bash Server/stop_guiserver.sh
+```
+
+Der GUIServer hat jetzt einen Signal Handler, der bei Ctrl+C:
+- ✅ Sockets sauber schließt
+- ✅ Video-Thread stoppt
+- ✅ LEDs ausschaltet
+- ✅ Move-Module aufräumt
+- ✅ Ports freigibt
+
+**Vermeide "Stopped" Prozesse:**
+```bash
+# Prüfe auf gestoppte Prozesse
+jobs
+
+# Oder systemweit
+ps aux | grep GUIServer
+# Wenn "T" in der Status-Spalte steht = Stopped (schlecht!)
+```
+

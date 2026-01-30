@@ -10,6 +10,7 @@ import socket
 import time
 import threading
 import sys
+import signal
 import Move as move
 import Adafruit_PCA9685
 import argparse
@@ -23,6 +24,73 @@ import ast
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from protocol import *
 step_set = 1
+
+# ==================== Shutdown Handler ====================
+
+shutdown_requested = False
+
+def signal_handler(sig, frame):
+	"""Handle Ctrl+C (SIGINT) and other termination signals"""
+	global shutdown_requested
+
+	if shutdown_requested:
+		print("\n\n⚠️  Force shutdown - killing immediately")
+		sys.exit(1)
+
+	shutdown_requested = True
+	print("\n\n" + "="*60)
+	print("🛑 Shutdown signal received (Ctrl+C)")
+	print("="*60)
+	print("Shutting down gracefully...")
+	print("(Press Ctrl+C again to force immediate shutdown)")
+	print("="*60 + "\n")
+
+	# Close sockets if they exist
+	try:
+		global tcpCliSock, tcpSerSock
+		if 'tcpCliSock' in globals():
+			tcpCliSock.close()
+			print("✓ Client socket closed")
+	except:
+		pass
+
+	try:
+		if 'tcpSerSock' in globals():
+			tcpSerSock.close()
+			print("✓ Server socket closed")
+	except:
+		pass
+
+	# Stop video thread
+	print("✓ Video thread will stop automatically (daemon)")
+
+	# Clean up LEDs
+	try:
+		global ws2812
+		if 'ws2812' in globals() and ws2812:
+			ws2812.led_close()
+			print("✓ LEDs turned off")
+	except:
+		pass
+
+	# Clean up Move module
+	try:
+		move.clean_all()
+		print("✓ Move module cleaned up")
+	except:
+		pass
+
+	print("\n" + "="*60)
+	print("✅ GUIServer shutdown complete")
+	print("="*60 + "\n")
+
+	sys.exit(0)
+
+# Register signal handlers
+signal.signal(signal.SIGINT, signal_handler)   # Ctrl+C
+signal.signal(signal.SIGTERM, signal_handler)  # kill command
+
+# ==================== End Shutdown Handler ====================
 
 
 new_frame = 0
