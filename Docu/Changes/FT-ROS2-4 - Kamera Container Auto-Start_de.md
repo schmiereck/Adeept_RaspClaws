@@ -66,6 +66,20 @@ if not CAMERA_AVAILABLE or picam2 is None:
 - ✅ Keine harten Abhängigkeiten mehr
 - ✅ Klare Fehlermeldungen wenn Kamera fehlt
 - ✅ Kann auf Entwicklungs-PC geladen werden (ohne Kamera)
+- ✅ Kompatibel mit Lazy-Mode (keine Servo-Initialisierung beim Import)
+
+**Servo-Initialisierung entfernt:**
+FPV.py hatte Code, der beim Import die Servos initialisierte:
+```python
+scGear = RPIservo.ServoCtrl()
+scGear.moveInit()  # ❌ Crashed im Lazy-Mode
+scGear.start()
+```
+
+Dieser Code wurde entfernt, da:
+- FPV.py die Servos nie wirklich verwendet hat
+- Im Lazy-Mode `pwm` noch `None` ist und `moveInit()` crasht
+- Servo-Steuerung jetzt in Move.py und GUIServer.py zentral gemanaged wird
 
 ### 2. Startup-Script
 
@@ -222,6 +236,50 @@ docker compose -f docker-compose.ros2.yml up raspclaws_camera
 # In anderem Terminal: Topics prüfen
 ros2 topic list | grep camera
 ros2 topic hz /raspclaws/camera/image_compressed
+```
+
+### GUIServer Test
+
+```bash
+# GUIServer sollte jetzt auch ohne Fehler starten
+sudo python3 Server/GUIServer.py
+```
+
+**Hinweis:** Vorher crashte GUIServer beim Start mit:
+```
+AttributeError: 'NoneType' object has no attribute 'set_pwm'
+```
+Das ist jetzt behoben, da FPV.py keine Servos mehr beim Import initialisiert.
+
+## Bugfixes
+
+### Fix: GUIServer Crash im Lazy-Mode
+
+**Problem:**
+```bash
+sudo python3 Server/GUIServer.py
+# Crashed mit: AttributeError: 'NoneType' object has no attribute 'set_pwm'
+```
+
+**Ursache:**  
+FPV.py versuchte beim Import Servos zu initialisieren (`scGear.moveInit()`), aber im Lazy-Mode war `pwm` noch `None`.
+
+**Lösung:**  
+- Servo-Initialisierung aus FPV.py entfernt (wurde nie verwendet)
+- RPIservo import entfernt (nicht mehr benötigt)
+- GUIServer funktioniert jetzt auch im Lazy-Mode
+
+**Geänderte Zeilen in FPV.py:**
+```python
+# Vorher (❌ crashed):
+import RPIservo
+scGear = RPIservo.ServoCtrl()
+scGear.moveInit()  # ❌ pwm.set_pwm() auf None
+scGear.start()
+
+# Nachher (✅ funktioniert):
+# Note: Servo initialization removed from FPV.py
+# Servos are now managed by Move.py and GUIServer.py
 ```
 
 ## Vorteile

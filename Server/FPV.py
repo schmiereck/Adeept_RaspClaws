@@ -38,7 +38,9 @@ import datetime
 import Move as move
 import Switch as switch
 import numpy as np
-import RPIservo
+
+# Note: RPIservo import removed - not needed in FPV.py
+# Servo control is handled by Move.py and GUIServer.py
 
 # ==================== Power Management ====================
 # Global flag for camera stream pause/resume
@@ -102,9 +104,9 @@ else:
 
 modeText = 'Select your mode, ARM or PT?'
 
-scGear = RPIservo.ServoCtrl()
-scGear.moveInit()
-scGear.start()
+# Note: Servo initialization removed from FPV.py
+# Servos are now managed by Move.py and GUIServer.py
+# This allows FPV.py to work in Lazy-Mode without initializing hardware
 
 Dv = -1 #Directional variable
 CVRun = 1
