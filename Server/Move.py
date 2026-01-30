@@ -90,8 +90,8 @@ Up_Down_input = 300
 Left_Right_Max = 500
 Left_Right_Min = 100
 Up_Down_Max = 500
-Up_Down_Min = 270
-look_wiggle = 30
+Up_Down_Min = 230
+look_wiggle = 15
 move_stu = 1
 abort_current_movement = False  # Flag to immediately abort ongoing movement cycle
 arc_factor = 0.7  # Factor to control arc tightness. 0 = straight, 1 = pivot turn on inner leg.
