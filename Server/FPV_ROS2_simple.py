@@ -28,6 +28,16 @@ except ImportError as e:
     print(f"ℹ️  ROS 2 not available: {e}")
     print("   (This is OK - FPV camera will work without ROS2)")
     ROS2_AVAILABLE = False
+    # Create dummy classes to prevent NameError when module is imported
+    rclpy = None  # Dummy module reference
+    class Node:
+        pass
+    class CompressedImage:
+        pass
+    class CameraInfo:
+        pass
+    class Header:
+        pass
 
 # ==================== Configuration ====================
 
