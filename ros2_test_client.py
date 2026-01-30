@@ -117,13 +117,13 @@ class RaspClawsTestClient(Node):
 
     # ==================== Movement Commands ====================
 
-    def send_twist(self, linear_x=0.0, angular_z=0.0):
+    def send_twist(self, linear_x=0.0, angular_x=0.0):
         """Send movement command"""
         msg = Twist()
         msg.linear.x = float(linear_x)
-        msg.angular.z = float(angular_z)
+        msg.angular.x = float(angular_x)
         self.cmd_vel_pub.publish(msg)
-        self.get_logger().info(f'Sent: linear.x={linear_x}, angular.z={angular_z}')
+        self.get_logger().info(f'Sent: linear.x={linear_x}, angular.z={angular_x}')
 
     def forward(self, speed=0.5):
         """Move forward"""
@@ -135,11 +135,11 @@ class RaspClawsTestClient(Node):
 
     def left(self, speed=0.5):
         """Turn left"""
-        self.send_twist(angular_z=speed)
+        self.send_twist(angular_x=speed)
 
     def right(self, speed=0.5):
         """Turn right"""
-        self.send_twist(angular_z=-speed)
+        self.send_twist(angular_x=-speed)
 
     def stop(self):
         """Stop movement"""

@@ -154,9 +154,9 @@ ros2 topic pub /raspclaws/cmd_vel geometry_msgs/Twist "{linear: {x: 0.5}}"
 
 ### Subscribed Topics
 
-| Topic | Message Type | Beschreibung |
-|-------|--------------|--------------|
-| `/raspclaws/cmd_vel` | `geometry_msgs/Twist` | Bewegungsbefehle (linear.x, angular.z) |
+| Topic | Message Type | Beschreibung                             |
+|-------|--------------|------------------------------------------|
+| `/raspclaws/cmd_vel` | `geometry_msgs/Twist` | Bewegungsbefehle (linear.x, angular.x)   |
 | `/raspclaws/head_cmd` | `geometry_msgs/Point` | Kopfbewegungen (x=left/right, y=up/down) |
 
 ### Services
@@ -195,13 +195,13 @@ ros2 topic echo /raspclaws/status
 
 ```bash
 # Vorwärts fahren
-ros2 topic pub --once /raspclaws/cmd_vel geometry_msgs/Twist "{linear: {x: 0.5}, angular: {z: 0.0}}"
+ros2 topic pub --once /raspclaws/cmd_vel geometry_msgs/Twist "{linear: {x: 0.5}, angular: {x: 0.0}}"
 
 # Stopp
-ros2 topic pub --once /raspclaws/cmd_vel geometry_msgs/Twist "{linear: {x: 0.0}, angular: {z: 0.0}}"
+ros2 topic pub --once /raspclaws/cmd_vel geometry_msgs/Twist "{linear: {x: 0.0}, angular: {x: 0.0}}"
 
 # Linksdrehung
-ros2 topic pub --once /raspclaws/cmd_vel geometry_msgs/Twist "{linear: {x: 0.0}, angular: {z: 0.5}}"
+ros2 topic pub --once /raspclaws/cmd_vel geometry_msgs/Twist "{linear: {x: 0.0}, angular: {x: 0.5}}"
 ```
 
 ### Test 4: Kopfbewegung
@@ -440,15 +440,15 @@ from protocol import (
 ```python
 def cmd_vel_callback(self, msg):
     linear_x = msg.linear.x
-    angular_z = msg.angular.z
+    angular_x = msg.angular.x
 
     if abs(linear_x) > 0.1:
         if linear_x > 0:
             move.commandInput(CMD_FORWARD)  # statt 'forward'
         else:
             move.commandInput(CMD_BACKWARD)
-    elif abs(angular_z) > 0.1:
-        if angular_z > 0:
+    elif abs(angular_x) > 0.1:
+        if angular_x > 0:
             move.commandInput(CMD_LEFT)
         else:
             move.commandInput(CMD_RIGHT)

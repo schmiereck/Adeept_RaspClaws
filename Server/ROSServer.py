@@ -346,7 +346,7 @@ class RaspClawsNode(Node):
 
             # Convert Twist to robot commands
             linear_x = msg.linear.x    # Forward/backward (-1.0 to 1.0)
-            angular_z = msg.angular.z  # Left/right rotation (-1.0 to 1.0)
+            angular_x = msg.angular.x  # Left/right rotation (-1.0 to 1.0)
 
             # Map to robot movement commands
             if abs(linear_x) > 0.1:
@@ -354,15 +354,15 @@ class RaspClawsNode(Node):
                     move.commandInput(CMD_FORWARD)
                 else:
                     move.commandInput(CMD_BACKWARD)
-            elif abs(angular_z) > 0.1:
-                if angular_z > 0:
+            elif abs(angular_x) > 0.1:
+                if angular_x > 0:
                     move.commandInput(CMD_LEFT)
                 else:
                     move.commandInput(CMD_RIGHT)
             else:
                 move.commandInput(MOVE_STAND)
 
-            self.get_logger().debug(f'Movement command executed: linear={linear_x:.2f}, angular={angular_z:.2f}')
+            self.get_logger().debug(f'Movement command executed: linear={linear_x:.2f}, angular={angular_x:.2f}')
 
         except Exception as e:
             self.get_logger().error(f'Error executing movement command: {e}')
