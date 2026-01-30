@@ -25,7 +25,8 @@ try:
     from std_msgs.msg import Header
     ROS2_AVAILABLE = True
 except ImportError as e:
-    print(f"WARNING: ROS 2 not available: {e}")
+    print(f"ℹ️  ROS 2 not available: {e}")
+    print("   (This is OK - FPV camera will work without ROS2)")
     ROS2_AVAILABLE = False
 
 # ==================== Configuration ====================

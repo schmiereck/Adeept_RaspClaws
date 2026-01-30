@@ -42,6 +42,16 @@ import numpy as np
 # Note: RPIservo import removed - not needed in FPV.py
 # Servo control is handled by Move.py and GUIServer.py
 
+# ROS2 integration - optional
+try:
+    from FPV_ROS2_simple import set_latest_frame
+    ROS2_FRAME_SHARING_AVAILABLE = True
+except ImportError:
+    # ROS2 not available - that's OK, FPV.py works without it
+    ROS2_FRAME_SHARING_AVAILABLE = False
+    def set_latest_frame(frame):
+        pass  # Dummy function to avoid None checks
+
 # ==================== Power Management ====================
 # Global flag for camera stream pause/resume
 camera_paused = False
@@ -184,12 +194,9 @@ class FPV:
 			cv2.line(frame_image, (300, 240), (340, 240), (128, 255, 128), 1)
 			cv2.line(frame_image, (320, 220), (320, 260), (128, 255, 128), 1)
 
-			# Share frame with ROS2 (if available, optional)
-			try:
-				from FPV_ROS2_simple import set_latest_frame
+			# Share frame with ROS2 (if available, already imported at top of file)
+			if ROS2_FRAME_SHARING_AVAILABLE:
 				set_latest_frame(frame_image)
-			except:
-				pass  # ROS2 not available or not needed, continue normal operation
 
 			# Check if camera is paused - skip frame sending if paused
 			if not camera_paused:
