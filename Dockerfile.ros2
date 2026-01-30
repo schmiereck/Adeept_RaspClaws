@@ -1,31 +1,7 @@
-# ==================== STAGE 1: Camera Libraries ====================
-# Install libcamera C-library and picamera2 Python package
-# Note: python3-libcamera and python3-picamera2 are ONLY available in Raspberry Pi OS repos
-# Strategy: Install libcamera C-library from Debian, picamera2 from pip
-FROM debian:bookworm-slim AS camera-builder
-
-# Install libcamera C-library and tools
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        libcamera0.2 \
-        libcamera-ipa \
-        libcamera-tools \
-        python3-numpy \
-        python3-opencv \
-        python3-pip \
-        python3-pil \
-        python3-simplejpeg \
-        python3-prctl \
-        python3-pidng \
-        libatlas-base-dev \
-        && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
-
-# Install picamera2 from pip (includes Python bindings for libcamera)
-RUN pip3 install --break-system-packages --no-cache-dir picamera2
-
-# ==================== STAGE 2: Main ROS 2 Humble Image ====================
+# ==================== SINGLE STAGE BUILD ====================
+# Simplified approach: Skip camera container, use FPV.py on host instead
+# The camera requires Raspberry Pi specific libraries that are not available
+# in standard Docker images. Best solution: Run FPV.py directly on Pi host.
 FROM ros:humble-ros-base
 
 # Umgebungsvariablen
@@ -35,14 +11,6 @@ ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH="/ros2_ws:/ros2_ws/Server:${PYTHONPATH}"
 ENV LIBCAMERA_LOG_LEVELS=*:ERROR
 
-# Copy libcamera libraries and Python bindings from Stage 1
-# libcamera C-library
-COPY --from=camera-builder /usr/lib/aarch64-linux-gnu/libcamera* /usr/lib/aarch64-linux-gnu/
-COPY --from=camera-builder /usr/lib/aarch64-linux-gnu/libpisp* /usr/lib/aarch64-linux-gnu/
-# picamera2 (installed via pip in Stage 1)
-COPY --from=camera-builder /usr/local/lib/python3.11/dist-packages/picamera2 /usr/lib/python3/dist-packages/picamera2/
-COPY --from=camera-builder /usr/local/lib/python3.11/dist-packages/libcamera /usr/lib/python3/dist-packages/libcamera/
-COPY --from=camera-builder /usr/local/lib/python3.11/dist-packages/_libcamera*.so /usr/lib/python3/dist-packages/
 
 # System-Abhängigkeiten installieren
 
