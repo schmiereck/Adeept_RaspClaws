@@ -1,0 +1,87 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro"
+       name="raspclaws_hexapod">
+  <!--
+        odom (optional)
+         └── base_link
+              └── head_yaw_link      (drehen links/rechts)
+                   └── head_pitch_link (hoch/runter)
+                        └── camera_link
+  -->
+
+  <!-- ===================== -->
+  <!-- Parameter (ANPASSEN!) -->
+  <!-- ===================== -->
+  <xacro:property name="head_height" value="0.12"/>   <!-- base -> yaw -->
+  <xacro:property name="head_length" value="0.05"/>   <!-- yaw -> pitch -->
+  <xacro:property name="camera_offset" value="0.03"/> <!-- pitch -> cam -->
+
+  <!-- ===================== -->
+  <!-- BASE -->
+  <!-- ===================== -->
+  <link name="base_link">
+    <visual>
+      <geometry>
+        <box size="0.20 0.15 0.05"/>
+      </geometry>
+      <material name="gray"/>
+    </visual>
+  </link>
+
+  <!-- ===================== -->
+  <!-- HEAD YAW -->
+  <!-- ===================== -->
+  <link name="head_yaw_link">
+    <visual>
+      <geometry>
+        <cylinder radius="0.02" length="0.04"/>
+      </geometry>
+    </visual>
+  </link>
+
+  <joint name="head_yaw_joint" type="revolute">
+    <parent link="base_link"/>
+    <child link="head_yaw_link"/>
+    <origin xyz="0 0 ${head_height}" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/> <!-- Drehung links/rechts -->
+    <limit lower="-3.14" upper="3.14" effort="1.0" velocity="1.0"/>
+  </joint>
+
+  <!-- ===================== -->
+  <!-- HEAD PITCH -->
+  <!-- ===================== -->
+  <link name="head_pitch_link">
+    <visual>
+      <geometry>
+        <box size="0.04 0.04 0.04"/>
+      </geometry>
+    </visual>
+  </link>
+
+  <joint name="head_pitch_joint" type="revolute">
+    <parent link="head_yaw_link"/>
+    <child link="head_pitch_link"/>
+    <origin xyz="${head_length} 0 0" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/> <!-- hoch/runter -->
+    <limit lower="-1.2" upper="1.2" effort="1.0" velocity="1.0"/>
+  </joint>
+
+  <!-- ===================== -->
+  <!-- CAMERA -->
+  <!-- ===================== -->
+  <link name="camera_link">
+    <visual>
+      <geometry>
+        <box size="0.03 0.03 0.03"/>
+      </geometry>
+      <material name="black"/>
+    </visual>
+  </link>
+
+  <joint name="camera_joint" type="fixed">
+    <parent link="head_pitch_link"/>
+    <child link="camera_link"/>
+    <origin xyz="${camera_offset} 0 0" rpy="0 0 0"/>
+  </joint>
+
+</robot>
