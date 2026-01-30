@@ -34,8 +34,9 @@ def signal_handler(sig, frame):
 	global shutdown_requested
 
 	if shutdown_requested:
-		print("\n\n⚠️  Force shutdown - killing immediately")
-		sys.exit(1)
+		print("\n\n⚠️  Force shutdown - killing immediately\n")
+		# Use os._exit() instead of sys.exit() to avoid traceback
+		os._exit(1)
 
 	shutdown_requested = True
 	print("\n\n" + "="*60)
@@ -48,14 +49,14 @@ def signal_handler(sig, frame):
 	# Close sockets if they exist
 	try:
 		global tcpCliSock, tcpSerSock
-		if 'tcpCliSock' in globals():
+		if 'tcpCliSock' in globals() and tcpCliSock:
 			tcpCliSock.close()
 			print("✓ Client socket closed")
 	except:
 		pass
 
 	try:
-		if 'tcpSerSock' in globals():
+		if 'tcpSerSock' in globals() and tcpSerSock:
 			tcpSerSock.close()
 			print("✓ Server socket closed")
 	except:
@@ -84,7 +85,8 @@ def signal_handler(sig, frame):
 	print("✅ GUIServer shutdown complete")
 	print("="*60 + "\n")
 
-	sys.exit(0)
+	# Use os._exit() instead of sys.exit() to avoid traceback
+	os._exit(0)
 
 
 def sigtstp_handler(sig, frame):
@@ -330,7 +332,10 @@ def info_send_client():
         print("✓ Sent initial INFO data")
 
     except Exception as e:
-        print(f"⚠ Failed to send initial status: {e}")
+        # Silently exit if socket is closed (client disconnected)
+        if "Bad file descriptor" not in str(e):
+            print(f"⚠ Failed to send initial status: {e}")
+        return
 
     sys.stdout.flush()
 
@@ -351,6 +356,11 @@ def info_send_client():
             sys.stdout.flush()
             time.sleep(1.0)
         except Exception as e:
+            # Silently exit if socket is closed (client disconnected)
+            if "Bad file descriptor" in str(e) or "Broken pipe" in str(e):
+                print(f"INFO_SEND_CLIENT: Client disconnected during VIDEO_READY phase")
+                sys.stdout.flush()
+                return
             print(f"⚠ Failed to send VIDEO_READY {i+1}/10: {e}")
             sys.stdout.flush()
             time.sleep(1.0)
@@ -371,8 +381,10 @@ def info_send_client():
             tcpCliSock.send(info_data.encode())
             time.sleep(0.2)  # 200ms update interval for better servo analysis
         except Exception as e:
-            print(f"⚠ Failed to send INFO: {e}")
-            sys.stdout.flush()
+            # Silently exit if socket is closed (client disconnected)
+            if "Bad file descriptor" not in str(e) and "Broken pipe" not in str(e):
+                print(f"⚠ Failed to send INFO: {e}")
+                sys.stdout.flush()
             break  # Exit thread on persistent error
 
 

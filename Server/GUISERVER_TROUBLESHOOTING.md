@@ -226,14 +226,49 @@ bash Server/stop_guiserver.sh
 ```
 
 Der GUIServer hat jetzt Signal Handler für:
-- ✅ **SIGINT** (Ctrl+C): Sauberes Shutdown
-- ✅ **SIGTERM** (kill): Sauberes Shutdown  
+- ✅ **SIGINT** (Ctrl+C): Sauberes Shutdown (ohne Traceback)
+- ✅ **SIGTERM** (kill): Sauberes Shutdown (ohne Traceback)
 - ✅ **SIGTSTP** (Ctrl+Z): **NEU!** Warnt und führt sauberes Shutdown durch
 - ✅ Sockets werden geschlossen
 - ✅ Video-Thread stoppt
 - ✅ LEDs werden ausgeschaltet
 - ✅ Move-Module werden aufgeräumt
 - ✅ Ports werden freigegeben
+- ✅ **Kein Traceback** mehr bei Force Shutdown (zweimal Ctrl+C)
+
+**Shutdown-Verhalten:**
+- **Einmal Ctrl+C**: Sauberes Shutdown mit Cleanup (empfohlen)
+- **Zweimal Ctrl+C**: Force-Shutdown (sofortiges Beenden ohne Traceback)
+
+**Beispiel:**
+```
+waiting for connection... ^C
+
+============================================================
+🛑 Shutdown signal received (Ctrl+C)
+============================================================
+Shutting down gracefully...
+(Press Ctrl+C again to force immediate shutdown)
+============================================================
+
+✓ Server socket closed
+✓ Video thread will stop automatically (daemon)
+✓ Move module cleaned up
+
+============================================================
+✅ GUIServer shutdown complete
+============================================================
+```
+
+**Force Shutdown (zweimal Ctrl+C):**
+```
+^C
+...shutdown...
+^C
+
+⚠️  Force shutdown - killing immediately
+```
+Kein Traceback mehr! Der Prozess beendet sich sauber mit `os._exit()`.
 
 **Vermeide "Stopped" Prozesse:**
 ```bash
