@@ -332,11 +332,32 @@ class RaspClawsNode(Node):
     # ==================== Callbacks ====================
 
     def cmd_vel_callback(self, msg):
-        """Handle movement commands (Twist messages)"""
+        """
+        Handle movement commands (Twist messages)
+
+        Mapping:
+        - msg.linear.z: Forward/backward speed (-1.0 to 1.0)
+                       > 0: forward, < 0: backward, 0: no linear movement
+        - msg.angular.y: Turn/arc factor (-1.0 to 1.0)
+                        If linear.z != 0 and angular.y != 0: Arc movement (curved path)
+                        If linear.z == 0 and angular.y != 0: Turn in place
+                        > 0: turn right, < 0: turn left
+
+        Examples:
+        1. Straight forward:  linear.z=0.5, angular.y=0     → forward at 50% speed
+        2. Straight backward: linear.z=-0.5, angular.y=0    → backward at 50% speed
+        3. Forward-right arc: linear.z=0.5, angular.y=0.3   → forward curve right
+        4. Forward-left arc:  linear.z=0.5, angular.y=-0.3  → forward curve left
+        5. Turn right:        linear.z=0, angular.y=0.5     → pivot turn right
+        6. Turn left:         linear.z=0, angular.y=-0.5    → pivot turn left
+        7. Stop:              linear.z=0, angular.y=0       → stand
+        """
         self.current_twist = msg
 
         if not ROBOT_MODULES_AVAILABLE:
-            self.get_logger().debug(f'MOCK: cmd_vel received: linear.x={msg.linear.x}, angular.z={msg.angular.z}')
+            self.get_logger().debug(
+                f'MOCK: cmd_vel received: linear.z={msg.linear.z:.2f}, angular.y={msg.angular.y:.2f}'
+            )
             return
 
         try:
@@ -344,28 +365,89 @@ class RaspClawsNode(Node):
             if not self.hardware_initialized:
                 self.init_robot_hardware()
 
-            # Convert Twist to robot commands
-            linear_x = msg.linear.x    # Forward/backward (-1.0 to 1.0)
-            angular_x = msg.angular.x  # Left/right rotation (-1.0 to 1.0)
+            # Extract velocity components
+            linear_z = msg.linear.z     # Forward/backward speed (-1.0 to 1.0)
+            angular_y = msg.angular.y   # Turn/arc factor (-1.0 to 1.0)
 
-            # Map to robot movement commands
-            if abs(linear_x) > 0.1:
-                if linear_x > 0:
+            # Threshold for considering a value as non-zero
+            threshold = 0.05
+
+            # Determine movement type based on linear and angular components
+            has_linear = abs(linear_z) > threshold
+            has_angular = abs(angular_y) > threshold
+
+            if has_linear and not has_angular:
+                # Case 1: Straight forward/backward (no turning)
+                # Map linear.z to movement speed (0-100 scale)
+                speed = int(abs(linear_z) * 100)
+                speed = max(10, min(100, speed))  # Clamp to 10-100
+                move.set_movement_speed(speed)
+
+                if linear_z > 0:
                     move.commandInput(CMD_FORWARD)
+                    self.get_logger().debug(f'Straight forward: speed={speed}')
                 else:
                     move.commandInput(CMD_BACKWARD)
-            elif abs(angular_x) > 0.1:
-                if angular_x > 0:
-                    move.commandInput(CMD_LEFT)
-                else:
-                    move.commandInput(CMD_RIGHT)
-            else:
-                move.commandInput(MOVE_STAND)
+                    self.get_logger().debug(f'Straight backward: speed={speed}')
 
-            self.get_logger().debug(f'Movement command executed: linear={linear_x:.2f}, angular={angular_x:.2f}')
+            elif has_linear and has_angular:
+                # Case 2: Arc movement (curved forward/backward)
+                # Map linear.z to speed
+                speed = int(abs(linear_z) * 100)
+                speed = max(10, min(100, speed))
+                move.set_movement_speed(speed)
+
+                # Map angular.y to arc factor (0.0 to 1.0)
+                # Higher angular.y = tighter turn
+                arc_factor = abs(angular_y)
+                arc_factor = max(0.0, min(1.0, arc_factor))
+                move.set_arc_factor(arc_factor)
+
+                # Determine direction
+                if linear_z > 0:
+                    # Forward arc
+                    if angular_y > 0:
+                        move.commandInput(CMD_FORWARD_RIGHT_ARC)
+                        self.get_logger().debug(f'Forward-right arc: speed={speed}, arc={arc_factor:.2f}')
+                    else:
+                        move.commandInput(CMD_FORWARD_LEFT_ARC)
+                        self.get_logger().debug(f'Forward-left arc: speed={speed}, arc={arc_factor:.2f}')
+                else:
+                    # Backward arc (if supported)
+                    # Note: Check if Move.py supports backward arcs, otherwise use straight backward
+                    if angular_y > 0:
+                        # Backward-right would need CMD_BACKWARD_RIGHT_ARC
+                        # Fallback to backward for now
+                        move.commandInput(CMD_BACKWARD)
+                        self.get_logger().warning('Backward arc not fully supported, using straight backward')
+                    else:
+                        # Backward-left would need CMD_BACKWARD_LEFT_ARC
+                        move.commandInput(CMD_BACKWARD)
+                        self.get_logger().warning('Backward arc not fully supported, using straight backward')
+
+            elif not has_linear and has_angular:
+                # Case 3: Turn in place (pivot)
+                # Map angular.y to turn speed
+                speed = int(abs(angular_y) * 100)
+                speed = max(10, min(100, speed))
+                move.set_movement_speed(speed)
+
+                if angular_y > 0:
+                    move.commandInput(CMD_RIGHT)
+                    self.get_logger().debug(f'Turn right in place: speed={speed}')
+                else:
+                    move.commandInput(CMD_LEFT)
+                    self.get_logger().debug(f'Turn left in place: speed={speed}')
+
+            else:
+                # Case 4: Stop (no linear, no angular)
+                move.commandInput(MOVE_STAND)
+                self.get_logger().debug('Stop/Stand')
 
         except Exception as e:
             self.get_logger().error(f'Error executing movement command: {e}')
+            import traceback
+            self.get_logger().error(traceback.format_exc())
 
     def head_cmd_callback(self, msg):
         """Handle head position commands (Point messages)"""

@@ -131,7 +131,7 @@ sudo python3 Server/ROSServer.py
 
 Bei erstem Bewegungsbefehl:
 ```bash
-ros2 topic pub /raspclaws/cmd_vel geometry_msgs/Twist "{linear: {x: 0.5}}"
+ros2 topic pub /raspclaws/cmd_vel geometry_msgs/Twist "{linear: {z: 0.5}}"
 
 # Auf dem Pi:
 # 🤖 Initializing robot hardware on first command...
@@ -156,8 +156,43 @@ ros2 topic pub /raspclaws/cmd_vel geometry_msgs/Twist "{linear: {x: 0.5}}"
 
 | Topic | Message Type | Beschreibung                             |
 |-------|--------------|------------------------------------------|
-| `/raspclaws/cmd_vel` | `geometry_msgs/Twist` | Bewegungsbefehle (linear.x, angular.x)   |
+| `/raspclaws/cmd_vel` | `geometry_msgs/Twist` | Bewegungsbefehle (linear.z, angular.y)   |
 | `/raspclaws/head_cmd` | `geometry_msgs/Point` | Kopfbewegungen (x=left/right, y=up/down) |
+
+#### cmd_vel Mapping Details
+
+Das `/raspclaws/cmd_vel` Topic verwendet folgendes Mapping:
+
+**Koordinaten:**
+- `msg.linear.z`: Vorwärts/Rückwärts Geschwindigkeit (-1.0 bis 1.0)
+  - \> 0: Vorwärts
+  - < 0: Rückwärts
+  - = 0: Keine lineare Bewegung
+- `msg.angular.y`: Drehen/Kurvenradius (-1.0 bis 1.0)
+  - \> 0: Rechts drehen
+  - < 0: Links drehen
+  - = 0: Keine Drehung
+
+**Bewegungstypen:**
+
+| linear.z | angular.y | Bewegung | Beispiel |
+|----------|-----------|----------|----------|
+| != 0     | = 0       | Gerade Vorwärts/Rückwärts | `{linear: {z: 0.5}, angular: {y: 0.0}}` |
+| != 0     | != 0      | Kurvenfahrt (Arc) | `{linear: {z: 0.5}, angular: {y: 0.3}}` |
+| = 0      | != 0      | Drehen auf der Stelle | `{linear: {z: 0.0}, angular: {y: 0.5}}` |
+| = 0      | = 0       | Stopp/Stand | `{linear: {z: 0.0}, angular: {y: 0.0}}` |
+
+**Geschwindigkeits-Mapping:**
+- `linear.z` und `angular.y` werden auf 0-100 Skala gemappt
+- Beispiel: `linear.z=0.5` → 50% Geschwindigkeit
+- Minimum: 10% (Werte < 0.05 werden als 0 interpretiert)
+- Maximum: 100%
+
+**Arc Factor (Kurvenradius):**
+- `angular.y` wird als Arc Factor (0.0-1.0) interpretiert
+- 0.0: Gerade Bewegung
+- 1.0: Engste Kurve (Pivot auf innerem Bein)
+- Beispiel: `angular.y=0.3` → 30% Arc Factor (weite Kurve)
 
 ### Services
 
@@ -194,15 +229,29 @@ ros2 topic echo /raspclaws/status
 ### Test 3: Bewegungsbefehl senden
 
 ```bash
-# Vorwärts fahren
-ros2 topic pub --once /raspclaws/cmd_vel geometry_msgs/Twist "{linear: {x: 0.5}, angular: {x: 0.0}}"
+# 1. Gerade vorwärts fahren (50% Geschwindigkeit)
+ros2 topic pub --once /raspclaws/cmd_vel geometry_msgs/Twist "{linear: {z: 0.5}, angular: {y: 0.0}}"
 
-# Stopp
-ros2 topic pub --once /raspclaws/cmd_vel geometry_msgs/Twist "{linear: {x: 0.0}, angular: {x: 0.0}}"
+# 2. Gerade rückwärts fahren (30% Geschwindigkeit)
+ros2 topic pub --once /raspclaws/cmd_vel geometry_msgs/Twist "{linear: {z: -0.3}, angular: {y: 0.0}}"
 
-# Linksdrehung
-ros2 topic pub --once /raspclaws/cmd_vel geometry_msgs/Twist "{linear: {x: 0.0}, angular: {x: 0.5}}"
+# 3. Rechtskurve vorwärts (50% Speed, 30% Arc)
+ros2 topic pub --once /raspclaws/cmd_vel geometry_msgs/Twist "{linear: {z: 0.5}, angular: {y: 0.3}}"
+
+# 4. Linkskurve vorwärts (50% Speed, 30% Arc)
+ros2 topic pub --once /raspclaws/cmd_vel geometry_msgs/Twist "{linear: {z: 0.5}, angular: {y: -0.3}}"
+
+# 5. Rechts drehen auf der Stelle (50% Geschwindigkeit)
+ros2 topic pub --once /raspclaws/cmd_vel geometry_msgs/Twist "{linear: {z: 0.0}, angular: {y: 0.5}}"
+
+# 6. Links drehen auf der Stelle (50% Geschwindigkeit)
+ros2 topic pub --once /raspclaws/cmd_vel geometry_msgs/Twist "{linear: {z: 0.0}, angular: {y: -0.5}}"
+
+# 7. Stopp/Stand
+ros2 topic pub --once /raspclaws/cmd_vel geometry_msgs/Twist "{linear: {z: 0.0}, angular: {y: 0.0}}"
 ```
+
+**Hinweis:** Die erste Bewegung initialisiert die Hardware (Lazy Initialization). Danach sind die Servos "steif".
 
 ### Test 4: Kopfbewegung
 
