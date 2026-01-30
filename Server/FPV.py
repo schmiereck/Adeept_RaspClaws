@@ -9,12 +9,24 @@ import threading
 import cv2
 import zmq
 import base64
-import picamera2
-import libcamera
-from picamera2 import Picamera2, Preview
+
+# Camera imports - make optional for systems without camera
+try:
+    import picamera2
+    import libcamera
+    from picamera2 import Picamera2, Preview
+    from picamera2.encoders import MJPEGEncoder
+    from picamera2.outputs import FileOutput
+    CAMERA_AVAILABLE = True
+except ImportError as e:
+    print(f"⚠ Camera module not available: {e}")
+    print("  (FPV.py will not work without camera)")
+    CAMERA_AVAILABLE = False
+    # Create dummy classes to prevent NameError
+    class Picamera2:
+        pass
+
 import io
-from picamera2.encoders import MJPEGEncoder
-from picamera2.outputs import FileOutput
 import argparse
 import imutils
 from collections import deque
@@ -61,21 +73,30 @@ tor	= 17
 
 hflip = 0  # Video flip horizontally: 0 or 1
 vflip = 0  # Video vertical flip: 0/1
-picam2 = Picamera2()
-preview_config = picam2.preview_configuration
-preview_config.size = (640, 480)
-preview_config.format = 'RGB888'  # 'XRGB8888', 'XBGR8888', 'RGB888', 'BGR888', 'YUV420'
-preview_config.transform = libcamera.Transform(hflip=hflip, vflip=vflip)
-preview_config.colour_space = libcamera.ColorSpace.Sycc()
-preview_config.buffer_count = 4
-preview_config.queue = True
 
-if not picam2.is_open:
-    raise RuntimeError('Could not start camera.')
-try:
-    picam2.start()
-except Exception as e:
-    print(f"\033[38;5;1mError:\033[0m\n{e}")
+# Initialize camera only if available
+picam2 = None
+if CAMERA_AVAILABLE:
+    try:
+        picam2 = Picamera2()
+        preview_config = picam2.preview_configuration
+        preview_config.size = (640, 480)
+        preview_config.format = 'RGB888'  # 'XRGB8888', 'XBGR8888', 'RGB888', 'BGR888', 'YUV420'
+        preview_config.transform = libcamera.Transform(hflip=hflip, vflip=vflip)
+        preview_config.colour_space = libcamera.ColorSpace.Sycc()
+        preview_config.buffer_count = 4
+        preview_config.queue = True
+
+        if not picam2.is_open:
+            raise RuntimeError('Could not start camera.')
+        picam2.start()
+        print("✓ Picamera2 initialized successfully")
+    except Exception as e:
+        print(f"\033[38;5;1mCamera initialization error:\033[0m\n{e}")
+        CAMERA_AVAILABLE = False
+        picam2 = None
+else:
+    print("⚠ Camera not available - FPV.py will not capture frames")
     print("\nPlease check whether the camera is connected well, and disable the \"legacy camera driver\" on raspi-config")
 
 
@@ -148,6 +169,12 @@ class FPV:
 			print("✓ Video ready marker written")
 		except Exception as e:
 			print(f"⚠ Could not write video ready marker: {e}")
+
+		# Check if camera is available
+		if not CAMERA_AVAILABLE or picam2 is None:
+			print("❌ ERROR: Camera not available - cannot start capture loop")
+			print("   FPV.py needs camera hardware to work")
+			return
 
 		while True:
 			frame_image = picam2.capture_array()

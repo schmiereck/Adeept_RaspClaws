@@ -54,9 +54,9 @@ services:
   #raspclaws_camera:
   #  image: adeept_raspclaws-raspclaws_ros2:latest  # Gleiches Image wie raspclaws_ros2
   #  build:
-  # Simple camera container - uses existing FPV.py (no picamera2 dependency!)
-  # FPV.py already works and handles the camera
-  # This container just adds ROS2 publishing to the existing ZMQ stream
+  # Camera container - starts both FPV.py (camera capture) and FPV_ROS2_simple.py (ROS2 publisher)
+  # FPV.py handles camera hardware and provides frames via ZMQ
+  # FPV_ROS2_simple.py reads those frames and publishes to ROS2 topics
   raspclaws_camera:
     image: adeept_raspclaws-raspclaws_ros2:latest
     build:
@@ -76,6 +76,5 @@ services:
       - /home/pi/adeept_raspclaws:/ros2_ws
       - /dev:/dev  # Gibt dem Container direkten Zugriff auf Kamera und I2C
     command: >
-      bash -c "source /opt/ros/humble/setup.bash && 
-            python3 /ros2_ws/Server/FPV_ROS2_simple.py"
+      bash /ros2_ws/Server/start_camera_ros2.sh
     restart: unless-stopped

@@ -69,6 +69,7 @@ COPY . /ros2_ws
 
 # Berechtigungen setzen
 RUN chmod +x /ros2_ws/Server/ROSServer.py
+RUN chmod +x /ros2_ws/Server/start_camera_ros2.sh
 
 # ROS 2 Setup in bashrc für interaktive Shells
 RUN echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
