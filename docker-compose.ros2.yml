@@ -57,23 +57,51 @@ services:
   # Camera container - starts both FPV.py (camera capture) and FPV_ROS2_simple.py (ROS2 publisher)
   # FPV.py handles camera hardware and provides frames via ZMQ
   # FPV_ROS2_simple.py reads those frames and publishes to ROS2 topics
-  # Camera container - DISABLED
-  #
-  # ⚠️  libcamera and picamera2 are NOT available in standard Docker images
-  #
-  # Why? These packages are ONLY in Raspberry Pi OS repos, not in:
-  # - Standard Debian (even Bookworm)
-  # - Ubuntu (even 24.04)
-  #
-  # Solution: Run FPV.py directly on the Pi host (not in Docker)
-  #
-  # To use camera with ROS2:
-  # 1. Run ROSServer in Docker (for robot control)
-  # 2. Run FPV.py on host:  python3 Server/FPV.py
-  # 3. Run FPV_ROS2_simple.py on host: python3 Server/FPV_ROS2_simple.py
-  #
-  # This way camera works (on host) and ROS2 works (in Docker).
-  #
-  # raspclaws_camera:
-  #   [... commented out ...]
+  # Camera container - publishes camera frames to ROS2 topics
+  # libcamera and picamera2 are now built into the Docker image via Multi-Stage Build
+  # from Debian Bookworm (which has native python3-libcamera support)
+  raspclaws_camera:
+    image: adeept_raspclaws-raspclaws_ros2:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.ros2
+    container_name: raspclaws_camera
+    network_mode: host  # ROS2 DDS braucht host network
+    privileged: true    # Für Kamera-Zugriff
+    # Map camera devices (no library mounts needed - they're in the image!)
+    devices:
+      - /dev/video0:/dev/video0  # V4L2 camera device
+      - /dev/video10:/dev/video10  # ISP device (if exists)
+      - /dev/video11:/dev/video11
+      - /dev/video12:/dev/video12
+      - /dev/video13:/dev/video13
+      - /dev/video14:/dev/video14
+      - /dev/video15:/dev/video15
+      - /dev/video16:/dev/video16
+      - /dev/media0:/dev/media0    # Media controller
+      - /dev/media1:/dev/media1
+      - /dev/media2:/dev/media2
+      - /dev/media3:/dev/media3
+    environment:
+      - ROS_DOMAIN_ID=0
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+      - PYTHONPATH=/ros2_ws:/ros2_ws/Server
+      - ROS_STATIC_PEERS=192.168.2.121
+      - LIBCAMERA_LOG_LEVELS=*:ERROR  # Reduce libcamera log spam
+    volumes:
+      # Project files
+      - /home/pi/adeept_raspclaws:/ros2_ws
+      # Device access for hardware detection
+      - /dev:/dev
+      - /sys:/sys
+      - /run/udev:/run/udev:ro
+    command: >
+      bash /ros2_ws/Server/start_camera_ros2.sh
+    restart: on-failure
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f 'FPV.py' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
