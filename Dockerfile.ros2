@@ -1,4 +1,5 @@
 # Dockerfile for RaspClaws ROS 2 Server
+# basiert auf Ubuntu 22.04 (Jammy), ist ein minimalistisches ROS-Image, auf ARM64 fehlen darin einige Multimedia-Pakete
 FROM ros:humble-ros-base
 
 # Umgebungsvariablen
@@ -19,7 +20,8 @@ RUN apt-get update && apt-get install -y \
     i2c-tools \
     libgpiod-dev \
     lsof \
-    v4l2-utils \
+    # "v4l2-utils" kann man in "humble-ros-base" nicht nutzen (ist im ARM-Repo, das dieses Image nutzt, nicht verfügbar)
+    #v4l2-utils \
     && rm -rf /var/lib/apt/lists/*
 
 # Kamera und Grafik-Abhängigkeiten
