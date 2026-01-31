@@ -114,18 +114,11 @@ services:
       # ❌ ENTFERNEN (funktioniert nicht mit Symlinks):
       #- /usr/lib/aarch64-linux-gnu/libcamera.so.0:/usr/lib/aarch64-linux-gnu/libcamera.so.0:ro
       # ✅ STATTDESSEN: Ganzes libcamera-Verzeichnis mounten
-      #- /usr/lib/aarch64-linux-gnu/libcamera:/usr/lib/aarch64-linux-gnu/libcamera.so.0.6.0:ro
+      - /usr/lib/aarch64-linux-gnu/libcamera:/usr/lib/aarch64-linux-gnu/libcamera.so.0.6.0:ro
       # picamera2 bleibt (ist ein Verzeichnis, kein Symlink)
       - /usr/lib/python3/dist-packages/picamera2:/usr/lib/python3/dist-packages/picamera2:ro
     command: >
-      #bash /ros2_ws/Server/start_camera_ros2.sh
-      bash -c "
-      apt-get update &&
-      apt-get install -y --no-install-recommends libcamera0.0.1 python3-libcamera &&
-      apt-get clean &&
-      rm -rf /var/lib/apt/lists/* &&
-      python3 /workspace/Server/FPV.py
-      "
+      bash /ros2_ws/Server/start_camera_ros2.sh
     # Only restart if container crashes (exit code != 0)
     # Will NOT restart if camera is not available (script sleeps with exit 0)
     restart: on-failure
