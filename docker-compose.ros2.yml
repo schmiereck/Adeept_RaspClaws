@@ -94,25 +94,6 @@ services:
       - /dev:/dev  # Gibt dem Container direkten Zugriff auf alle Devices
       - /sys:/sys  # Für Hardware-Erkennung
       - /run/udev:/run/udev:ro  # udev rules (readonly)
-      - ./Server:/workspace/Server:rw
-      - ./client:/workspace/client:ro
-      - ./protocol.py:/workspace/protocol.py:ro
-      # Camera access
-      - /dev/video0:/dev/video0
-      - /dev/video10:/dev/video10
-      - /dev/video11:/dev/video11
-      - /dev/video12:/dev/video12
-      - /dev/video13:/dev/video13
-      - /dev/video14:/dev/video14
-      - /dev/video15:/dev/video15
-      - /dev/video16:/dev/video16
-      - /dev/media0:/dev/media0
-      - /dev/media1:/dev/media1
-      - /dev/media2:/dev/media2
-      - /dev/media3:/dev/media3
-      # ✅ NEU: Host libcamera in Container mounten
-      - /usr/lib/aarch64-linux-gnu/libcamera.so.0:/usr/lib/aarch64-linux-gnu/libcamera.so.0:ro
-      - /usr/lib/python3/dist-packages/picamera2:/usr/lib/python3/dist-packages/picamera2:ro
     command: >
       bash /ros2_ws/Server/start_camera_ros2.sh
     # Only restart if container crashes (exit code != 0)
