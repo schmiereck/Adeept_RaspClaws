@@ -95,14 +95,9 @@ services:
       - /sys:/sys  # Für Hardware-Erkennung
       - /run/udev:/run/udev:ro  # udev rules (readonly)
     command: >
-      bash /ros2_ws/Server/start_camera_ros2.sh
+      bash -c "source /opt/ros/humble/setup.bash && 
+            ros2 launch hexapod_description camera.launch.py"
     # Only restart if container crashes (exit code != 0)
     # Will NOT restart if camera is not available (script sleeps with exit 0)
     restart: on-failure
-    healthcheck:
-      test: ["CMD-SHELL", "pgrep -f 'FPV.py' || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
 
