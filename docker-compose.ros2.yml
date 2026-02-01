@@ -83,7 +83,7 @@ services:
       - PYTHONPATH=/ros2_ws:/ros2_ws/Server
       #- ROS_STATIC_PEERS=192.168.2.121  # <--- HIER DEINE NOTIERTE IP EINTRAGEN
       - ROS_STATIC_PEERS=192.168.2.121  # <--- HIER DEINE NOTIERTE IP EINTRAGEN
-      #- FASTRTPS_DEFAULT_PROFILES_FILE=/ros2_ws/pi_static_peers.xml  # Gleicher PC wie raspclaws_ros2
+      - FASTRTPS_DEFAULT_PROFILES_FILE=/ros2_ws/pi_static_peers.xml  # Gleiche Config wie raspclaws_ros2
       # libcamera environment variables
       - LIBCAMERA_LOG_LEVELS=*:ERROR  # Reduce log spam
     volumes:

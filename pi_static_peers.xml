@@ -5,14 +5,39 @@
             <rtps>
                 <builtin>
                     <initialPeersList>
+                        <!-- PC für externe Kommunikation -->
                         <locator>
                             <udpv4>
                                 <address>192.168.2.121</address>
                                 <port>7400</port> <!-- Standard-Discovery-Port -->
                             </udpv4>
                         </locator>
+                        <!-- Localhost für Container-zu-Container Kommunikation auf dem Pi -->
+                        <locator>
+                            <udpv4>
+                                <address>127.0.0.1</address>
+                                <port>7400</port>
+                            </udpv4>
+                        </locator>
                     </initialPeersList>
                 </builtin>
+                <!-- Lausche auf ALLEN Interfaces (nicht nur externem) -->
+                <metatrafficUnicastLocatorList>
+                    <locator>
+                        <udpv4>
+                            <address>0.0.0.0</address>
+                            <port>7410</port>
+                        </udpv4>
+                    </locator>
+                </metatrafficUnicastLocatorList>
+                <defaultUnicastLocatorList>
+                    <locator>
+                        <udpv4>
+                            <address>0.0.0.0</address>
+                            <port>7411</port>
+                        </udpv4>
+                    </locator>
+                </defaultUnicastLocatorList>
             </rtps>
         </participant>
     </profiles>
