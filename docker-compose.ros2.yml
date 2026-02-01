@@ -22,9 +22,7 @@ services:
       #- FASTRTPS_DEFAULT_PROFILES_FILE=/ros2_ws/pi_unicast_only.xml
       - PYTHONPATH=/ros2_ws:/ros2_ws/Server
       # ------------------
-      # Wir sagen dem Pi, er soll den PC direkt anrufen:
-      #- ROS_STATIC_PEERS=192.168.2.121  # <--- HIER DEINE NOTIERTE IP EINTRAGEN
-      - ROS_DISCOVERY_SERVER=192.168.2.121:11811
+      - ROS_DISCOVERY_SERVER=172.21.213.17:11811
       #- FASTRTPS_DEFAULT_PROFILES_FILE=/ros2_ws/pi_static_peers.xml  # <--- HIER DEINE NOTIERTE IP EINTRAGEN
     #depends_on:
     #  discovery-server:
@@ -84,7 +82,7 @@ services:
       - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
       - PYTHONPATH=/ros2_ws:/ros2_ws/Server
       #- ROS_STATIC_PEERS=192.168.2.121  # <--- HIER DEINE NOTIERTE IP EINTRAGEN
-      - ROS_DISCOVERY_SERVER=192.168.2.121:11811
+      - ROS_DISCOVERY_SERVER=172.21.213.17:11811
       #- FASTRTPS_DEFAULT_PROFILES_FILE=/ros2_ws/pi_static_peers.xml  # Gleicher PC wie raspclaws_ros2
       # libcamera environment variables
       - LIBCAMERA_LOG_LEVELS=*:ERROR  # Reduce log spam
