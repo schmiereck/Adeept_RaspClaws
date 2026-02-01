@@ -1,26 +1,40 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<dds>
-    <profiles xmlns="http://www.eprosima.com/XMLSchemas/fastRTPS_Profiles">
-        <participant profile_name="super_server_profile" is_default_profile="true">
-            <rtps>
-                <builtin>
-                    <discovery_config>
-                        <discoveryProtocol>SUPER_SERVER</discoveryProtocol>
-                        <discoveryServersList>
-                            <RemoteServer prefix="44.53.00.5f.45.50.52.4f.53.49.4d.41">
-                                <metatrafficUnicastLocatorList>
-                                    <locator>
-                                        <udpv4>
-                                            <address>192.168.2.121</address>
-                                            <port>11811</port>
-                                        </udpv4>
-                                    </locator>
-                                </metatrafficUnicastLocatorList>
-                            </RemoteServer>
-                        </discoveryServersList>
-                    </discovery_config>
-                </builtin>
-            </rtps>
-        </participant>
-    </profiles>
-</dds>
+<profiles xmlns="http://www.eprosima.com/XMLSchemas/fastRTPS_Profiles">
+    <participant profile_name="pc_profile" is_default_profile="true">
+        <rtps>
+            <propertiesPolicy>
+                <properties>
+                    <property>
+                        <name>fastdds.external_address</name>
+                        <value>192.168.2.121</value>
+                    </property>
+                </properties>
+            </propertiesPolicy>
+            <builtin>
+                <initialPeersList>
+                    <locator>
+                        <udpv4>
+                            <address>172.21.208.1</address> <port>7400</port>
+                        </udpv4>
+                    </locator>
+                </initialPeersList>
+                <metatrafficUnicastLocatorList>
+                    <locator>
+                        <udpv4>
+                            <address>192.168.2.121</address>
+                            <port>7410</port>
+                        </udpv4>
+                    </locator>
+                </metatrafficUnicastLocatorList>
+            </builtin>
+            <defaultUnicastLocatorList>
+                <locator>
+                    <udpv4>
+                        <address>192.168.2.121</address>
+                        <port>7411</port>
+                    </udpv4>
+                </locator>
+            </defaultUnicastLocatorList>
+        </rtps>
+    </participant>
+</profiles>

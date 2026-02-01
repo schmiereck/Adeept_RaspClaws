@@ -24,3 +24,14 @@
 - **Aktuelles Arbeitsverzeichnis:** `C:\Users\SCMJ178\IdeaProjects\Adeept_RaspClaws`
 - **Typ:** Git-Projekt (wird auf Pi und PC gepushed)
 
+## Aktuelles Problem: ROS2-Topic-Empfang in WSL
+
+**Zusammenfassung:**
+
+Das Problem liegt höchstwahrscheinlich an der Netzwerk-Isolation zwischen dem Windows-Host und der WSL2-Umgebung. Die Windows-Firewall blockiert wahrscheinlich die UDP-Pakete, die für die ROS2-Discovery erforderlich sind, und wir können die erforderlichen Administratorrechte nicht erhalten, um sie zu deaktivieren oder Regeln hinzuzufügen. Die WSL-IP-Adresse `172.21.213.17` ist eine interne Docker-Netzwerk-IP, die nicht direkt vom Pi aus erreichbar ist.
+
+**Empfohlene nächste Schritte:**
+
+1.  **Windows-Firewall-Regel manuell hinzufügen:** Der Benutzer sollte manuell eine eingehende Firewall-Regel für das "Private" Netzwerkprofil erstellen, um UDP-Verkehr auf den Ports `7400-7420` zu erlauben. Dies erfordert Administratorrechte.
+2.  **WSL-Netzwerkmodus auf "Bridged" umstellen:** Der Benutzer kann versuchen, den Netzwerkmodus von WSL2 von "NAT" (Standard) auf "Bridged" umzustellen. Dadurch erhält die WSL-Instanz eine eigene IP-Adresse im selben Netzwerk wie der Host-Computer, was die Kommunikation erheblich vereinfacht. Dies ist eine fortgeschrittene Konfiguration und erfordert Änderungen in der `.wslconfig`-Datei.
+3.  **Verwendung eines ROS2-Discovery-Servers auf dem Host:** Eine weitere Möglichkeit ist, einen Discovery-Server auf dem Windows-Host (nicht in WSL) zu starten und sowohl den Pi als auch die WSL-Instanz damit zu verbinden.
