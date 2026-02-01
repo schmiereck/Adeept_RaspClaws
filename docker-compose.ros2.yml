@@ -1,20 +1,4 @@
 services:
-#  # run with: pi_discovery_fix.xml
-#  discovery-server:
-#    image: adeept_raspclaws-raspclaws_ros2:latest
-#    network_mode: host
-#    container_name: discovery-server
-#    command: >
-#      bash -c "source /opt/ros/humble/setup.bash &&
-#      fast-discovery-server -i 0 -l 0.0.0.0 -p 11811"
-#    environment:
-#      - FASTRTPS_DEFAULT_PROFILES_FILE=/ros2_ws/pi_discovery_fix.xml
-#    restart: always
-#    healthcheck:
-#      test: ["CMD-SHELL", "pgrep -f 'fast-discovery-server' || exit 1"]
-#      interval: 5s
-#      timeout: 3s
-#      retries: 3
 
   raspclaws_ros2:
     image: adeept_raspclaws-raspclaws_ros2:latest
@@ -50,6 +34,11 @@ services:
       bash -c "source /opt/ros/humble/setup.bash && 
             python3 /ros2_ws/Server/ROSServer.py"
     restart: always
+    healthcheck:
+      test: ["CMD", "ros2", "topic", "list"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   #raspclaws_camera:
   #  image: adeept_raspclaws-raspclaws_ros2:latest  # Gleiches Image wie raspclaws_ros2
@@ -62,6 +51,9 @@ services:
   # Disable this if no camera is connected
   raspclaws_camera:
     image: adeept_raspclaws-raspclaws_ros2:latest
+    depends_on:
+      raspclaws_ros2:
+          condition: service_healthy
     build:
       context: .
       dockerfile: Dockerfile.ros2
