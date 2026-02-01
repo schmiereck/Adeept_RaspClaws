@@ -10,6 +10,11 @@ def generate_launch_description():
             output='screen',
             parameters=[{
                 'video_device': '/dev/video0',
+                'image_size': [640, 480],
+                'pixel_format': 'YUYV',
+                'camera_frame_id': 'camera_link',
+                'output_encoding': 'rgb8',
+                'io_method': 'mmap',  # Wichtig: Memory-mapped I/O statt read
             }]
         )
     ])
