@@ -23,6 +23,11 @@ def generate_launch_description():
                 'camera_frame_id': 'camera_link',
                 'output_encoding': 'rgb8',
                 'io_method': 'mmap',  # Wichtig: Memory-mapped I/O statt read
-            }]
+            }],
+            # NEU: Remapping für compressed transport
+            remappings=[
+                ('/image_raw', '/raspclaws/camera/image_raw'),
+                ('/camera_info', '/raspclaws/camera/camera_info'),
+            ]
         )
     ])
