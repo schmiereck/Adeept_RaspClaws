@@ -9,7 +9,8 @@ def generate_launch_description():
             name='v4l2_camera',
             output='screen',
             parameters=[{
-                'video_device': '/dev/video0',
+                #'video_device': '/dev/video0',
+                'video_device': '/dev/video13',  # ← ISP statt Raw-Sensor!
                 'image_size': [640, 480],
                 'pixel_format': 'YUYV',
                 'camera_frame_id': 'camera_link',
