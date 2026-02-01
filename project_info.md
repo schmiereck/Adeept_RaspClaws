@@ -28,10 +28,13 @@
 
 **Zusammenfassung:**
 
-Das Problem liegt höchstwahrscheinlich an der Netzwerk-Isolation zwischen dem Windows-Host und der WSL2-Umgebung. Die Windows-Firewall blockiert wahrscheinlich die UDP-Pakete, die für die ROS2-Discovery erforderlich sind, und wir können die erforderlichen Administratorrechte nicht erhalten, um sie zu deaktivieren oder Regeln hinzuzufügen. Die WSL-IP-Adresse `172.21.213.17` ist eine interne Docker-Netzwerk-IP, die nicht direkt vom Pi aus erreichbar ist.
+Alle bekannten softwareseitigen Konfigurationen (Pi Docker Compose, `pi_static_peers.xml`, `pc_bridge.xml` auf WSL) wurden gemäß der bereitgestellten Dokumentation und den Erwartungen an die Python-Bridge angepasst. Der Pi publiziert die Topics, die Python-Bridge läuft, und die Windows-Firewall wurde vom Benutzer deaktiviert. Trotzdem empfängt der WSL-PC keine ROS2-Topics vom Pi.
 
-**Empfohlene nächste Schritte:**
+Dies deutet auf ein tieferliegendes Netzwerkproblem hin, das höchstwahrscheinlich mit der Interaktion zwischen Windows, WSL2 und der Python-Bridge zusammenhängt, insbesondere mit der Art und Weise, wie Windows virtuelle Netzwerke handhabt und wie die Firewall *auch bei deaktiviertem Profil* noch eingreifen kann oder wie das Netzwerkprofil von WSL erkannt wird.
 
-1.  **Windows-Firewall-Regel manuell hinzufügen:** Der Benutzer sollte manuell eine eingehende Firewall-Regel für das "Private" Netzwerkprofil erstellen, um UDP-Verkehr auf den Ports `7400-7420` zu erlauben. Dies erfordert Administratorrechte.
-2.  **WSL-Netzwerkmodus auf "Bridged" umstellen:** Der Benutzer kann versuchen, den Netzwerkmodus von WSL2 von "NAT" (Standard) auf "Bridged" umzustellen. Dadurch erhält die WSL-Instanz eine eigene IP-Adresse im selben Netzwerk wie der Host-Computer, was die Kommunikation erheblich vereinfacht. Dies ist eine fortgeschrittene Konfiguration und erfordert Änderungen in der `.wslconfig`-Datei.
-3.  **Verwendung eines ROS2-Discovery-Servers auf dem Host:** Eine weitere Möglichkeit ist, einen Discovery-Server auf dem Windows-Host (nicht in WSL) zu starten und sowohl den Pi als auch die WSL-Instanz damit zu verbinden.
+**Verbleibende mögliche Ursachen (manuelle Überprüfung erforderlich):**
+
+1.  **Windows-Netzwerkprofil für WSL:** Selbst wenn die Firewall für das "Private" Profil deaktiviert ist, muss sichergestellt sein, dass das virtuelle Netzwerk, das WSL verwendet, auch wirklich als "Privat" und nicht als "Öffentlich" erkannt wird. Überprüfe dies manuell in den Windows-Netzwerkeinstellungen.
+2.  **Firewall-Regel für Ports:** Obwohl die Firewall deaktiviert wurde, ist es ratsam, die in der `ROS2-WSL-setup.md` erwähnte spezifische eingehende Firewall-Regel für UDP-Ports `7400-7415` manuell hinzuzufügen. Manchmal kann eine explizite Regel auch bei deaktivierter Firewall helfen oder sicherstellen, dass bestimmte Ausnahmen korrekt behandelt werden, sobald die Firewall wieder aktiviert wird.
+3.  **`C:\Users\thoma\.wslconfig`:** Überprüfe, ob die `vmSwitch=WSL-Bridge` Einstellung in der `.wslconfig` noch vorhanden und korrekt ist.
+4.  **IP-Adressen der Bridge:** Vergewissere dich, dass die `PI_IP` (`192.168.2.126`) und `WSL_IP` (`172.21.213.17`) in `ros_bridge.py` immer noch korrekt sind und mit den aktuellen IPs übereinstimmen. Die WSL-IP (`172.21.213.17`) ist dynamisch und kann sich ändern, wenn WSL neu gestartet wird.
