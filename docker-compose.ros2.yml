@@ -37,8 +37,8 @@ services:
     healthcheck:
       test: ["CMD", "ros2", "topic", "list"]
       interval: 5s
-      timeout: 5s
-      retries: 5
+      timeout: 15s
+      retries: 10
 
   #raspclaws_camera:
   #  image: adeept_raspclaws-raspclaws_ros2:latest  # Gleiches Image wie raspclaws_ros2
