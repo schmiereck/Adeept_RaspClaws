@@ -35,7 +35,10 @@ services:
             python3 /ros2_ws/Server/ROSServer.py"
     restart: always
     healthcheck:
-      test: ["CMD", "ros2", "topic", "list"]
+      #test: ["CMD", "ros2", "topic", "list"]
+      test: >
+        bash -c "source /opt/ros/humble/setup.bash &&
+        ros2 topic list >/dev/null"
       interval: 5s
       timeout: 15s
       retries: 10
