@@ -14,8 +14,7 @@
                 <initialPeersList>
                     <locator>
                         <udpv4>
-                            <address>172.21.213.17</address> <!-- USE CURRENT WSL IP -->
-                            <port>7400</port>
+                            <address>172.21.208.1</address> <port>7400</port>
                         </udpv4>
                     </locator>
                 </initialPeersList>
