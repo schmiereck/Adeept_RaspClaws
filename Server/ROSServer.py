@@ -622,6 +622,7 @@ class RaspClawsNode(Node):
 
     def publish_system_info(self):
         """Publish system information periodically"""
+        self.get_logger().info('Publishing system info...')
         try:
             if not ROBOT_MODULES_AVAILABLE:
                 # MOCK MODE: Publish placeholder data
@@ -807,6 +808,7 @@ def main(args=None):
 
         # Spin (process callbacks)
         try:
+            node.get_logger().info('Spinning node...')
             rclpy.spin(node)
         except KeyboardInterrupt:
             node.get_logger().info('Keyboard interrupt received')
