@@ -20,16 +20,16 @@
                             </udpv4>
                         </locator>
                     </initialPeersList>
+                    <!-- Lausche auf ALLEN Interfaces (nicht nur externem) -->
+                    <metatrafficUnicastLocatorList>
+                        <locator>
+                            <udpv4>
+                                <address>0.0.0.0</address>
+                                <port>7410</port>
+                            </udpv4>
+                        </locator>
+                    </metatrafficUnicastLocatorList>
                 </builtin>
-                <!-- Lausche auf ALLEN Interfaces (nicht nur externem) -->
-                <metatrafficUnicastLocatorList>
-                    <locator>
-                        <udpv4>
-                            <address>0.0.0.0</address>
-                            <port>7410</port>
-                        </udpv4>
-                    </locator>
-                </metatrafficUnicastLocatorList>
                 <defaultUnicastLocatorList>
                     <locator>
                         <udpv4>
