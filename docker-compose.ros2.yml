@@ -93,9 +93,7 @@ services:
       - /run/udev:/run/udev:ro  # udev rules (readonly)
     command: >
       bash -c "source /opt/ros/humble/setup.bash &&
-            python3 /ros2_ws/Server/FPV_ROS2.py"
-    #  bash -c "source /opt/ros/humble/setup.bash &&
-    #        ros2 launch /ros2_ws/launch/camera.launch.py"
+            ros2 launch /ros2_ws/launch/camera.launch.py"
 
     # Only restart if container crashes (exit code != 0)
     # Will NOT restart if camera is not available (script sleeps with exit 0)
