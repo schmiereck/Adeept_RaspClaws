@@ -44,7 +44,7 @@ def generate_launch_description():
             }],
             remappings=[
                 ('in', '/image_raw'),
-                ('out', '/image_raw')
+                ('out/compressed', '/image_raw/compressed')
             ]
         )
     ])

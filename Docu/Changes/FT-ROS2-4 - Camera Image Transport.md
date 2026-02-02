@@ -157,11 +157,37 @@ ros2 run rqt_image_view rqt_image_view /image_raw
 → **Lösung:** Falsches `/dev/video*` Device
 → **Fix:** Nutze `/dev/video14` statt `/dev/video0`
 
+### Topic `/out/compressed` erscheint (zusätzlich zu `/image_raw/compressed`)
+→ **Ursache:** Falsches Remapping im Republisher-Node
+→ **Fix:** 
+```python
+# FALSCH:
+remappings=[
+    ('in', '/image_raw'),
+    ('out', '/image_raw')  # ❌ Erstellt /out/compressed
+]
+
+# RICHTIG:
+remappings=[
+    ('in', '/image_raw'),
+    ('out/compressed', '/image_raw/compressed')  # ✅ Mappt direkt
+]
+```
+
 ### "WARNING: topic [/image_raw/compressed] does not appear to be published yet"
 → **Lösung:** Prüfe ob `image_republisher` Node läuft:
 ```bash
 docker exec -it raspclaws_camera bash -c \
   "source /opt/ros/humble/setup.bash && ros2 node list"
+```
+
+### Republisher crasht mit "LibraryLoadException"
+→ **Ursache:** `compressed_image_transport`-Plugin fehlt
+→ **Fix:**
+```bash
+docker exec -it raspclaws_camera bash -c \
+  "apt-get update && apt-get install -y ros-humble-compressed-image-transport"
+docker restart raspclaws_camera
 ```
 
 ### Compression Quality anpassen
