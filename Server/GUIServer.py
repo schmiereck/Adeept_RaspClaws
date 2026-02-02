@@ -1,18 +1,9 @@
-#!/usr/bin/env/python
-# File name   : server.py
-# Description : main programe for RaspClaws
-# Website     : www.adeept.com
-# E-mail      : support@adeept.com
-# Author      : William
-# Date        : 2018/08/22
-
 import socket
 import time
 import threading
 import sys
 import signal
 import Move as move
-import Adafruit_PCA9685
 import argparse
 import os
 import FPV
@@ -89,7 +80,7 @@ def signal_handler(sig, frame):
 	os._exit(0)
 
 
-def sigtstp_handler(sig, frame):
+ndef sigtstp_handler(sig, frame):
 	"""Handle Ctrl+Z (SIGTSTP) - warn user and perform cleanup instead of suspending"""
 	print("\n\n" + "="*60)
 	print("⚠️  WARNING: Ctrl+Z detected!")
@@ -125,20 +116,8 @@ new_frame = 0
 direction_command = 'no'
 turn_command = 'no'
 
-# Try to initialize PCA9685, use mock mode if hardware not available
-try:
-	pwm = Adafruit_PCA9685.PCA9685(address=0x40, busnum=1)  # Changed from 0x5F to 0x40
-	pwm.set_pwm_freq(50)
-	print("PCA9685 initialized in GUIServer on address 0x40")
-except (OSError, IOError) as e:
-	print(f"\033[38;5;3mWarning:\033[0m Could not initialize PCA9685 in GUIServer: {e}")
-	print("Running in MOCK MODE - servo commands will be ignored")
-	class MockPWM:
-		def set_pwm(self, channel, on, off):
-			pass
-		def set_pwm_freq(self, freq):
-			pass
-	pwm = MockPWM()
+# PCA9685 is now initialized via move.init_all() which calls RPIservo.initialize_pwm()
+# We don't need a local pwm object here anymore.
 
 rm = move.RobotM()
 rm.start()
