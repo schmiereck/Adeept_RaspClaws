@@ -5,17 +5,27 @@
 # Date		: 2025/04/16
 import time
 import math
-import Adafruit_PCA9685
-from mpu6050 import mpu6050
+import adafruit_mpu6050
 import Kalman_Filter as Kalman_filter
 import PID
 import threading
 import RPIservo
 import sys
 import os
+
+# New imports for CircuitPython
+from adafruit_pca9685 import PCA9685
+import board
+import busio
+
 # Add parent directory to path to import protocol module
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from protocol import *
+
+
+def _pulse_to_duty_cycle(pulse):
+    """Converts a 12-bit pulse width (0-4095) to a 16-bit duty cycle (0-65535)."""
+    return (pulse * 65535) // 4095
 
 pwm0 = 300
 pwm1 = 300
@@ -182,10 +192,12 @@ kalman_filter_X =  Kalman_filter.Kalman_filter(0.001,0.1)
 kalman_filter_Y =  Kalman_filter.Kalman_filter(0.001,0.1)
 
 try:
-	sensor = mpu6050(0x68)
+	i2c = busio.I2C(board.SCL, board.SDA)
+	sensor = adafruit_mpu6050.MPU6050(i2c)
 	mpu6050_connection = 1
-except:
+except (ValueError, RuntimeError):
 	mpu6050_connection = 0
+	sensor = None
 
 '''
 change these two variable to adjuest the steady status.
@@ -222,13 +234,13 @@ def set_servo_smooth(channel, target_pos, steps=0):
 
 	# If already at target, just set it
 	if abs(current - target_pos) < 2:
-		pwm.set_pwm(channel, 0, target_pos)
+		pwm.channels[channel].duty_cycle = _pulse_to_duty_cycle(target_pos)
 		servo_current_pos[channel] = target_pos
 		return
 
 	# Direct move (no interpolation) for speed
 	if steps == 0:
-		pwm.set_pwm(channel, 0, target_pos)
+		pwm.channels[channel].duty_cycle = _pulse_to_duty_cycle(target_pos)
 		servo_current_pos[channel] = target_pos
 	else:
 		# Optional interpolation (not recommended in dove functions)
@@ -237,7 +249,7 @@ def set_servo_smooth(channel, target_pos, steps=0):
 		for i in range(steps + 1):
 			t = i / steps
 			pos = int(current + (target_pos - current) * t)
-			pwm.set_pwm(channel, 0, pos)
+			pwm.channels[channel].duty_cycle = _pulse_to_duty_cycle(pos)
 			time.sleep(step_delay) # Added sleep here
 		# Update tracked position
 		servo_current_pos[channel] = target_pos
@@ -258,7 +270,7 @@ def set_servo_immediate(channel, target_pos):
 	if channel < 0 or channel > 15:
 		return
 
-	pwm.set_pwm(channel, 0, target_pos)
+	pwm.channels[channel].duty_cycle = _pulse_to_duty_cycle(target_pos)
 	servo_current_pos[channel] = target_pos
 
 
@@ -316,16 +328,10 @@ def get_mpu6050_data():
 
 	try:
 		# Get accelerometer data (in m/s²)
-		accel_data = sensor.get_accel_data()
-		accel_x = accel_data['x']
-		accel_y = accel_data['y']
-		accel_z = accel_data['z']
+		accel_x, accel_y, accel_z = sensor.acceleration
 
 		# Get gyroscope data (in degrees/sec)
-		gyro_data = sensor.get_gyro_data()
-		gyro_x = gyro_data['x']
-		gyro_y = gyro_data['y']
-		gyro_z = gyro_data['z']
+		gyro_x, gyro_y, gyro_z = sensor.gyro
 
 		# Format: "G:x,y,z A:x,y,z"
 		return f"G:{gyro_x:.2f},{gyro_y:.2f},{gyro_z:.2f} A:{accel_x:.2f},{accel_y:.2f},{accel_z:.2f}"
@@ -348,8 +354,8 @@ Get raw data from mpu6050.
 '''
 def mpu6050Test():
 	while 1:
-		accelerometer_data = sensor.get_accel_data()
-		print('X=%f,Y=%f,Z=%f'%(accelerometer_data['x'],accelerometer_data['y'],accelerometer_data['x']))
+		accel_x, accel_y, accel_z = sensor.acceleration
+		print('X=%f,Y=%f,Z=%f'%(accel_x, accel_y, accel_z))
 		time.sleep(0.3)
 
 		
@@ -361,25 +367,25 @@ def init_all():
 		initialize_pwm()
 
 	# Initialize all servos to base positions
-	pwm.set_pwm(0, 0, pwm0)
-	pwm.set_pwm(1, 0, pwm1)
-	pwm.set_pwm(2, 0, pwm2)
-	pwm.set_pwm(3, 0, pwm3)
+	pwm.channels[0].duty_cycle = _pulse_to_duty_cycle(pwm0)
+	pwm.channels[1].duty_cycle = _pulse_to_duty_cycle(pwm1)
+	pwm.channels[2].duty_cycle = _pulse_to_duty_cycle(pwm2)
+	pwm.channels[3].duty_cycle = _pulse_to_duty_cycle(pwm3)
 
-	pwm.set_pwm(4, 0, pwm4)
-	pwm.set_pwm(5, 0, pwm5)
-	pwm.set_pwm(6, 0, pwm6)
-	pwm.set_pwm(7, 0, pwm7)
+	pwm.channels[4].duty_cycle = _pulse_to_duty_cycle(pwm4)
+	pwm.channels[5].duty_cycle = _pulse_to_duty_cycle(pwm5)
+	pwm.channels[6].duty_cycle = _pulse_to_duty_cycle(pwm6)
+	pwm.channels[7].duty_cycle = _pulse_to_duty_cycle(pwm7)
 
-	pwm.set_pwm(8, 0, pwm8)
-	pwm.set_pwm(9, 0, pwm9)
-	pwm.set_pwm(10, 0, pwm10)
-	pwm.set_pwm(11, 0, pwm11)
+	pwm.channels[8].duty_cycle = _pulse_to_duty_cycle(pwm8)
+	pwm.channels[9].duty_cycle = _pulse_to_duty_cycle(pwm9)
+	pwm.channels[10].duty_cycle = _pulse_to_duty_cycle(pwm10)
+	pwm.channels[11].duty_cycle = _pulse_to_duty_cycle(pwm11)
 
-	pwm.set_pwm(12, 0, pwm12)
-	pwm.set_pwm(13, 0, pwm13)
-	pwm.set_pwm(14, 0, pwm14)
-	pwm.set_pwm(15, 0, pwm15)
+	pwm.channels[12].duty_cycle = _pulse_to_duty_cycle(pwm12)
+	pwm.channels[13].duty_cycle = _pulse_to_duty_cycle(pwm13)
+	pwm.channels[14].duty_cycle = _pulse_to_duty_cycle(pwm14)
+	pwm.channels[15].duty_cycle = _pulse_to_duty_cycle(pwm15)
 	
 	# Update position tracking
 	servo_current_pos = [
@@ -458,63 +464,63 @@ def leg_control(leg_name, pos, wiggle, height_adjust=0):
 		# Position 0: Height adjustment only
 		#pwm.set_pwm(h_channel, 0, base_h)  # Commented out like in original
 		if height_flag:
-			pwm.set_pwm(v_channel, 0, base_v + height_adjust)
+			set_servo_immediate(v_channel, base_v + height_adjust)
 		else:
-			pwm.set_pwm(v_channel, 0, base_v - height_adjust)
+			set_servo_immediate(v_channel, base_v - height_adjust)
 	else:
 		# Positions 1-4: Full movement cycle
 		if direction_flag:
 			# Forward direction logic
 			if pos == 1:
-				pwm.set_pwm(h_channel, 0, base_h)
+				set_servo_immediate(h_channel, base_h)
 				if height_flag:
-					pwm.set_pwm(v_channel, 0, base_v + 3*height_change)
+					set_servo_immediate(v_channel, base_v + 3*height_change)
 				else:
-					pwm.set_pwm(v_channel, 0, base_v - 3*height_change)
+					set_servo_immediate(v_channel, base_v - 3*height_change)
 			elif pos == 2:
-				pwm.set_pwm(h_channel, 0, base_h + wiggle)
+				set_servo_immediate(h_channel, base_h + wiggle)
 				if height_flag:
-					pwm.set_pwm(v_channel, 0, base_v - height_change)
+					set_servo_immediate(v_channel, base_v - height_change)
 				else:
-					pwm.set_pwm(v_channel, 0, base_v + height_change)
+					set_servo_immediate(v_channel, base_v + height_change)
 			elif pos == 3:
-				pwm.set_pwm(h_channel, 0, base_h + int(wiggle/2))  # Halfway to avoid jerk
+				set_servo_immediate(h_channel, base_h + int(wiggle/2))  # Halfway to avoid jerk
 				if height_flag:
-					pwm.set_pwm(v_channel, 0, base_v - height_change)
+					set_servo_immediate(v_channel, base_v - height_change)
 				else:
-					pwm.set_pwm(v_channel, 0, base_v + height_change)
+					set_servo_immediate(v_channel, base_v + height_change)
 			elif pos == 4:
-				pwm.set_pwm(h_channel, 0, base_h - wiggle)
+				set_servo_immediate(h_channel, base_h - wiggle)
 				if height_flag:
-					pwm.set_pwm(v_channel, 0, base_v - height_change)
+					set_servo_immediate(v_channel, base_v - height_change)
 				else:
-					pwm.set_pwm(v_channel, 0, base_v + height_change)
+					set_servo_immediate(v_channel, base_v + height_change)
 		else:
 			# Reverse direction logic
 			if pos == 1:
-				pwm.set_pwm(h_channel, 0, base_h)
+				set_servo_immediate(h_channel, base_h)
 				if height_flag:
-					pwm.set_pwm(v_channel, 0, base_v + 3*wiggle)
+					set_servo_immediate(v_channel, base_v + 3*wiggle)
 				else:
-					pwm.set_pwm(v_channel, 0, base_v - 3*wiggle)
+					set_servo_immediate(v_channel, base_v - 3*wiggle)
 			elif pos == 2:
-				pwm.set_pwm(h_channel, 0, base_h - wiggle)
+				set_servo_immediate(h_channel, base_h - wiggle)
 				if height_flag:
-					pwm.set_pwm(v_channel, 0, base_v - wiggle)
+					set_servo_immediate(v_channel, base_v - wiggle)
 				else:
-					pwm.set_pwm(v_channel, 0, base_v + wiggle)
+					set_servo_immediate(v_channel, base_v + wiggle)
 			elif pos == 3:
-				pwm.set_pwm(h_channel, 0, base_h - int(wiggle/2))  # Halfway to avoid jerk
+				set_servo_immediate(h_channel, base_h - int(wiggle/2))  # Halfway to avoid jerk
 				if height_flag:
-					pwm.set_pwm(v_channel, 0, base_v - wiggle)
+					set_servo_immediate(v_channel, base_v - wiggle)
 				else:
-					pwm.set_pwm(v_channel, 0, base_v + wiggle)
+					set_servo_immediate(v_channel, base_v + wiggle)
 			elif pos == 4:
-				pwm.set_pwm(h_channel, 0, base_h + wiggle)
+				set_servo_immediate(h_channel, base_h + wiggle)
 				if height_flag:
-					pwm.set_pwm(v_channel, 0, base_v - wiggle)
+					set_servo_immediate(v_channel, base_v - wiggle)
 				else:
-					pwm.set_pwm(v_channel, 0, base_v + wiggle)
+					set_servo_immediate(v_channel, base_v + wiggle)
 
 
 # ==================== Wrapper Functions (for backwards compatibility) ====================
@@ -556,18 +562,18 @@ def right_III(pos, wiggle, height_adjust=0):
 # This removed code duplication and improved maintainability significantly.
 
 def stand():
-	pwm.set_pwm(0,0,300)
-	pwm.set_pwm(1,0,300)
-	pwm.set_pwm(2,0,300)
-	pwm.set_pwm(3,0,300)
-	pwm.set_pwm(4,0,300)
-	pwm.set_pwm(5,0,300)
-	pwm.set_pwm(6,0,300)
-	pwm.set_pwm(7,0,300)
-	pwm.set_pwm(8,0,300)
-	pwm.set_pwm(9,0,300)
-	pwm.set_pwm(10,0,300)
-	pwm.set_pwm(11,0,300)
+	set_servo_immediate(0,300)
+	set_servo_immediate(1,300)
+	set_servo_immediate(2,300)
+	set_servo_immediate(3,300)
+	set_servo_immediate(4,300)
+	set_servo_immediate(5,300)
+	set_servo_immediate(6,300)
+	set_servo_immediate(7,300)
+	set_servo_immediate(8,300)
+	set_servo_immediate(9,300)
+	set_servo_immediate(10,300)
+	set_servo_immediate(11,300)
 
 
 def lower_legs_smoothly(target_vertical_offset=-10, interpolation_steps=10):
@@ -706,31 +712,31 @@ def dove_Right_III(horizontal, vertical):
 
 def steady_X():
 	if leftSide_direction:
-		pwm.set_pwm(0,0,pwm0+steady_X_set)
-		pwm.set_pwm(2,0,pwm2)
-		pwm.set_pwm(4,0,pwm4-steady_X_set)
+		set_servo_immediate(0,pwm0+steady_X_set)
+		set_servo_immediate(2,pwm2)
+		set_servo_immediate(4,pwm4-steady_X_set)
 	else:
-		pwm.set_pwm(0,0,pwm0+steady_X_set)
-		pwm.set_pwm(2,0,pwm2)
-		pwm.set_pwm(4,0,pwm4-steady_X_set)
+		set_servo_immediate(0,pwm0+steady_X_set)
+		set_servo_immediate(2,pwm2)
+		set_servo_immediate(4,pwm4-steady_X_set)
 
 	if rightSide_direction:
-		pwm.set_pwm(10,0,pwm10+steady_X_set)
-		pwm.set_pwm(8,0,pwm8)
-		pwm.set_pwm(6,0,pwm6-steady_X_set)
+		set_servo_immediate(10,pwm10+steady_X_set)
+		set_servo_immediate(8,pwm8)
+		set_servo_immediate(6,pwm6-steady_X_set)
 	else:
-		pwm.set_pwm(10,0,pwm10-steady_X_set)
-		pwm.set_pwm(8,0,pwm8)
-		pwm.set_pwm(6,0,pwm6+steady_X_set)
+		set_servo_immediate(10,pwm10-steady_X_set)
+		set_servo_immediate(8,pwm8)
+		set_servo_immediate(6,pwm6+steady_X_set)
 
 
 def steady():
 	global X_fix_output, Y_fix_output
 	if mpu6050_connection:
-		accelerometer_data = sensor.get_accel_data()
-		X = accelerometer_data['x']
+		accel_x, accel_y, accel_z = sensor.acceleration
+		X = accel_x
 		X = kalman_filter_X.kalman(X)
-		Y = accelerometer_data['y']
+		Y = accel_y
 		Y = kalman_filter_Y.kalman(Y)
 
 		X_fix_output += -X_pid.GenOut(X - target_X)
@@ -787,7 +793,7 @@ def look_up(wiggle=look_wiggle):
 
 		# Interpolate between old and new position
 		for pos in interpolate(old_position, Up_Down_input, steps=8):
-			pwm.set_pwm(13, 0, pos)
+			pwm.channels[13].duty_cycle = _pulse_to_duty_cycle(pos)
 			time.sleep(0.005)  # 5ms delay between steps = ~40ms total
 	else:
 		# Direct, fast camera movement
@@ -796,7 +802,7 @@ def look_up(wiggle=look_wiggle):
 		else:
 			Up_Down_input -= wiggle
 		Up_Down_input = ctrl_range(Up_Down_input, Up_Down_Max, Up_Down_Min)
-		pwm.set_pwm(13, 0, Up_Down_input)
+		pwm.channels[13].duty_cycle = _pulse_to_duty_cycle(Up_Down_input)
 
 def look_down(wiggle=look_wiggle):
 	global Up_Down_input
@@ -811,7 +817,7 @@ def look_down(wiggle=look_wiggle):
 
 		# Interpolate between old and new position
 		for pos in interpolate(old_position, Up_Down_input, steps=8):
-			pwm.set_pwm(13, 0, pos)
+			pwm.channels[13].duty_cycle = _pulse_to_duty_cycle(pos)
 			time.sleep(0.005)  # 5ms delay between steps
 	else:
 		# Direct, fast camera movement
@@ -820,7 +826,7 @@ def look_down(wiggle=look_wiggle):
 		else:
 			Up_Down_input += wiggle
 		Up_Down_input = ctrl_range(Up_Down_input, Up_Down_Max, Up_Down_Min)
-		pwm.set_pwm(13, 0, Up_Down_input)
+		pwm.channels[13].duty_cycle = _pulse_to_duty_cycle(Up_Down_input)
 
 
 def look_left(wiggle=look_wiggle):
@@ -836,7 +842,7 @@ def look_left(wiggle=look_wiggle):
 
 		# Interpolate between old and new position
 		for pos in interpolate(old_position, Left_Right_input, steps=8):
-			pwm.set_pwm(12, 0, pos)
+			pwm.channels[12].duty_cycle = _pulse_to_duty_cycle(pos)
 			time.sleep(0.005)  # 5ms delay between steps
 	else:
 		# Direct, fast camera movement
@@ -845,7 +851,7 @@ def look_left(wiggle=look_wiggle):
 		else:
 			Left_Right_input -= wiggle
 		Left_Right_input = ctrl_range(Left_Right_input, Left_Right_Max, Left_Right_Min)
-		pwm.set_pwm(12, 0, Left_Right_input)
+		pwm.channels[12].duty_cycle = _pulse_to_duty_cycle(Left_Right_input)
 
 
 def look_right(wiggle=look_wiggle):
@@ -861,7 +867,7 @@ def look_right(wiggle=look_wiggle):
 
 		# Interpolate between old and new position
 		for pos in interpolate(old_position, Left_Right_input, steps=8):
-			pwm.set_pwm(12, 0, pos)
+			pwm.channels[12].duty_cycle = _pulse_to_duty_cycle(pos)
 			time.sleep(0.005)  # 5ms delay between steps
 	else:
 		# Direct, fast camera movement
@@ -870,23 +876,26 @@ def look_right(wiggle=look_wiggle):
 		else:
 			Left_Right_input += wiggle
 		Left_Right_input = ctrl_range(Left_Right_input, Left_Right_Max, Left_Right_Min)
-		pwm.set_pwm(12, 0, Left_Right_input)
+		pwm.channels[12].duty_cycle = _pulse_to_duty_cycle(Left_Right_input)
 
 
 def look_home():
 	"""Reset camera to home position (center)"""
 	global Left_Right_input, Up_Down_input
-	pwm.set_all_pwm(0, 300)
+	for i in range(16):
+		pwm.channels[i].duty_cycle = _pulse_to_duty_cycle(300)
 	Left_Right_input = 300
 	Up_Down_input = 300
 
 
 def relesae():
-	pwm.set_all_pwm(0,0)
+	for i in range(16):
+		pwm.channels[i].duty_cycle = 0
 
 
 def clean_all():
-	pwm.set_all_pwm(0, 0)
+	for i in range(16):
+		pwm.channels[i].duty_cycle = 0
 
 
 def destroy():
@@ -1477,7 +1486,7 @@ def standby():
 
 	# Stop PWM signals on all channels
 	for channel in range(16):
-		pwm.set_pwm(channel, 0, 0)
+		pwm.channels[channel].duty_cycle = 0
 
 	print("✓ All servos in STANDBY - legs are soft, low power consumption")
 

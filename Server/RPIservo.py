@@ -5,9 +5,13 @@
 # Date        : 2025/04/16
 from __future__ import division
 import time
-import Adafruit_PCA9685
 import threading
 import os
+
+# Neue Imports für CircuitPython
+from adafruit_pca9685 import PCA9685
+import board
+import busio
 
 import random
 '''
@@ -20,13 +24,21 @@ MOCK_MODE = False
 _initialized = False
 
 
+def _pulse_to_duty_cycle(pulse):
+    """Converts a 12-bit pulse width (0-4095) to a 16-bit duty cycle (0-65535)."""
+    # The PCA9685 has 12-bit resolution (4096 steps).
+    # The CircuitPython library's duty_cycle is a 16-bit value.
+    # We need to scale the old pulse value to the new 16-bit range.
+    return (pulse * 65535) // 4095
+
+
 def initialize_pwm():
 	"""
 	Initialisiert den PCA9685 Servo-Controller.
 	MUSS explizit aufgerufen werden, bevor Servos benutzt werden können.
 
 	Returns:
-		pwm object (Adafruit_PCA9685 or MockPWM)
+		pwm object (PCA9685 or MockPWM)
 	"""
 	global pwm, MOCK_MODE, _initialized
 
@@ -35,23 +47,37 @@ def initialize_pwm():
 		return pwm
 
 	try:
-		print("🔧 Initialisiere PCA9685 auf Adresse 0x40...")
-		pwm = Adafruit_PCA9685.PCA9685(address=0x40, busnum=1)
-		pwm.set_pwm_freq(50)
+		print("🔧 Initialisiere PCA9685 via CircuitPython auf Adresse 0x40...")
+		# I2C Bus initialisieren
+		i2c = busio.I2C(board.SCL, board.SDA)
+		# PCA9685 Objekt erstellen
+		pwm = PCA9685(i2c, address=0x40)
+		pwm.frequency = 50
 		MOCK_MODE = False
 		_initialized = True
 		print("✓ PCA9685 erfolgreich initialisiert auf Adresse 0x40")
 		return pwm
-	except (OSError, IOError) as e:
+	except (ValueError, RuntimeError, IOError) as e:
 		print(f"\033[38;5;3mWarning:\033[0m Could not initialize PCA9685: {e}")
 		print("Running in MOCK MODE - servo commands will be ignored")
 		MOCK_MODE = True
 		# Create mock pwm object
 		class MockPWM:
-			def set_pwm(self, channel, on, off):
+			def __init__(self):
+				self.channels = [self.MockChannel() for _ in range(16)]
+
+			class MockChannel:
+				def __init__(self):
+					self.duty_cycle = 0
+			
+			@property
+			def frequency(self):
+				return 50
+
+			@frequency.setter
+			def frequency(self, value):
 				pass
-			def set_pwm_freq(self, freq):
-				pass
+
 		pwm = MockPWM()
 		_initialized = True
 		return pwm
@@ -142,7 +168,7 @@ class ServoCtrl(threading.Thread):
 		if not MOCK_MODE:
 			# Stop PWM signals on all 16 channels (0-15)
 			for i in range(16):
-				pwm.set_pwm(i, 0, 0)  # Setting pulse to 0 stops the signal
+				pwm.channels[i].duty_cycle = 0  # Setting duty_cycle to 0 stops the signal
 		self.pause()
 
 
@@ -155,13 +181,13 @@ class ServoCtrl(threading.Thread):
 		if not MOCK_MODE:
 			# Restore all servos to their last known positions
 			for i in range(16):
-				pwm.set_pwm(i, 0, self.nowPos[i])
+				pwm.channels[i].duty_cycle = _pulse_to_duty_cycle(self.nowPos[i])
 		self.resume()
 
 	def moveInit(self):
 		self.scMode = 'init'
 		for i in range(0,16):
-			pwm.set_pwm(i,0,self.initPos[i])
+			pwm.channels[i].duty_cycle = _pulse_to_duty_cycle(self.initPos[i])
 			self.lastPos[i] = self.initPos[i]
 			self.nowPos[i] = self.initPos[i]
 			self.bufferPos[i] = float(self.initPos[i])
@@ -173,7 +199,7 @@ class ServoCtrl(threading.Thread):
 		if initInput > self.minPos[ID] and initInput < self.maxPos[ID]:
 			self.initPos[ID] = initInput
 			if moveTo:
-				pwm.set_pwm(ID,0,self.initPos[ID])
+				pwm.channels[ID].duty_cycle = _pulse_to_duty_cycle(self.initPos[ID])
 		else:
 			print('initPos Value Error.')
 
@@ -181,7 +207,7 @@ class ServoCtrl(threading.Thread):
 	def moveServoInit(self, ID):
 		self.scMode = 'init'
 		for i in range(0,len(ID)):
-			pwm.set_pwm(ID[i], 0, self.initPos[ID[i]])
+			pwm.channels[ID[i]].duty_cycle = _pulse_to_duty_cycle(self.initPos[ID[i]])
 			self.lastPos[ID[i]] = self.initPos[ID[i]]
 			self.nowPos[ID[i]] = self.initPos[ID[i]]
 			self.bufferPos[ID[i]] = float(self.initPos[ID[i]])
@@ -209,7 +235,7 @@ class ServoCtrl(threading.Thread):
 			for dc in range(0,16):
 				if not self.goalUpdate:
 					self.nowPos[dc] = int(round((self.lastPos[dc] + (((self.goalPos[dc] - self.lastPos[dc])/self.scSteps)*(i+1))),0))
-					pwm.set_pwm(dc, 0, self.nowPos[dc])
+					pwm.channels[dc].duty_cycle = _pulse_to_duty_cycle(self.nowPos[dc])
 
 				if self.ingGoal != self.goalPos:
 					self.posUpdate()
@@ -241,7 +267,7 @@ class ServoCtrl(threading.Thread):
 					self.nowPos[i] = newNow
 
 				if not self.goalUpdate:
-					pwm.set_pwm(i, 0, self.nowPos[i])
+					pwm.channels[i].duty_cycle = _pulse_to_duty_cycle(self.nowPos[i])
 
 				if self.ingGoal != self.goalPos:
 					self.posUpdate()
@@ -299,7 +325,7 @@ class ServoCtrl(threading.Thread):
 		self.nowPos[self.wiggleID] = newNow
 		self.lastPos[self.wiggleID] = newNow
 		if self.bufferPos[self.wiggleID] < self.maxPos[self.wiggleID] and self.bufferPos[self.wiggleID] > self.minPos[self.wiggleID]:
-			pwm.set_pwm(self.wiggleID, 0, self.nowPos[self.wiggleID])
+			pwm.channels[self.wiggleID].duty_cycle = _pulse_to_duty_cycle(self.nowPos[self.wiggleID])
 		else:
 			self.stopWiggle()
 		time.sleep(self.scDelay-self.scMoveTime)
@@ -324,7 +350,7 @@ class ServoCtrl(threading.Thread):
 		if self.nowPos[ID] > self.maxPos[ID]:self.nowPos[ID] = self.maxPos[ID]
 		elif self.nowPos[ID] < self.minPos[ID]:self.nowPos[ID] = self.minPos[ID]
 		self.lastPos[ID] = self.nowPos[ID]
-		pwm.set_pwm(ID, 0, self.nowPos[ID])
+		pwm.channels[ID].duty_cycle = _pulse_to_duty_cycle(self.nowPos[ID])
 
 
 	def scMove(self):
@@ -343,7 +369,7 @@ class ServoCtrl(threading.Thread):
 		self.nowPos[ID] = PWM_input
 		self.bufferPos[ID] = float(PWM_input)
 		self.goalPos[ID] = PWM_input
-		pwm.set_pwm(ID, 0, PWM_input)
+		pwm.channels[ID].duty_cycle = _pulse_to_duty_cycle(PWM_input)
 		self.pause()
 
 

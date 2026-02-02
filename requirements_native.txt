@@ -1,0 +1,32 @@
+# Hardware-Treiber (CircuitPython-basiert)
+adafruit-circuitpython-pca9685>=3.4.0
+adafruit-circuitpython-motor>=3.4.0
+adafruit-circuitpython-mpu6050>=1.2.0
+adafruit-circuitpython-ads1x15>=2.2.0  # Für Batteriespannung (ADS7830 Alternative)
+
+# Kamera (bereits in System-Paketen, aber falls pip nötig)
+# picamera2  # Über apt installiert
+
+# Computer Vision
+opencv-python
+numpy
+
+# Netzwerk/Kommunikation
+pyzmq>=26.0.0
+
+# GPIO (für Switches/LEDs)
+gpiozero>=2.0.0
+lgpio>=0.2.0
+
+# System-Monitoring
+psutil>=5.9.0
+
+# Für WS2812 LEDs (Neopixel)
+rpi_ws281x>=5.0.0
+adafruit-circuitpython-neopixel>=6.3.0
+
+# IMU Kalman-Filter
+filterpy>=1.4.5
+
+# Optional: ROS2 Python-Client (falls später benötigt)
+# rclpy  # Über ROS2-Setup installiert
