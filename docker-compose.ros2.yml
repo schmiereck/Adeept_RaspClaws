@@ -22,7 +22,7 @@ services:
       #- FASTRTPS_DEFAULT_PROFILES_FILE=/ros2_ws/pi_unicast_only.xml
       - PYTHONPATH=/ros2_ws:/ros2_ws/Server
       # ------------------
-      - ROS_STATIC_PEERS=192.168.2.121  # Gleicher PC wie raspclaws_ros2
+      - ROS_STATIC_PEERS=192.168.2.121;192.168.2.133  # WSL-PC; ROS2 Rasperi Server
       #- FASTRTPS_DEFAULT_PROFILES_FILE=/ros2_ws/pi_static_peers.xml
     #depends_on:
     #  discovery-server:
@@ -81,8 +81,7 @@ services:
       - ROS_DOMAIN_ID=0  # Gleiche Domain wie raspclaws_ros2
       - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
       - PYTHONPATH=/ros2_ws:/ros2_ws/Server
-      #- ROS_STATIC_PEERS=192.168.2.121  # <--- HIER DEINE NOTIERTE IP EINTRAGEN
-      - ROS_STATIC_PEERS=192.168.2.121  # <--- HIER DEINE NOTIERTE IP EINTRAGEN
+      - ROS_STATIC_PEERS=;192.168.2.133  # WSL-PC; ROS2 Rasperi Server
       - FASTRTPS_DEFAULT_PROFILES_FILE=/ros2_ws/pi_static_peers.xml  # Gleiche Config wie raspclaws_ros2
       # libcamera environment variables
       - LIBCAMERA_LOG_LEVELS=*:ERROR  # Reduce log spam
