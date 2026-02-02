@@ -1,18 +1,25 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<dds>
-    <profiles xmlns="http://www.eprosima.com/XMLSchemas/fastRTPS_Profiles">
+<dds xmlns="http://www.eprosima.com">
+    <profiles>
         <participant profile_name="pi_peer_profile" is_default_profile="true">
             <rtps>
                 <builtin>
                     <initialPeersList>
-                        <!-- PC für externe Kommunikation -->
+                        <!-- PC (WSL) -->
                         <locator>
                             <udpv4>
                                 <address>192.168.2.121</address>
-                                <port>7400</port> <!-- Standard-Discovery-Port -->
+                                <port>7400</port>
                             </udpv4>
                         </locator>
-                        <!-- Localhost für Container-zu-Container Kommunikation auf dem Pi -->
+                        <!-- ROS2 Raspberrypi Server -->
+                        <locator>
+                            <udpv4>
+                                <address>192.168.2.133</address>
+                                <port>7400</port>
+                            </udpv4>
+                        </locator>
+                        <!-- Localhost (für Container-zu-Container) -->
                         <locator>
                             <udpv4>
                                 <address>127.0.0.1</address>
@@ -20,7 +27,7 @@
                             </udpv4>
                         </locator>
                     </initialPeersList>
-                    <!-- Lausche auf ALLEN Interfaces (nicht nur externem) -->
+                    <!-- Lausche auf ALLEN Interfaces -->
                     <metatrafficUnicastLocatorList>
                         <locator>
                             <udpv4>
