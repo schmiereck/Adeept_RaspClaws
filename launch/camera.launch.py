@@ -3,6 +3,7 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
     return LaunchDescription([
+        # v4l2_camera node - publishes /image_raw
         Node(
             package='v4l2_camera',
             executable='v4l2_camera_node',
@@ -24,10 +25,28 @@ def generate_launch_description():
                 'output_encoding': 'rgb8',
                 'io_method': 'mmap',  # Wichtig: Memory-mapped I/O statt read
             }],
-            # NEU: Remapping für compressed transport
             remappings=[
-                ('/image_raw', '/raspclaws/camera/image_raw'),
-                ('/camera_info', '/raspclaws/camera/camera_info'),
+                ('/image_raw', '/image_raw'),
+                ('/camera_info', '/camera_info'),
+            ]
+        ),
+
+        # image_transport republish node - subscribes /image_raw, publishes /image_raw/compressed
+        Node(
+            package='image_transport',
+            executable='republish',
+            name='image_republisher',
+            output='screen',
+            arguments=['raw', 'compressed'],
+            parameters=[{
+                'compressed.format': 'jpeg',
+                'compressed.jpeg_quality': 85
+            }],
+            remappings=[
+                ('in', '/image_raw'),
+                ('out', '/image_raw')
             ]
         )
     ])
+
+

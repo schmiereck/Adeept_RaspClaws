@@ -38,6 +38,8 @@ RUN apt-get update && apt-get install -y \
     ros-humble-cv-bridge \
     python3-psutil \
     ros-humble-v4l2-camera \
+    ros-humble-image-transport \
+    ros-humble-image-transport-plugins \
     && rm -rf /var/lib/apt/lists/*
 
 # Python-Abhängigkeiten für die Hardware
