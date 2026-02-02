@@ -80,7 +80,7 @@ def signal_handler(sig, frame):
 	os._exit(0)
 
 
-ndef sigtstp_handler(sig, frame):
+def sigtstp_handler(sig, frame):
 	"""Handle Ctrl+Z (SIGTSTP) - warn user and perform cleanup instead of suspending"""
 	print("\n\n" + "="*60)
 	print("⚠️  WARNING: Ctrl+Z detected!")
