@@ -136,9 +136,13 @@ camera_paused_active = False
 battery_available = False
 adc = None
 
+print("[GUIServer] Attempting to initialize ADS7830 battery monitor...")
+
 # Try method 1: smbus (original method)
 try:
+	print("[GUIServer]   Attempting to import smbus...")
 	import smbus
+	print("[GUIServer]   smbus imported successfully.")
 
 	class ADS7830(object):
 		def __init__(self):
@@ -150,23 +154,27 @@ try:
 			value = self.bus.read_byte_data(self.address, self.cmd|(((chn<<2 | chn>>1)&0x07)<<4))
 			return value
 
-	# Try to initialize ADS7830
+	print("[GUIServer]   Attempting to initialize ADS7830 with smbus...")
 	adc = ADS7830()
 	# Test read to verify it works
 	test_value = adc.analogRead(0)
 	battery_available = True
-	print("✓ ADS7830 battery monitor initialized successfully (using smbus)")
-	print(f"  Battery ADC test read: {test_value}")
+	print("✓ [GUIServer] ADS7830 battery monitor initialized successfully (using smbus)")
+	print(f"  [GUIServer] Battery ADC test read: {test_value}")
 except Exception as e:
-	print(f"⚠ smbus method failed: {e}")
+	print(f"⚠ [GUIServer] smbus method failed: {e}")
 	# Try method 2: adafruit_bus_device (fallback, like in BatteryLevelMonitoring.py example)
+	print("[GUIServer]   Attempting to initialize ADS7830 with adafruit_bus_device...")
 	try:
 		# Try to import adafruit libraries (may not be installed)
 		try:
+			print("[GUIServer]     Attempting to import board, busio, I2CDevice...")
 			import board
 			import busio
 			from adafruit_bus_device.i2c_device import I2CDevice  # type: ignore
+			print("[GUIServer]     board, busio, I2CDevice imported successfully.")
 		except ImportError as import_error:
+			print(f"⚠ [GUIServer] Adafruit libraries not installed for ADS7830 fallback: {import_error}")
 			raise Exception(f"Adafruit libraries not installed: {import_error}")
 
 		class ADS7830_Adafruit(object):
@@ -181,19 +189,21 @@ except Exception as e:
 				self.device.write_then_readinto(bytes([control_byte]), buffer)
 				return buffer[0]
 
-		# Try to initialize ADS7830 with Adafruit library
+		print("[GUIServer]   Attempting to initialize ADS7830 with Adafruit library...")
 		adc = ADS7830_Adafruit()
 		# Test read to verify it works
 		test_value = adc.analogRead(0)
 		battery_available = True
-		print("✓ ADS7830 battery monitor initialized successfully (using adafruit_bus_device)")
-		print(f"  Battery ADC test read: {test_value}")
+		print("✓ [GUIServer] ADS7830 battery monitor initialized successfully (using adafruit_bus_device)")
+		print(f"  [GUIServer] Battery ADC test read: {test_value}")
 	except Exception as e2:
-		print(f"⚠ adafruit_bus_device method also failed: {e2}")
-		print("  Battery monitoring not available - no suitable I2C library found.")
-		print("  This is normal if ADS7830 ADC hardware is not connected.")
-		print("  Battery display will show 'N/A' in GUI.")
+		print(f"⚠ [GUIServer] adafruit_bus_device method also failed: {e2}")
+		print("  [GUIServer] Battery monitoring not available - no suitable I2C library found.")
+		print("  [GUIServer] This is normal if ADS7830 ADC hardware is not connected.")
+		print("  [GUIServer] Battery display will show 'N/A' in GUI.")
 		battery_available = False
+
+print("[GUIServer] Finished ADS7830 battery monitor initialization attempt.")
 
 # Battery constants (from Voltage.py and BatteryLevelMonitoring.py)
 ADCVref = 4.93  # Can be adjusted based on actual reference voltage
@@ -646,15 +656,18 @@ def destory():
 def initialize_leds():
 	"""Initialize WS2812 LED strip"""
 	ws2812 = None
+	print("[GUIServer] Initializing WS2812 LEDs...")
 	try:
-		print("Initializing WS2812 LEDs...")
+		print("[GUIServer] Attempting to create Adeept_SPI_LedPixel object...")
 		ws2812 = robotLight.Adeept_SPI_LedPixel(16, 255)
+		print("[GUIServer] Adeept_SPI_LedPixel object created. Checking SPI state...")
 		if ws2812.check_spi_state() != 0:
-			print("WS2812 initialized successfully")
+			print("[GUIServer] WS2812 initialized successfully. Starting LED animations...")
 			ws2812.start()
 			ws2812.breath(70, 70, 255)
+			print("[GUIServer] WS2812 LEDs started breathing animation.")
 		else:
-			print("\033[38;5;3mWarning:\033[0m SPI not available for WS2812 LEDs")
+			print("\033[38;5;3mWarning:[GUIServer]\033[0m SPI not available for WS2812 LEDs")
 			ws2812.led_close()
 			ws2812 = None
 	except KeyboardInterrupt:
@@ -662,42 +675,48 @@ def initialize_leds():
 			ws2812.led_close()
 		raise
 	except Exception as e:
-		print(f"\033[38;5;3mWarning:\033[0m Could not initialize WS2812 LEDs: {e}")
+		print(f"\033[38;5;3mWarning:[GUIServer]\033[0m Could not initialize WS2812 LEDs: {e}")
 		ws2812 = None
+	print("[GUIServer] Finished WS2812 LED initialization.")
 	return ws2812
 
 
 def start_video_thread():
 	"""Start FPV video streaming thread"""
 	global fps_threading
-	print("Starting FPV video stream thread (runs continuously)...")
+	print("[GUIServer] Starting FPV video stream thread (runs continuously)...")
 	fps_threading = threading.Thread(target=FPV_thread)
 	fps_threading.daemon = True
 	fps_threading.start()
-	print("FPV thread started. Clients can connect to video stream.")
+	print("[GUIServer] FPV thread started. Clients can connect to video stream.")
 
 
 def check_network_and_start_ap(ws2812):
 	"""Check network connectivity and start Access Point if needed"""
+	print("[GUIServer] Checking network connectivity and starting AP if needed...")
 	try:
 		s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 		s.connect(("1.1.1.1", 80))
 		ipaddr_check = s.getsockname()[0]
 		s.close()
-		print(ipaddr_check)
+		print(f"[GUIServer] Network detected, IP: {ipaddr_check}")
 	except:
+		print("[GUIServer] No network detected, attempting to start Access Point...")
 		ap_threading = threading.Thread(target=ap_thread)
 		ap_threading.daemon = True
 		ap_threading.start()
 
 		if ws2812:
 			# LED animation for AP mode
+			print("[GUIServer] Setting LED animation for AP mode...")
 			for brightness in [50, 100, 150, 200, 255]:
 				ws2812.set_all_led_color_data(0, 16, brightness)
 				ws2812.show()
-				time.sleep(1)
-			ws2812.set_all_led_color_data(35, 255, 35)
+				time.sleep(0.1) # Shorter sleep for faster animation
+			ws2812.set_all_led_color_data(35, 255, 35) # Green
 			ws2812.show()
+			print("[GUIServer] LED animation for AP mode set.")
+	print("[GUIServer] Finished network check and AP setup.")
 
 
 def setup_server_socket(addr):

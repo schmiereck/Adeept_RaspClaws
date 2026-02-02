@@ -46,20 +46,21 @@ def initialize_pwm():
 		print("⚠️  PCA9685 bereits initialisiert - überspringe")
 		return pwm
 
+	print("🔧 Initialisiere PCA9685 via CircuitPython auf Adresse 0x40...")
 	try:
-		print("🔧 Initialisiere PCA9685 via CircuitPython auf Adresse 0x40...")
-		# I2C Bus initialisieren
+		print("  [RPIservo] Initialisiere I2C Bus mit board.SCL, board.SDA...")
 		i2c = busio.I2C(board.SCL, board.SDA)
-		# PCA9685 Objekt erstellen
+		print("  [RPIservo] I2C Bus initialisiert. Erstelle PCA9685 Objekt...")
 		pwm = PCA9685(i2c, address=0x40)
+		print("  [RPIservo] PCA9685 Objekt erstellt. Setze Frequenz auf 50Hz...")
 		pwm.frequency = 50
 		MOCK_MODE = False
 		_initialized = True
-		print("✓ PCA9685 erfolgreich initialisiert auf Adresse 0x40")
+		print("✓ [RPIservo] PCA9685 erfolgreich initialisiert auf Adresse 0x40")
 		return pwm
 	except (ValueError, RuntimeError, IOError) as e:
-		print(f"\033[38;5;3mWarning:\033[0m Could not initialize PCA9685: {e}")
-		print("Running in MOCK MODE - servo commands will be ignored")
+		print(f"\033[38;5;3mWarning:[RPIservo]\033[0m Could not initialize PCA9685: {e}")
+		print("[RPIservo] Running in MOCK MODE - servo commands will be ignored")
 		MOCK_MODE = True
 		# Create mock pwm object
 		class MockPWM:
