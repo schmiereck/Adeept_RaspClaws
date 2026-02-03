@@ -6,10 +6,10 @@ import signal
 import Move as move
 import argparse
 import os
-import FPV
+# import FPV
 import psutil
 import Switch as switch
-import RobotLight as robotLight
+# import RobotLight as robotLight
 import ast
 # Add parent directory to path to import protocol module
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -377,14 +377,15 @@ def info_send_client():
             break  # Exit thread on persistent error
 
 
-def FPV_thread():
-    global fpv
-    print("Starting FPV thread...")
-    fpv=FPV.FPV()
-    # Note: IP is only used for logging in capture_thread, not for connection
-    # The actual binding is to tcp://*:5555 (all interfaces)
-    fpv.capture_thread("0.0.0.0")  # Dummy IP, actual binding is to all interfaces
-    print("FPV thread ended")
+
+# def FPV_thread():  # Temporarily commented out for diagnosis
+#     global fpv
+#     print("Starting FPV thread...")
+#     fpv=FPV.FPV()
+#     # Note: IP is only used for logging in capture_thread, not for connection
+#     # The actual binding is to tcp://*:5555 (all interfaces)
+#     fpv.capture_thread("0.0.0.0")  # Dummy IP, actual binding is to all interfaces
+#     print("FPV thread ended")
 
 
 # Global variable to track FPV thread
@@ -504,11 +505,13 @@ def handle_led_command(data):
 
 	if data == CMD_POLICE:
 		if ws2812:
-			ws2812.police()
+			# ws2812.police() # Commented out for diagnosis
+			pass
 		tcpCliSock.send(CMD_POLICE.encode())
 	elif data == CMD_POLICE_OFF:
 		if ws2812:
-			ws2812.breath(70, 70, 255)
+			# ws2812.breath(70, 70, 255) # Commented out for diagnosis
+			pass
 		tcpCliSock.send(CMD_POLICE_OFF.encode())
 	else:
 		return False  # Command not handled
@@ -706,16 +709,16 @@ def check_network_and_start_ap(ws2812):
 		ap_threading.daemon = True
 		ap_threading.start()
 
-		if ws2812:
-			# LED animation for AP mode
-			print("[GUIServer] Setting LED animation for AP mode...")
-			for brightness in [50, 100, 150, 200, 255]:
-				ws2812.set_all_led_color_data(0, 16, brightness)
-				ws2812.show()
-				time.sleep(0.1) # Shorter sleep for faster animation
-			ws2812.set_all_led_color_data(35, 255, 35) # Green
-			ws2812.show()
-			print("[GUIServer] LED animation for AP mode set.")
+	# if ws2812_placeholder: # Commented out for diagnosis
+	# 	# LED animation for AP mode
+	# 	print("[GUIServer] Setting LED animation for AP mode...")
+	# 	for brightness in [50, 100, 150, 200, 255]:
+	# 		ws2812_placeholder.set_all_led_color_data(0, 16, brightness)
+	# 		ws2812_placeholder.show()
+	# 		time.sleep(0.1) # Shorter sleep for faster animation
+	# 	ws2812_placeholder.set_all_led_color_data(35, 255, 35) # Green
+	# 	ws2812_placeholder.show()
+	# 	print("[GUIServer] LED animation for AP mode set.")
 	print("[GUIServer] Finished network check and AP setup.")
 
 
@@ -750,13 +753,13 @@ def setup_server_socket(addr):
 def set_led_connected_state(ws2812):
 	"""Set LED to connected state (blue)"""
 	try:
-		if ws2812:
-			ws2812.breath_status_set(0)
-			ws2812.set_all_led_color_data(64, 128, 255)
-			ws2812.show()
-			print("WS2812 LEDs set to blue (connected state)")
-		else:
-			print("WS2812 LEDs not available - skipping LED setup")
+		# if ws2812_placeholder: # Commented out for diagnosis
+		# 	ws2812_placeholder.breath_status_set(0)
+		# 	ws2812_placeholder.set_all_led_color_data(64, 128, 255)
+		# 	ws2812_placeholder.show()
+		# 	print("WS2812 LEDs set to blue (connected state)")
+		# else:
+		print("[GUIServer] WS2812 LEDs not available (commented out) - skipping LED setup")
 	except Exception as e:
 		print(f"\033[38;5;3mWarning:\033[0m Could not set WS2812 LED color: {e}")
 
@@ -782,11 +785,13 @@ def cleanup_after_disconnect(tcpCliSock, tcpSerSock, ws2812):
 
 	# Reset LED color to indicate waiting state
 	try:
-		if ws2812:
-			ws2812.set_all_led_color_data(70, 70, 255)
-			ws2812.breath_status_set(1)
-			ws2812.show()
-			print("✓ LED reset to waiting state (breathing)")
+		# if ws2812_placeholder: # Commented out for diagnosis
+		# 	ws2812_placeholder.set_all_led_color_data(70, 70, 255)
+		# 	ws2812_placeholder.breath_status_set(1)
+		# 	ws2812_placeholder.show()
+		# 	print("✓ LED reset to waiting state (breathing)")
+		# else:
+		print("[GUIServer] LED reset to waiting state (commented out) - skipping LED cleanup")
 	except Exception as e:
 		print(f"! Error resetting LED: {e}")
 
@@ -812,7 +817,7 @@ if __name__ == '__main__':
 	ADDR = (HOST, PORT)
 
 	# Initialize WS2812 LEDs
-	ws2812 = initialize_leds()
+	ws2812 = None  # Temporarily set to None for diagnosis # initialize_leds()
 
 	# Clean up old video ready marker
 	try:
@@ -823,7 +828,7 @@ if __name__ == '__main__':
 		pass
 
 	# Start FPV thread ONCE at server startup
-	start_video_thread()
+	# start_video_thread()  # Temporarily commented out for diagnosis
 
 	# Main connection loop
 	while 1:
