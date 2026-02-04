@@ -11,10 +11,15 @@ import psutil
 import Switch as switch
 import RobotLight as robotLight
 import ast
+import sys # Added sys for sys.exit
+
 # Add parent directory to path to import protocol module
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from protocol import *
 step_set = 1
+
+print("[GUIServer] All initial imports successful. Exiting now.")
+sys.exit(0)
 
 # ==================== Shutdown Handler ====================
 
