@@ -3,11 +3,15 @@ import time
 import threading
 import sys
 import signal
-import Move as move
 import argparse
 import os
+
+print("[GUIServer] All core initial imports up to os successful. Exiting now before Move/Switch.")
+sys.exit(0)
+
+# import FPV # Temporarily commented out for debugging camera/LED
 import psutil
-import Switch as switch
+# import Switch as switch # Temporarily commented out for debugging
 # import RobotLight as robotLight # Temporarily commented out for debugging camera/LED
 import ast
 import sys # Added sys for sys.exit
@@ -16,9 +20,6 @@ import sys # Added sys for sys.exit
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from protocol import *
 step_set = 1
-
-print("[GUIServer] All core initial imports successful. Exiting now before FPV/RobotLight.")
-sys.exit(0)
 
 # ==================== Shutdown Handler ====================
 
