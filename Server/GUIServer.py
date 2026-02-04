@@ -6,11 +6,11 @@ import signal
 import argparse
 import os
 
-import FPV
+# import FPV # Temporarily commented out for camera debugging
 import psutil
 import Move as move
 import Switch as switch
-import RobotLight as robotLight
+# import RobotLight as robotLight # Temporarily commented out for LED debugging
 import ast
 
 
