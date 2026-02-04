@@ -48,18 +48,22 @@ To update code on the Raspberry Pi, the following workflow **MUST** be followed:
 
 ### Outstanding Issues / Next Steps:
 
-**The `GUIServer` is currently NOT starting.**
-Diagnostic output (even with verbose logging and disabled FPV/RobotLight) still shows issues, primarily related to:
+**The `GUIServer` is currently starting, but with camera and LED issues.**
 
 1.  **ADS7830 (Battery Monitor) - Hardware / I2C Address Issue:**
     *   `No I2C device at address: 0x48` - The ADS7830 chip is not being detected on the I2C bus. This requires physical verification of the sensor's connection and its actual I2C address (e.g., using a multimeter, checking hardware documentation).
     *   This is not a code bug, but a hardware/configuration issue that prevents the battery monitoring from working. The rest of the server should ideally proceed.
 
-2.  **FPV/Camera Issues (Temporarily Deactivated):**
-    *   Even after installing `picamera2` and `libcamera-dev`, there were `ModuleNotFoundError` for `libcamera`. To bypass this and isolate other issues, the `FPV` (camera stream) and `RobotLight` (WS2812 LEDs) modules in `Server/GUIServer.py` have been **temporarily commented out**.
-    *   Once the core `GUIServer` is stable, these modules will need to be re-enabled and further diagnosed. The `libcamera` issue might be related to its Python bindings not being correctly linked or other system-level camera configurations (e.g., in `/boot/firmware/config.txt`).
+2.  **FPV/Camera Issues (Still Not Working):**
+    *   `picamera2` is installed, but `ModuleNotFoundError: No module named 'libcamera'` persists.
+    *   This indicates an issue with the `libcamera` system library or its Python bindings not being correctly found/linked.
+    *   **Action Required:** Verify `libcamera` Python bindings, check system-level camera configurations (e.g., in `/boot/firmware/config.txt`), and ensure the "legacy camera driver" is disabled on `raspi-config`.
 
-3.  **Raspberry Pi Stability / SSH:**
+3.  **RobotLight (WS2812 LEDs) Issues (FIXED):**
+    *   `ModuleNotFoundError: No module named 'spidev'` was resolved by installing `spidev` in `ros_env`.
+    *   Now need to verify actual LED functionality.
+
+4.  **Raspberry Pi Stability / SSH:**
     *   The Raspberry Pi occasionally experiences extended boot times and SSH connection timeouts. This complicates remote debugging.
     *   **Recommendation:** Ensure the Raspberry Pi has a stable power supply, a reliable network connection, and that the SSH service is robust.
 
@@ -67,6 +71,7 @@ Diagnostic output (even with verbose logging and disabled FPV/RobotLight) still 
 
 ### Next Planned Actions:
 
-1.  **Restart `GUIServer` (now with FPV/RobotLight temporarily disabled):** This will be the first step tomorrow to see if the core server can launch without the camera and LED components.
-2.  **Address ADS7830 Issue:** If the server starts, investigate the ADS7830 I2C device detection. This will likely involve user intervention to physically check the hardware or confirm its address.
-3.  **Re-enable and debug FPV/RobotLight:** Once the core server is stable, re-enable these components one by one and diagnose their specific startup failures.
+1.  **Re-run `GUIServer` with current state:** Observe the output for both camera and LED related messages.
+2.  **Investigate `libcamera` Python bindings:** Search for how to correctly install/link `libcamera` Python bindings for `picamera2` in a micromamba environment on Raspberry Pi OS Lite arm64 (Debian Trixie).
+3.  **Verify LED functionality:** Check if `RobotLight` starts correctly and the LEDs are functional after `spidev` installation.
+4.  **Clean up temporary prints:** Once camera/LED issues are better understood, remove temporary debug print statements from `GUIServer.py`.
