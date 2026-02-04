@@ -991,7 +991,6 @@ def handle_stand_or_steady():
 # ==================== Main Movement Thread ====================
 
 def move_thread():
-    print("[move_thread] Function entered.")
     """
     Main movement thread. Is called repeatedly by the RobotM thread.
     Performs one small increment of the walk cycle per call, creating smooth,
@@ -1313,33 +1312,20 @@ class RobotM(threading.Thread):
         super(RobotM, self).__init__(*args, **kwargs)
         self.__flag = threading.Event()
         self.__flag.clear()
-        print("[RobotM.__init__] RobotM thread initialized.")
 
     def pause(self):
-        print("[RobotM.pause] RobotM thread paused.")
         self.__flag.clear()
 
     def resume(self):
-        print("[RobotM.resume] RobotM thread resumed.")
         self.__flag.set()
 
     def run(self):
-        print("[RobotM.run] Thread started.")
         while 1:
-            print("[RobotM.run] Waiting for flag...")
             self.__flag.wait()
-            print("[RobotM.run] Flag set, attempting move_thread()...")
-            try:
-                move_thread()
-                print("[RobotM.run] move_thread() completed.")
-            except Exception as e:
-                print(f"[RobotM.run] Error in move_thread(): {e}")
-                import traceback
-                traceback.print_exc()
+            move_thread()
             # This sleep controls the overall speed of the gait.
             # 0.01 (10ms) -> 100 steps/sec. With 60 steps/cycle -> ~1.6 cycles/sec
             time.sleep(0.01)
-        print("[RobotM.run] Thread finished.")
 
 rm = RobotM()
 rm.start()

@@ -128,8 +128,7 @@ rm = move.RobotM()
 
 rm.start()
 
-print("[GUIServer] RobotM started and paused successfully. Exiting now before main initialization.")
-sys.exit(0)
+
 
 SmoothMode = 0
 steadyMode = 0
