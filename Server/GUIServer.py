@@ -16,8 +16,6 @@ import sys # Added sys for sys.exit
 # Add parent directory to path to import protocol module
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from protocol import *
-print("[GUIServer] Import protocol successful. Exiting now.")
-sys.exit(0)
 step_set = 1
 
 # ==================== Shutdown Handler ====================
@@ -112,6 +110,8 @@ try:
 except AttributeError:
         # SIGTSTP might not be available on some systems (e.g., Windows)
         print("⚠️  SIGTSTP (Ctrl+Z) handler not available on this system")
+print("[GUIServer] Signal handlers registered successfully. Exiting now before RobotM instantiation.")
+sys.exit(0)
 
 # ==================== End Shutdown Handler ====================
 
