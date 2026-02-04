@@ -108,21 +108,18 @@ if CAMERA_AVAILABLE:
         print("[FPV]   Creating Picamera2 object...")
         picam2 = Picamera2()
         print("[FPV]   Configuring camera preview...")
-        preview_config = picam2.preview_configuration
-        preview_config.size = (640, 480)
-        preview_config.format = 'RGB888'  # 'XRGB8888', 'XBGR8888', 'RGB888', 'BGR888', 'YUV420'
-        preview_config.transform = libcamera.Transform(hflip=hflip, vflip=vflip)
-        preview_config.colour_space = libcamera.ColorSpace.Sycc()
-        preview_config.buffer_count = 4
-        preview_config.queue = True
-
-        if not picam2.is_open:
-            print("[FPV]   Camera not open, attempting picam2.start()...")
-            picam2.start()
-            print("[FPV] ✓ Picamera2 started successfully.")
-        else:
-            print("[FPV]   Picamera2 already open.")
-        print("[FPV] ✓ Picamera2 initialized successfully")
+        preview_config = picam2.create_preview_configuration(
+            main={"size": (640, 480), "format": "RGB888"},
+            transform=libcamera.Transform(hflip=hflip, vflip=vflip),
+            buffer_count=4,
+            queue=True
+        )
+        print("[FPV]   Applying configuration to camera...")
+        picam2.configure(preview_config)
+        print("[FPV]   Configuration applied. Starting camera...")
+        picam2.start()
+        print("[FPV] ✓ Picamera2 configured and started successfully")
+        print(f"[FPV]   Camera format: RGB888, size: 640x480")
     except Exception as e:
         print(f"\033[38;5;1m[FPV] Camera initialization error:\033[0m\n{e}")
         CAMERA_AVAILABLE = False
