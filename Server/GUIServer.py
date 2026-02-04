@@ -124,6 +124,8 @@ turn_command = 'no'
 # We don't need a local pwm object here anymore.
 
 rm = move.RobotM()
+print("[GUIServer] RobotM instantiated successfully. Exiting now before starting/pausing.")
+sys.exit(0)
 rm.start()
 rm.pause()
 
