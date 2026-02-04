@@ -116,10 +116,36 @@ if CAMERA_AVAILABLE:
         )
         print("[FPV]   Applying configuration to camera...")
         picam2.configure(preview_config)
-        print("[FPV]   Configuration applied. Starting camera...")
-        picam2.start()
-        print("[FPV] ✓ Picamera2 configured and started successfully")
-        print(f"[FPV]   Camera format: RGB888, size: 640x480")
+        print("[FPV]   Configuration applied. Starting camera with timeout...")
+
+        # Workaround for Debian Trixie bug: picam2.start() can hang after reboot
+        # Use threading to implement a timeout
+        start_success = [False]  # Mutable list to share state between threads
+        start_error = [None]
+
+        def start_camera():
+            try:
+                picam2.start()
+                start_success[0] = True
+            except Exception as e:
+                start_error[0] = e
+
+        start_thread = threading.Thread(target=start_camera, daemon=True)
+        start_thread.start()
+        start_thread.join(timeout=5.0)  # Wait max 5 seconds
+
+        if start_thread.is_alive():
+            # Timeout - camera start is hanging (Debian Trixie bug)
+            print("[FPV] ❌ Camera start TIMEOUT after 5 seconds (Debian Trixie libcamera bug)")
+            print("[FPV]    This is a known issue with Debian Trixie after reboot.")
+            print("[FPV]    Workaround: Disable camera or avoid rebooting Pi.")
+            CAMERA_AVAILABLE = False
+            picam2 = None
+        elif start_error[0]:
+            raise start_error[0]
+        elif start_success[0]:
+            print("[FPV] ✓ Picamera2 configured and started successfully")
+            print(f"[FPV]   Camera format: RGB888, size: 640x480")
     except Exception as e:
         print(f"\033[38;5;1m[FPV] Camera initialization error:\033[0m\n{e}")
         CAMERA_AVAILABLE = False
