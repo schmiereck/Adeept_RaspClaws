@@ -831,7 +831,7 @@ if __name__ == '__main__':
 
         # Main connection loop
         while 1:
-                check_network_and_start_ap(.venv)
+                check_network_and_start_ap(ws2812)
 
                 # Setup server socket and wait for client
                 try:
