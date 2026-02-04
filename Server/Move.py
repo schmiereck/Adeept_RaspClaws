@@ -89,8 +89,14 @@ log.info("Configuration variables set.")
 # ==================== PID and MPU6050 Setup ====================
 log.info("Initializing PID controllers...")
 P, I, D = 5, 0.01, 0
-X_pid = PID.PID(P, I, D)
-Y_pid = PID.PID(P, I, D)
+X_pid = PID.PID()
+X_pid.SetKp(P)
+X_pid.SetKi(I)
+X_pid.SetKd(D)
+Y_pid = PID.PID()
+Y_pid.SetKp(P)
+Y_pid.SetKi(I)
+Y_pid.SetKd(D)
 log.info("PID controllers initialized.")
 
 kalman_filter_X = Kalman_filter.Kalman_filter(0.001, 0.1)
