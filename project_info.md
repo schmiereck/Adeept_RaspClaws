@@ -151,6 +151,24 @@ Das Hauptproblem war, dass `libcamera` und `picamera2` für Python 3.13 kompilie
 1. **Server/GUIServer.py**: FPV und RobotLight Imports wieder aktiviert (waren temporär auskommentiert)
 2. **Server/FPV.py**: Tippfehler behoben (`setsopt` → `setsockopt`)
 
+### Power-Saving beim Start (NEU - 4. Februar 2026, 23:30 Uhr):
+**Server startet jetzt im Stromsparmodus:**
+- ✅ **Servos standardmäßig AUS** (Standby-Modus beim Start)
+- ✅ **Kamera standardmäßig AUS** (pausiert beim Start)
+- ✅ **GUI-Buttons zeigen korrekten Initial-Zustand**
+- 💡 Benutzer muss Servos und Kamera über GUI-Buttons aktivieren
+
+**Implementierung (Commit 6f4e349):**
+1. Initial-Flags auf `True` gesetzt: `servo_standby_active = True`, `camera_paused_active = True`
+2. Nach Initialisierung: `move.standby()` versetzt Servos in Standby
+3. Nach Video-Thread-Start: `FPV.pause_stream()` pausiert Kamera
+4. INFO_SEND_CLIENT sendet korrekten Status an Client
+
+**Vorteile:**
+- Spart Strom beim Start
+- Verhindert unerwartete Bewegungen beim Hochfahren
+- Kamera-Hardware ist bereit, aber sendet keine Frames
+
 ### Start-Befehl für GUIServer:
 ```bash
 ssh pi@192.168.2.126
