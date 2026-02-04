@@ -17,6 +17,7 @@ def map(x, in_min, in_max, out_min, out_max):
 
 class Adeept_SPI_LedPixel(threading.Thread):
     def __init__(self, count = 8, bright = 255, sequence='GRB', bus = 0, device = 0, *args, **kwargs):
+        print(f"[RobotLight.__init__] Initializing Adeept_SPI_LedPixel with count={count}, brightness={bright}, sequence={sequence}, bus={bus}, device={device}")
         self.set_led_type(sequence)
         self.set_led_count(count)
         self.set_led_brightness(bright)
@@ -31,23 +32,29 @@ class Adeept_SPI_LedPixel(threading.Thread):
         self.__flag = threading.Event()
         self.__flag.clear()
     def led_begin(self, bus = 0, device = 0):
+        print(f"[RobotLight.led_begin] Starting SPI initialization for bus={bus}, device={device}")
         self.bus = bus
         self.device = device
         try:
+            print(f"[RobotLight.led_begin] Attempting to open SPI bus {self.bus}, device {self.device}...")
             self.spi = spidev.SpiDev()
             self.spi.open(self.bus, self.device)
             self.spi.mode = 0
             self.led_init_state = 1
-        except OSError:
-            print("Please check the configuration in /boot/firmware/config.txt.")
+            print(f"[RobotLight.led_begin] ✓ SPI bus {self.bus}, device {self.device} opened successfully.")
+        except OSError as e:
+            print(f"[RobotLight.led_begin] ❌ OSError during SPI initialization: {e}")
+            print("[RobotLight.led_begin] Please check the configuration in /boot/firmware/config.txt.")
             if self.bus == 0:
-                print("You can turn on the 'SPI' in 'Interface Options' by using 'sudo raspi-config'.")
-                print("Or make sure that 'dtparam=spi=on' is not commented, then reboot the Raspberry Pi. Otherwise spi0 will not be available.")
+                print("[RobotLight.led_begin] You can turn on the 'SPI' in 'Interface Options' by using 'sudo raspi-config'.")
+                print("[RobotLight.led_begin] Or make sure that 'dtparam=spi=on' is not commented, then reboot the Raspberry Pi. Otherwise spi0 will not be available.")
             else:
-                print("Please add 'dtoverlay=spi{}-2cs' at the bottom of the /boot/firmware/config.txt, then reboot the Raspberry Pi. otherwise spi{} will not be available.".format(self.bus, self.bus))
+                print(f"[RobotLight.led_begin] Please add 'dtoverlay=spi{self.bus}-2cs' at the bottom of the /boot/firmware/config.txt, then reboot the Raspberry Pi. otherwise spi{self.bus} will not be available.")
             self.led_init_state = 0
+            print("[RobotLight.led_begin] ⚠ SPI initialization failed. Setting led_init_state to 0.")
             
     def check_spi_state(self):
+        print(f"[RobotLight.check_spi_state] Returning SPI state: {self.led_init_state}")
         return self.led_init_state
         
     def spi_gpio_info(self):
@@ -276,10 +283,15 @@ class Adeept_SPI_LedPixel(threading.Thread):
             self.breathProcessing()    
     
     def run(self):
+        print("[RobotLight.run] LED thread started.")
         while 1:
+            print("[RobotLight.run] Waiting for flag...")
             self.__flag.wait()
+            print(f"[RobotLight.run] Flag set. Current light mode: {self.lightMode}")
             self.lightChange()
+            print("[RobotLight.run] lightChange() completed.")
             pass
+        print("[RobotLight.run] LED thread finished.")
 
 
 
