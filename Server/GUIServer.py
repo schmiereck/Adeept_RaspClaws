@@ -12,7 +12,7 @@ import Move as move
 import Switch as switch
 import RobotLight as robotLight
 import ast
-import sys # Added sys for sys.exit
+
 
 # Add parent directory to path to import protocol module
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -124,11 +124,12 @@ turn_command = 'no'
 # We don't need a local pwm object here anymore.
 
 rm = move.RobotM()
-print("[GUIServer] RobotM instantiated successfully. Exiting now before starting/pausing.")
-sys.exit(0)
+
 
 rm.start()
 rm.pause()
+print("[GUIServer] RobotM started and paused successfully. Exiting now before main initialization.")
+sys.exit(0)
 
 SmoothMode = 0
 steadyMode = 0
