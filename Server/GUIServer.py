@@ -812,7 +812,9 @@ if __name__ == '__main__':
         ADDR = (HOST, PORT)
 
         # Initialize WS2812 LEDs
+        print("[GUIServer] Calling initialize_leds()...")
         ws2812 = initialize_leds()
+        print(f"[GUIServer] initialize_leds() returned: {ws2812}")
 
         # Clean up old video ready marker
         try:
@@ -823,7 +825,9 @@ if __name__ == '__main__':
                 pass
 
         # Start FPV thread ONCE at server startup
+        print("[GUIServer] Calling start_video_thread()...")
         start_video_thread()
+        print("[GUIServer] start_video_thread() called.")
 
         # Main connection loop
         while 1:
