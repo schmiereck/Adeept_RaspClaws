@@ -102,6 +102,9 @@ vflip = 0  # Video vertical flip: 0/1
 
 print("[FPV] Attempting to initialize Picamera2 instance...")
 # Initialize camera only if available
+# WORKAROUND: Debian Trixie libcamera bug - picam2.start() hangs after reboot
+# Camera works before reboot, but after reboot picam2.start() blocks indefinitely
+CAMERA_AVAILABLE = False  # Set to False to prevent hang
 picam2 = None
 if CAMERA_AVAILABLE:
     try:

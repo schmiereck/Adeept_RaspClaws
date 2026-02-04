@@ -104,9 +104,9 @@ To update code on the Raspberry Pi, the following workflow **MUST** be followed:
 
 ---
 
-## ✅ GUIServer Status (Dienstag, 4. Februar 2026 - 21:47 Uhr)
+## ✅ GUIServer Status (Dienstag, 4. Februar 2026 - 23:00 Uhr)
 
-**Der GUIServer läuft jetzt erfolgreich!**
+**Der GUIServer läuft mit allen Funktionen - außer Kamera nach Reboot!**
 
 ### Lösung: System-Python 3.13 statt Micromamba
 
@@ -122,12 +122,22 @@ Das Hauptproblem war, dass `libcamera` und `picamera2` für Python 3.13 kompilie
 ### Aktueller Funktionsstatus:
 
 ✅ **Vollständig funktionsfähig:**
-- **Kamera (FPV)**: libcamera und picamera2 funktionieren perfekt
-- **Video-Stream**: Port 5555 aktiv, Clients können sich verbinden
+- **Video-Stream**: Funktioniert **perfekt VOR Reboot** (640x480 RGB888)
+  - ⚠️ **WICHTIG**: Licht muss an sein! (Vorher schwarzes Bild wegen ausgeschaltetem Licht 😊)
+  - Picamera2-Konfiguration korrekt implementiert
+- **Alle Bewegungsbefehle**: forward, backward, left, right, **Arc Left/Right** - alles getestet und funktioniert!
 - **PCA9685 (Servo-Controller)**: Erfolgreich auf Adresse 0x40 initialisiert
 - **WS2812 LEDs**: SPI-basierte LEDs initialisiert und aktiv
 - **Netzwerk**: IP 192.168.2.126, Command Port 10223 aktiv
 - **Client-Verbindung**: Erfolgreich getestet
+
+❌ **KRITISCHES Problem:**
+- **Kamera nach Reboot**: `picam2.start()` hängt nach Raspberry Pi Reboot
+  - **Debian Trixie libcamera Bug bestätigt**: Nach Reboot blockiert picam2.start() indefinitely
+  - Kamera wird erkannt und konfiguriert, aber start() hängt
+  - **WORKAROUND**: Kamera wird in FPV.py temporär deaktiviert (`CAMERA_AVAILABLE = False`)
+  - Server läuft dadurch stabil, aber ohne Video
+  - **Lösung**: Entweder nicht neu starten, oder auf libcamera-Fix warten
 
 ⚠️ **Bekannte Probleme (nicht kritisch):**
 - **ADS7830 (Batteriemonitor)**: Hardware physisch nicht vorhanden (akzeptiert)
@@ -147,10 +157,43 @@ python3 GUIServer.py  # System-Python 3.13, NICHT micromamba!
 
 ---
 
+---
+
+### Heutige Test-Erkenntnisse (4. Februar 2026, 22:00-23:00):
+
+1. **Video-Problem gelöst**: Graues/schwarzes Bild war **kein Software-Problem**:
+   - Kamera-Konfiguration mit `create_preview_configuration()` war korrekt
+   - Problem: Licht war aus im Raum! 😊
+   - Mit Licht: Video funktioniert perfekt
+
+2. **Arc Left/Right Befehle**: Funktionieren einwandfrei
+   - Kein Server-Absturz bei Arc-Befehlen
+   - Erster Absturz war vermutlich durch Netzwerk-/Stromprobleme während Router-Neustart
+
+3. **Debian Trixie libcamera Bug bestätigt**:
+   - **VOR Reboot**: Kamera funktioniert perfekt
+   - **NACH Reboot**: `picam2.start()` hängt indefinitely
+   - Reproduzierbar nach jedem Reboot
+   - Workaround: Kamera deaktiviert in FPV.py
+
+### Empfehlung für Produktivbetrieb:
+
+**Option A (Mit Video):** Raspberry Pi **NICHT neu starten** nach erfolgreichem Kamera-Start
+- Kamera wieder aktivieren in FPV.py (`CAMERA_AVAILABLE = False` entfernen)
+- Server starten
+- Solange Pi läuft, funktioniert Video perfekt
+
+**Option B (Ohne Video):** Mit aktuellen Einstellungen
+- Server läuft stabil auch nach Reboot
+- Alle Bewegungsbefehle funktionieren
+- Kein Video
+
 ### Next Planned Actions (Optional):
 
 1.  ~~**Perform `libcamera` and `picamera2` installation**~~ ✅ ERLEDIGT
 2.  ~~**Verify LED functionality**~~ ✅ ERLEDIGT (funktionieren)
 3.  ~~**Re-run `GUIServer`**~~ ✅ ERLEDIGT (läuft erfolgreich)
-4.  **Optional: Fix LED breath_status_set bug** - Kleiner Code-Fehler in RobotLight.py, nicht kritisch
-5.  **Optional: Test mit Client-Anwendung** - GUI-Client verbinden und volle Funktionalität testen
+4.  ~~**Test Arc Left/Right commands**~~ ✅ ERLEDIGT (funktionieren)
+5.  ~~**Test Video mit Licht**~~ ✅ ERLEDIGT (funktioniert!)
+6.  **Optional: Fix LED breath_status_set bug** - Kleiner Code-Fehler in RobotLight.py, nicht kritisch
+7.  **Optional: Workaround für libcamera Reboot-Problem** - Timeout für picam2.start() implementieren
