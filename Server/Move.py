@@ -5,66 +5,92 @@
 # Date		: 2025/04/16
 import time
 import math
+import adafruit_mpu6050
+import Kalman_Filter as Kalman_filter
+import PID
+import threading
+import RPIservo
 import sys
 import os
-import logging
-import traceback
 
-# ==================== Logging Setup ====================
-# The logger is configured in GUIServer.py, we just get the existing instance
-log = logging.getLogger(__name__)
-log.info("Move.py module loaded.")
+# New imports for CircuitPython
+from adafruit_pca9685 import PCA9685
+import board
+import busio
 
-try:
-    log.info("Importing Move.py dependencies...")
-    import adafruit_mpu6050
-    log.info("Imported adafruit_mpu6050")
-    import Kalman_Filter as Kalman_filter
-    log.info("Imported Kalman_Filter")
-    import PID
-    log.info("Imported PID")
-    import threading
-    log.info("Imported threading")
-    import RPIservo
-    log.info("Imported RPIservo")
+# Add parent directory to path to import protocol module
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from protocol import *
 
-    from adafruit_pca9685 import PCA9685
-    log.info("Imported PCA9685")
-    import board
-    log.info("Imported board")
-    import busio
-    log.info("Imported busio")
 
-    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from protocol import *
-    log.info("Imported protocol")
-    log.info("All Move.py dependencies imported successfully.")
-except Exception as e:
-    log.critical("Failed to import a critical dependency in Move.py.", exc_info=True)
-    # This will prevent the script from continuing if a core module is missing.
-    raise
+pwm0 = 300
+pwm1 = 300
+pwm2 = 300
+pwm3 = 300
 
-# ==================== Initial PWM/Servo Setup ====================
-log.info("Initializing default PWM values...")
-# Initializing PWM values for all 16 channels to a default of 300
-pwm_channels = [300] * 16
-for i in range(16):
-    globals()[f'pwm{i}'] = pwm_channels[i]
+pwm4 = 300
+pwm5 = 300
+pwm6 = 300
+pwm7 = 300
 
-servo_current_pos = list(pwm_channels)
-log.info(f"Default servo positions set to {servo_current_pos}")
+pwm8 = 300
+pwm9 = 300
+pwm10 = 300
+pwm11 = 300
 
-# ==================== Configuration Variables ====================
-log.info("Setting up configuration variables...")
+pwm12 = 300
+pwm13 = 300
+pwm14 = 300
+pwm15 = 300
+
+# Current servo positions (initialized to base positions)
+# These track the actual servo positions for smooth interpolation
+servo_current_pos = [
+	pwm0, pwm1, pwm2, pwm3,
+	pwm4, pwm5, pwm6, pwm7,
+	pwm8, pwm9, pwm10, pwm11,
+	pwm12, pwm13, pwm14, pwm15
+]
+
+'''
+change this variables to 0 to reverse all the servos.
+'''
 set_direction = 1
-leftSide_direction = 1 if set_direction else 0
-rightSide_direction = 0 if set_direction else 1
-leftSide_height = 0 if set_direction else 1
-rightSide_height = 1 if set_direction else 0
-height_change = 30
-Up_Down_direction = 1 if set_direction else 0
-Left_Right_direction = 1 if set_direction else 0
 
+'''
+change these two variables to reverse the direction of the legs.
+'''
+if set_direction:
+	leftSide_direction  = 1
+	rightSide_direction = 0
+else:
+	leftSide_direction  = 0
+	rightSide_direction = 1
+
+'''
+change these two variables to reverse the height of the legs.
+'''
+if set_direction:
+	leftSide_height  = 0
+	rightSide_height = 1
+else:
+	leftSide_height  = 1
+	rightSide_height = 0
+
+'''
+change this variable to set the range of the height range.
+'''
+height_change = 30
+
+'''
+change these two variables to adjuest the function for observing.
+'''
+if set_direction:
+	Up_Down_direction = 1
+	Left_Right_direction = 1
+else:
+	Up_Down_direction = 0
+	Left_Right_direction = 0
 Left_Right_input = 300
 Up_Down_input = 300
 Left_Right_Max = 500
@@ -73,61 +99,117 @@ Up_Down_Max = 500
 Up_Down_Min = 230
 look_wiggle = 15
 move_stu = 1
-abort_current_movement = False
-arc_factor = 0.7
-gait_phase = 0.0
-CYCLE_STEPS = 60
-_leg_positions = { 'L1': 0, 'L2': 0, 'L3': 0, 'R1': 0, 'R2': 0, 'R3': 0 }
+abort_current_movement = False  # Flag to immediately abort ongoing movement cycle
+arc_factor = 0.7  # Factor to control arc tightness. 0 = straight, 1 = pivot turn on inner leg.
+
+# Global state for continuous, non-blocking movement
+gait_phase = 0.0  # Current phase of the walk cycle (0.0 to 1.0)
+CYCLE_STEPS = 60  # Number of increments for a full walk cycle
+
+# Global position tracker for smooth continuous movement
+# Store actual leg positions (horizontal offsets) instead of just phase
+# This allows smooth interpolation when direction changes
+_leg_positions = {
+	'L1': 0,  # Left front horizontal position
+	'L2': 0,  # Left middle horizontal position
+	'L3': 0,  # Left rear horizontal position
+	'R1': 0,  # Right front horizontal position
+	'R2': 0,  # Right middle horizontal position
+	'R3': 0   # Right rear horizontal position
+}
+
+# Track last movement command to detect changes
 _last_command = None
 _last_speed_sign = 0
-_steps_since_change = 0
-_direction_changed = False
-_stop_counter = 0
-_stop_threshold = 30
-log.info("Configuration variables set.")
+_steps_since_change = 0  # Counter for steps since last direction/command change
+_direction_changed = False  # Flag indicating if direction recently changed
 
-# ==================== PID and MPU6050 Setup ====================
-log.info("Initializing PID controllers...")
-P, I, D = 5, 0.01, 0
+# FT40 Phase 4: Track stop duration to decide when to reset phase
+_stop_counter = 0  # Counter for how many iterations we've been stopped
+_stop_threshold = 30  # Reset phase after ~0.5 seconds of stop (30 iterations at ~60Hz)
+
+
+'''
+change these variable to adjuest the steady function.
+'''
+steady_range_Min = -40
+steady_range_Max = 130
+range_Mid = (steady_range_Min+steady_range_Max)/2
+X_fix_output = range_Mid
+Y_fix_output = range_Mid
+steady_X_set = 73
+
+'''
+Set PID
+'''
+P = 5
+I = 0.01
+D = 0
+
+'''
+>>> instantiation <<<
+'''
 X_pid = PID.PID()
 X_pid.SetKp(P)
-X_pid.SetKi(I)
-X_pid.SetKd(D)
+X_pid.SetKd(I)
+X_pid.SetKi(D)
 Y_pid = PID.PID()
 Y_pid.SetKp(P)
-Y_pid.SetKi(I)
-Y_pid.SetKd(D)
-log.info("PID controllers initialized.")
+Y_pid.SetKd(I)
+Y_pid.SetKi(D)
 
-kalman_filter_X = Kalman_filter.Kalman_filter(0.001, 0.1)
-kalman_filter_Y = Kalman_filter.Kalman_filter(0.001, 0.1)
+# Try to initialize PCA9685, use mock mode if hardware not available
+pwm = None  # Will be initialized by init_all()
 
-pwm = None  # To be initialized by init_all()
 
 def initialize_pwm():
-    global pwm
-    if pwm is not None:
-        log.warning("PCA9685 in Move.py already initialized.")
-        return pwm
-    
-    log.info("Initializing RPIservo PWM...")
-    RPIservo.initialize_pwm()
-    pwm = RPIservo.pwm
-    log.info("✓ Move.py is now using the PCA9685 instance from RPIservo.py")
-    return pwm
+	"""
+	Initialisiert den PCA9685 Servo-Controller.
+	Wird von init_all() automatisch aufgerufen oder kann manuell aufgerufen werden.
 
-log.info("Attempting to connect to MPU6050 sensor...")
+	Returns:
+		pwm object (Adafruit_PCA9685 or MockPWM)
+	"""
+	global pwm
+
+	if pwm is not None:
+		print("⚠️  PCA9685 in Move.py bereits initialisiert - überspringe")
+		return pwm
+
+	# Erst RPIservo initialisieren (falls noch nicht geschehen)
+	RPIservo.initialize_pwm()
+
+	# Dann eigene pwm-Referenz setzen
+	pwm = RPIservo.pwm
+	print("✓ Move.py verwendet PCA9685 von RPIservo.py")
+	return pwm
+
+kalman_filter_X =  Kalman_filter.Kalman_filter(0.001,0.1)
+kalman_filter_Y =  Kalman_filter.Kalman_filter(0.001,0.1)
+
 try:
-    i2c = busio.I2C(board.SCL, board.SDA)
-    sensor = adafruit_mpu6050.MPU6050(i2c)
-    mpu6050_connection = 1
-    log.info("✓ MPU6050 sensor connected successfully.")
-except (ValueError, RuntimeError) as e:
-    log.warning(f"Could not connect to MPU6050 sensor: {e}. Running without it.")
-    mpu6050_connection = 0
-    sensor = None
+	i2c = busio.I2C(board.SCL, board.SDA)
+	sensor = adafruit_mpu6050.MPU6050(i2c)
+	mpu6050_connection = 1
+except (ValueError, RuntimeError):
+	mpu6050_connection = 0
+	sensor = None
 
-target_X, target_Y = 0, 0
+'''
+change these two variable to adjuest the steady status.
+	   (X+)
+	   /|\
+  (Y+)<-+->(Y-)
+		|
+	   (X-)
+Example: If you want the forhead of the robot to point down,
+		you need to increase the value target_X.
+'''
+target_X = 0
+target_Y = 0
+
+
+# ==================== Servo Position Tracking & Smooth Interpolation ====================
 
 def _pulse_to_duty_cycle(pulse):
     return (pulse * 65535) // 4095
