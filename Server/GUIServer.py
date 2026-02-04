@@ -11,13 +11,13 @@ import psutil
 # import Switch as switch # Temporarily commented out for debugging
 # import RobotLight as robotLight # Temporarily commented out for debugging camera/LED
 import ast
-print("[GUIServer] Import ast successful. Exiting now before protocol.")
-sys.exit(0)
 import sys # Added sys for sys.exit
 
 # Add parent directory to path to import protocol module
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from protocol import *
+print("[GUIServer] Import protocol successful. Exiting now.")
+sys.exit(0)
 step_set = 1
 
 # ==================== Shutdown Handler ====================
