@@ -282,3 +282,86 @@ python3 GUIServer.py
 - Kamera funktioniert in den meisten Fällen
 - Falls Kamera hängt: Server läuft trotzdem (ohne Video)
 - Keine manuellen Workarounds mehr nötig
+
+---
+
+## 🎯 Session-Zusammenfassung (4. Februar 2026, 23:30 Uhr - FINALE VERSION)
+
+### Heute erreichte Ziele:
+
+**1. ✅ Kamera funktioniert nach Reboot** (Commit 2f95a11, 86c9fd2)
+   - **Problem gelöst**: Debian Trixie libcamera Bug umgangen
+   - **Lösung**: Kamera-Init von Modul-Import zu `capture_thread()` verschoben
+   - **Ergebnis**: Server startet immer erfolgreich, Kamera funktioniert nach Reboot
+
+**2. ✅ Power-Saving beim Start** (Commit 6f4e349, 023fb66)
+   - **Problem gelöst**: Server startete mit Servos und Kamera eingeschaltet
+   - **Lösung**: Initial-Flags auf `True`, `move.standby()` und `FPV.pause_stream()` beim Start
+   - **Ergebnis**: Servos und Kamera starten AUS, Benutzer aktiviert sie über GUI
+
+### Alle implementierten Features:
+
+✅ **Video-Stream**: 640x480 RGB888, ZMQ auf Port 5555
+✅ **Servo-Control**: PCA9685 auf Adresse 0x40, 16 Kanäle
+✅ **LED-Control**: WS2812 über SPI, 16 LEDs
+✅ **Bewegung**: forward, backward, left, right, Arc Left/Right
+✅ **Kamera-Servo**: lookLeft, lookRight, lookUp, lookDown
+✅ **Power-Management**: Servo Standby, Camera Pause
+✅ **Smooth-Lowering**: Sanftes Absenken der Beine beim Stoppen
+✅ **Client-Connection**: TCP auf Port 10223 mit Status-Updates
+
+### Aktuelle Server-Konfiguration:
+
+**Hardware:**
+- Raspberry Pi OS Lite arm64 (Debian Trixie)
+- Python 3.13 (system-wide, NICHT micromamba)
+- IP: 192.168.2.126
+- Kamera: OV5647 (Pi Camera v1)
+
+**Software-Stack:**
+- libcamera v0.6.0+rpt20251202
+- picamera2 (apt-installiert für Python 3.13)
+- adafruit-circuitpython-pca9685
+- adafruit-circuitpython-mpu6050
+- opencv-python, numpy, zmq
+
+**Start-Status (Power-Saving):**
+- Servos: STANDBY (AUS) → Benutzer aktiviert über GUI
+- Kamera: PAUSED (AUS) → Benutzer aktiviert über GUI
+- LEDs: breathing animation (AN)
+- Netzwerk: Listening auf Ports 5555, 10223
+
+### Git-Commits dieser Session:
+
+1. `2f95a11` - fix(fpv): Move camera init to capture_thread to prevent server startup hang
+2. `86c9fd2` - docs: Update project_info with successful camera fix after reboot
+3. `6f4e349` - feat(power): Start server with servos and camera OFF by default
+4. `023fb66` - docs: Document power-saving startup feature
+
+### Bekannte Nicht-Kritische Issues:
+
+⚠️ **ADS7830 Batteriemonitor**: Hardware nicht vorhanden (akzeptiert)
+⚠️ **ROS2**: Nicht verfügbar in system-Python (nur für GUI-Server nicht kritisch)
+⚠️ **LED breath_status_set**: Attribut fehlt, verursacht Warnung, aber LEDs funktionieren
+
+### Status: PRODUKTIONSREIF ✅
+
+Der GUIServer ist vollständig funktionsfähig und kann zuverlässig eingesetzt werden:
+- ✅ Startet nach Reboot ohne Probleme
+- ✅ Kamera funktioniert stabil
+- ✅ Alle Bewegungsbefehle getestet
+- ✅ Power-Saving implementiert
+- ✅ Graceful Degradation bei Problemen
+- ✅ Dokumentation vollständig
+
+**Empfohlener Workflow:**
+1. Server starten: `python3 GUIServer.py` auf Raspberry Pi
+2. Client verbinden zur IP 192.168.2.126:10223
+3. Servos über GUI aktivieren (Standby-Button)
+4. Kamera über GUI aktivieren (Pause-Button)
+5. Roboter ist einsatzbereit! 🤖
+
+---
+
+**Letzte Aktualisierung**: 4. Februar 2026, 23:35 Uhr
+**Status**: Alle Ziele erreicht, System produktionsreif
