@@ -136,8 +136,9 @@ SmoothCamMode = 1 # Enable SmoothCam by default
 
 
 # Power Management Status
-servo_standby_active = False
-camera_paused_active = False
+# Initial state: Servos and Camera should be OFF at startup to save power
+servo_standby_active = True   # Servos start in standby (OFF)
+camera_paused_active = True   # Camera starts paused (OFF)
 
 # Battery monitoring using ADS7830
 battery_available = False
@@ -835,6 +836,14 @@ if __name__ == '__main__':
         print("[GUIServer] Calling start_video_thread()...")
         start_video_thread()
         print("[GUIServer] start_video_thread() called.")
+
+        # Power Management: Start with servos and camera OFF to save power
+        print("[GUIServer] Applying initial power-saving settings...")
+        print("[GUIServer]   Putting servos into STANDBY mode...")
+        move.standby()
+        print("[GUIServer]   Pausing camera stream...")
+        FPV.pause_stream()
+        print("[GUIServer] ✓ Initial power-saving settings applied (servos OFF, camera OFF)")
 
         # Main connection loop
         while 1:
