@@ -189,7 +189,7 @@ class FPV:
 
 		# Set high-water mark to 1 to prevent buffering old frames
 		# This ensures clients always get the latest frame, not buffered old ones
-		footage_socket.setsopt(zmq.SNDHWM, 1)
+		footage_socket.setsockopt(zmq.SNDHWM, 1)
 
 		print(f"[FPV.capture_thread] Video server binding to port 5555 (PUB socket)...")
 		try:
