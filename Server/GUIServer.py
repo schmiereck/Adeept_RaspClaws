@@ -6,10 +6,11 @@ import signal
 import argparse
 import os
 
-# import FPV # Temporarily commented out for debugging camera/LED
+import FPV
 import psutil
-# import Switch as switch # Temporarily commented out for debugging
-# import RobotLight as robotLight # Temporarily commented out for debugging camera/LED
+import Move as move
+import Switch as switch
+import RobotLight as robotLight
 import ast
 import sys # Added sys for sys.exit
 
@@ -110,8 +111,7 @@ try:
 except AttributeError:
         # SIGTSTP might not be available on some systems (e.g., Windows)
         print("⚠️  SIGTSTP (Ctrl+Z) handler not available on this system")
-print("[GUIServer] Signal handlers registered successfully. Exiting now before RobotM instantiation.")
-sys.exit(0)
+
 
 # ==================== End Shutdown Handler ====================
 
@@ -126,6 +126,7 @@ turn_command = 'no'
 rm = move.RobotM()
 print("[GUIServer] RobotM instantiated successfully. Exiting now before starting/pausing.")
 sys.exit(0)
+
 rm.start()
 rm.pause()
 
