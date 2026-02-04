@@ -8,11 +8,11 @@ import os
 
 # import FPV # Temporarily commented out for debugging camera/LED
 import psutil
-print("[GUIServer] Import psutil successful. Exiting now before Switch/RobotLight/ast/protocol.")
-sys.exit(0)
 # import Switch as switch # Temporarily commented out for debugging
 # import RobotLight as robotLight # Temporarily commented out for debugging camera/LED
 import ast
+print("[GUIServer] Import ast successful. Exiting now before protocol.")
+sys.exit(0)
 import sys # Added sys for sys.exit
 
 # Add parent directory to path to import protocol module
