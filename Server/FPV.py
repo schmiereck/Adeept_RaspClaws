@@ -102,8 +102,6 @@ vflip = 0  # Video vertical flip: 0/1
 
 print("[FPV] Attempting to initialize Picamera2 instance...")
 # Initialize camera only if available
-# TEMPORARY: Disable camera to test Arc commands (Debian Trixie libcamera bug causes picam2.start() to hang)
-CAMERA_AVAILABLE = False  # TODO: Re-enable when libcamera bug is fixed
 picam2 = None
 if CAMERA_AVAILABLE:
     try:
