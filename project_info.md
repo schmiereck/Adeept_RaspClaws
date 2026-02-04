@@ -131,13 +131,16 @@ Das Hauptproblem war, dass `libcamera` und `picamera2` für Python 3.13 kompilie
 - **Netzwerk**: IP 192.168.2.126, Command Port 10223 aktiv
 - **Client-Verbindung**: Erfolgreich getestet
 
-❌ **KRITISCHES Problem:**
-- **Kamera nach Reboot**: `picam2.start()` hängt nach Raspberry Pi Reboot
-  - **Debian Trixie libcamera Bug bestätigt**: Nach Reboot blockiert picam2.start() indefinitely
-  - Kamera wird erkannt und konfiguriert, aber start() hängt
-  - **WORKAROUND**: Kamera wird in FPV.py temporär deaktiviert (`CAMERA_AVAILABLE = False`)
-  - Server läuft dadurch stabil, aber ohne Video
-  - **Lösung**: Entweder nicht neu starten, oder auf libcamera-Fix warten
+✅ **GELÖST - Kamera nach Reboot:**
+- **Problem**: `picam2.start()` hängt nach Raspberry Pi Reboot
+  - Debian Trixie libcamera Bug: Nach Reboot blockiert picam2.start() indefinitely
+  - Kamera wird erkannt und konfiguriert, aber start() hängt beim Aufruf
+- **Lösung**: Kamera-Initialisierung von Modul-Import zu capture_thread() verschoben
+  - Server startet jetzt OHNE Kamera-Initialisierung
+  - Kamera wird erst in capture_thread() initialisiert (nach allen anderen Komponenten)
+  - Falls Kamera hängt: 5-Sekunden-Timeout lässt Video-Thread beenden, Server läuft weiter
+  - **ERFOLG**: Kamera startet jetzt erfolgreich nach Reboot! 🎉
+  - Durch Verzögerung der Init gibt es keine Blockierung mehr
 
 ⚠️ **Bekannte Probleme (nicht kritisch):**
 - **ADS7830 (Batteriemonitor)**: Hardware physisch nicht vorhanden (akzeptiert)
@@ -195,5 +198,69 @@ python3 GUIServer.py  # System-Python 3.13, NICHT micromamba!
 3.  ~~**Re-run `GUIServer`**~~ ✅ ERLEDIGT (läuft erfolgreich)
 4.  ~~**Test Arc Left/Right commands**~~ ✅ ERLEDIGT (funktionieren)
 5.  ~~**Test Video mit Licht**~~ ✅ ERLEDIGT (funktioniert!)
-6.  **Optional: Fix LED breath_status_set bug** - Kleiner Code-Fehler in RobotLight.py, nicht kritisch
-7.  **Optional: Workaround für libcamera Reboot-Problem** - Timeout für picam2.start() implementieren
+6.  ~~**Workaround für libcamera Reboot-Problem**~~ ✅ ERLEDIGT (Kamera funktioniert nach Reboot!)
+7.  **Optional: Fix LED breath_status_set bug** - Kleiner Code-Fehler in RobotLight.py, nicht kritisch
+
+---
+
+## 🎉 FINALE LÖSUNG: Kamera funktioniert nach Reboot! (4. Februar 2026, 23:20 Uhr)
+
+### Das Problem
+Nach Raspberry Pi Reboot hing der Server beim Importieren von FPV.py, weil:
+1. FPV.py initialisierte die Kamera beim Modul-Import (auf Modul-Ebene)
+2. `picam2.start()` blockierte indefinitely (Debian Trixie Bug)
+3. Server konnte nicht starten, weil Import blockiert war
+4. Timeout-Versuche funktionierten nicht, weil sie VOR dem Blockieren liefen
+
+### Die Lösung
+**Kamera-Initialisierung von Modul-Import zu capture_thread() verschoben:**
+
+```python
+# ALT (bei Modul-Import):
+picam2 = Picamera2()
+picam2.configure(...)
+picam2.start()  # <- BLOCKIERT HIER!
+
+# NEU (in capture_thread()):
+def capture_thread(self, IPinver):
+    # Server ist bereits gestartet!
+    global picam2
+    picam2 = Picamera2()
+    picam2.configure(...)
+
+    # Mit Timeout-Workaround
+    start_thread = threading.Thread(target=lambda: picam2.start(), daemon=True)
+    start_thread.start()
+    start_thread.join(timeout=5.0)
+
+    if start_thread.is_alive():
+        print("TIMEOUT - Kamera hängt")
+        return  # Video-Thread beendet, Server läuft weiter
+```
+
+### Ergebnis
+✅ **Server startet IMMER erfolgreich** - auch wenn Kamera hängt
+✅ **Kamera funktioniert nach Reboot!** - Verzögerung der Init umgeht Debian-Bug
+✅ **Graceful Degradation** - Falls Kamera hängt: Server läuft ohne Video
+✅ **Alle Features funktionieren** - Video, Bewegung, LEDs, Servos
+
+### Code-Änderungen (Commit 2f95a11)
+**Server/FPV.py:**
+1. Entfernt: Kamera-Init auf Modul-Ebene (Zeilen 103-157)
+2. Hinzugefügt: Kamera-Init in `capture_thread()` mit Timeout
+3. Alle print() Statements mit `flush=True` für sofortige Ausgabe
+4. `global` Deklarationen für `picam2` und `CAMERA_AVAILABLE`
+
+### Start-Befehl (bleibt gleich):
+```bash
+ssh pi@192.168.2.126
+cd /home/pi/Adeept_RaspClaws/Server
+python3 GUIServer.py
+```
+
+### Empfehlung
+**Diese Lösung ist produktionsreif!**
+- Server startet zuverlässig nach Reboot
+- Kamera funktioniert in den meisten Fällen
+- Falls Kamera hängt: Server läuft trotzdem (ohne Video)
+- Keine manuellen Workarounds mehr nötig
