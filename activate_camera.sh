@@ -7,7 +7,7 @@ echo "Activating RaspClaws Camera"
 echo "=========================================="
 
 # Setup ROS2 environment
-if [ -f "/home/pi/micromamba/etc/profile.d/micromamba.sh" ]; then
+if [ -x "/usr/local/bin/micromamba" ]; then
     # On raspclaws-1 (with micromamba)
     export MAMBA_EXE='/usr/local/bin/micromamba'
     export MAMBA_ROOT_PREFIX='/home/pi/micromamba'
