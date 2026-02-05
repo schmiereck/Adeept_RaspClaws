@@ -24,6 +24,7 @@ Topics Published:
 
 import threading
 import time
+import base64
 import cv2
 import numpy as np
 import zmq
@@ -210,14 +211,21 @@ class CameraPublisher(Node):
                 try:
                     message = self.zmq_socket.recv()
 
+                    # Decode base64 (GUIServer sends base64-encoded JPEG)
+                    try:
+                        jpg_buffer = base64.b64decode(message)
+                    except Exception as e:
+                        self.get_logger().warn(f'Failed to decode base64: {e}')
+                        continue
+
                     # Decode JPEG image
                     frame = cv2.imdecode(
-                        np.frombuffer(message, dtype=np.uint8),
+                        np.frombuffer(jpg_buffer, dtype=np.uint8),
                         cv2.IMREAD_COLOR
                     )
 
                     if frame is None:
-                        self.get_logger().warn('Failed to decode frame from ZMQ')
+                        self.get_logger().warn('Failed to decode JPEG from buffer')
                         continue
 
                     # Convert BGR to RGB (OpenCV uses BGR, ROS uses RGB)
