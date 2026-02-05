@@ -193,8 +193,137 @@ python3 GUIServer.py  # System-Python 3.13!
 
 ---
 
-**Letzte Aktualisierung**: 5. Februar 2026, 09:05 Uhr
-**Status**: Hybrid-Architektur vollständig funktionsfähig ✅
-- GUIServer produktionsreif (system-Python 3.13)
-- ROSServer produktionsreif (RoboStack Python 3.11)
+## 🌐 ROS2 Multi-Machine Setup (5. Februar 2026, 09:50 Uhr)
+
+### Architektur
+
+**ROS2-Netzwerk zwischen zwei Raspberry Pis:**
+
+```
+┌────────────────────────────────────────┐
+│  raspclaws-1 (192.168.2.126)          │
+│  - GUIServer (system-Python 3.13)     │
+│  - ROSServer (RoboStack Python 3.11)  │
+│  - Publishes alle /raspclaws/* Topics │
+│  - ROS_DOMAIN_ID=1                     │
+└──────────────┬─────────────────────────┘
+               │ ROS2 DDS (Multicast)
+               │ 192.168.2.0/24 Network
+┌──────────────▼─────────────────────────┐
+│  ubuntu1 (192.168.2.133)               │
+│  - ROS2 Humble (native /opt/ros)      │
+│  - Subscriber für /raspclaws/* Topics │
+│  - ROS_DOMAIN_ID=1                     │
+│  - Visualisierung: rviz2, rqt, etc.   │
+└────────────────────────────────────────┘
+```
+
+### ✅ Erfolgreich getestet
+
+**Von ubuntu1 sichtbare Topics:**
+```bash
+ubuntu@ubuntu1:~$ ros2 topic list
+/raspclaws/battery
+/raspclaws/camera/camera_info
+/raspclaws/camera/image_compressed
+/raspclaws/camera/image_raw
+/raspclaws/cmd_vel
+/raspclaws/cpu_temp
+/raspclaws/cpu_usage
+/raspclaws/gyro_data
+/raspclaws/head_cmd
+/raspclaws/imu
+/raspclaws/ram_usage
+/raspclaws/servo_positions
+/raspclaws/status
+```
+
+### Konfiguration
+
+**Beide Raspberry Pis:**
+- **ROS_DOMAIN_ID=1** (in ~/.bashrc gesetzt)
+- **Netzwerk:** 192.168.2.0/24 (WLAN)
+- **Multicast Discovery:** Funktioniert automatisch
+
+### X-Windows / Visualisierung auf ubuntu1
+
+**Installierte Tools:**
+- ✅ `rviz2` - 3D-Visualisierung
+- ✅ `rqt` - Qt-basierte GUI-Tools
+- ✅ `rqt_graph` - Topic-Graph-Visualisierung
+- ✅ `rqt_image_view` - Kamera-Bild-Anzeige
+- ✅ `rqt_console` - Log-Konsole
+
+**X-Forwarding von Windows-PC:**
+
+1. **X-Server auf Windows starten** (eine dieser Optionen):
+   - [VcXsrv](https://sourceforge.net/projects/vcxsrv/)
+   - [Xming](https://sourceforge.net/projects/xming/)
+   - [MobaXterm](https://mobaxterm.mobatek.net/) (hat X-Server eingebaut)
+
+2. **SSH mit X-Forwarding verbinden:**
+   ```bash
+   ssh -X ubuntu@192.168.2.133
+   ```
+
+3. **ROS2-Tools starten:**
+   ```bash
+   # ROS2-Umgebung laden
+   source /opt/ros/humble/setup.bash
+   export ROS_DOMAIN_ID=1
+
+   # Visualisierung starten
+   rviz2                          # 3D-Visualisierung
+   rqt_graph                      # Topic-Graph anzeigen
+   rqt_image_view                 # Kamera-Bild anzeigen
+   ```
+
+### Verwendungsbeispiele
+
+**Topic-Daten anzeigen:**
+```bash
+# Auf ubuntu1
+source /opt/ros/humble/setup.bash
+export ROS_DOMAIN_ID=1
+
+# Batterie-Spannung anzeigen
+ros2 topic echo /raspclaws/battery
+
+# IMU-Daten anzeigen
+ros2 topic echo /raspclaws/imu
+
+# Kamera-Info anzeigen
+ros2 topic echo /raspclaws/camera/camera_info
+```
+
+**Roboter steuern:**
+```bash
+# Vorwärts bewegen
+ros2 topic pub /raspclaws/cmd_vel geometry_msgs/Twist "linear: {z: 0.5}"
+
+# Kamera nach links drehen
+ros2 topic pub /raspclaws/head_cmd geometry_msgs/Point "x: -0.5, y: 0.0"
+
+# Service aufrufen
+ros2 service call /raspclaws/reset_servos std_srvs/srv/Trigger
+```
+
+**Kamera-Bild in rviz2 ansehen:**
+```bash
+# rviz2 starten (über SSH -X)
+rviz2
+
+# In rviz2:
+# 1. Add → Image → Topic: /raspclaws/camera/image_raw
+# 2. Fixed Frame: camera_link
+```
+
+---
+
+**Letzte Aktualisierung**: 5. Februar 2026, 09:50 Uhr
+**Status**: Multi-Machine ROS2-Setup vollständig funktionsfähig ✅
+- GUIServer produktionsreif (system-Python 3.13 auf raspclaws-1)
+- ROSServer produktionsreif (RoboStack Python 3.11 auf raspclaws-1)
 - ZMQ-Bridge erfolgreich implementiert und getestet
+- ROS2-Kommunikation zu ubuntu1 erfolgreich getestet
+- X-Windows-Visualisierung vorbereitet
