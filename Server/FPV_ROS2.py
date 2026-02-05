@@ -1,14 +1,20 @@
 #!/usr/bin/env python3
 # File name   : FPV_ROS2.py
-# Description : ROS 2 Camera Stream for FPV Camera (Picamera2)
-# Author      : GitHub Copilot
-# Date        : 2026-01-29
+# Description : ROS 2 Camera Stream via ZMQ Bridge
+# Author      : GitHub Copilot + Claude
+# Date        : 2026-02-05
+# Modified    : ZMQ Bridge instead of direct Picamera2 (for RoboStack Python 3.11)
 
 """
 ROS 2 Camera Publisher for Adeept RaspClaws Robot
 
-Publishes camera frames from Picamera2 to ROS 2 topic.
-Supports configurable frame rate, resolution, and compression.
+Receives camera frames from GUIServer's ZMQ stream (Port 5555)
+and publishes them to ROS 2 topics.
+
+This approach allows:
+- GUIServer runs in system-Python 3.13 with Picamera2
+- ROS2 Node runs in RoboStack ros_env with Python 3.11
+- Both can access camera data simultaneously
 
 Topics Published:
 - /raspclaws/camera/image_raw (sensor_msgs/Image): Uncompressed RGB image
@@ -20,8 +26,7 @@ import threading
 import time
 import cv2
 import numpy as np
-from picamera2 import Picamera2
-import libcamera
+import zmq
 
 # ROS 2 imports
 try:
@@ -44,39 +49,28 @@ class CameraConfig:
     Modify these to adjust camera behavior.
     """
 
-    # Resolution
+    # ZMQ Connection
+    ZMQ_HOST = '127.0.0.1'  # GUIServer runs on same machine
+    ZMQ_PORT = 5555         # GUIServer's FPV ZMQ port
+    ZMQ_TIMEOUT = 5000      # 5 seconds timeout
+
+    # Expected resolution from GUIServer
     WIDTH = 640
     HEIGHT = 480
 
-    # Frame rate (FPS)
-    # Higher = smoother video, but more CPU/bandwidth
-    # Lower = less smooth, but saves resources
+    # Frame rate (FPS) - target for publishing
+    # Note: Actual FPS depends on GUIServer's camera feed
     TARGET_FPS = 30
-
-    # Image format
-    # Options: 'RGB888', 'BGR888', 'YUV420', 'XRGB8888', 'XBGR8888'
-    FORMAT = 'RGB888'
 
     # JPEG Compression quality (0-100)
     # Higher = better quality, larger files
     # Lower = worse quality, smaller files
     JPEG_QUALITY = 85
 
-    # Video flip
-    HORIZONTAL_FLIP = False
-    VERTICAL_FLIP = False
-
-    # Buffer count (number of frame buffers)
-    BUFFER_COUNT = 4
-
     # Publish modes
     PUBLISH_RAW = True          # Publish uncompressed image (larger bandwidth)
     PUBLISH_COMPRESSED = True   # Publish JPEG compressed image (smaller bandwidth)
     PUBLISH_CAMERA_INFO = True  # Publish camera calibration info
-
-    # Color space
-    # libcamera.ColorSpace.Sycc() is good for general use
-    COLOR_SPACE = libcamera.ColorSpace.Sycc()
 
     # Topic names
     TOPIC_RAW = '/raspclaws/camera/image_raw'
@@ -100,12 +94,12 @@ class CameraConfig:
 # ==================== ROS 2 Camera Publisher ====================
 
 class CameraPublisher(Node):
-    """ROS 2 node that publishes camera frames"""
+    """ROS 2 node that publishes camera frames from ZMQ stream"""
 
     def __init__(self):
         super().__init__('camera_publisher')
 
-        self.get_logger().info('Initializing Camera Publisher...')
+        self.get_logger().info('Initializing Camera Publisher (ZMQ Bridge)...')
 
         # Configuration
         self.config = CameraConfig()
@@ -118,18 +112,19 @@ class CameraPublisher(Node):
         self.frame_count = 0
         self.last_fps_time = time.time()
         self.fps = 0.0
+        self.zmq_connected = False
 
         # Create publishers
         self.create_publishers()
 
-        # Initialize camera
-        self.init_camera()
+        # Initialize ZMQ connection
+        self.init_zmq()
 
         # Start capture thread
         self.capture_thread = threading.Thread(target=self.capture_loop, daemon=True)
         self.capture_thread.start()
 
-        self.get_logger().info('✓ Camera Publisher initialized successfully')
+        self.get_logger().info('✓ Camera Publisher (ZMQ Bridge) initialized successfully')
 
     def create_publishers(self):
         """Create ROS 2 publishers for camera topics"""
@@ -157,36 +152,31 @@ class CameraPublisher(Node):
             )
             self.get_logger().info(f'✓ Publisher created: {self.config.TOPIC_CAMERA_INFO}')
 
-    def init_camera(self):
-        """Initialize Picamera2"""
+    def init_zmq(self):
+        """Initialize ZMQ subscriber to GUIServer's camera stream"""
         try:
-            self.get_logger().info('Initializing Picamera2...')
+            self.get_logger().info('Connecting to ZMQ camera stream...')
 
-            self.picam2 = Picamera2()
+            # Create ZMQ context and socket
+            self.zmq_context = zmq.Context()
+            self.zmq_socket = self.zmq_context.socket(zmq.SUB)
 
-            # Configure preview (capture) settings
-            preview_config = self.picam2.preview_configuration
-            preview_config.size = (self.config.WIDTH, self.config.HEIGHT)
-            preview_config.format = self.config.FORMAT
-            preview_config.transform = libcamera.Transform(
-                hflip=int(self.config.HORIZONTAL_FLIP),
-                vflip=int(self.config.VERTICAL_FLIP)
-            )
-            preview_config.colour_space = self.config.COLOR_SPACE
-            preview_config.buffer_count = self.config.BUFFER_COUNT
-            preview_config.queue = True
+            # Connect to GUIServer's video stream
+            zmq_address = f'tcp://{self.config.ZMQ_HOST}:{self.config.ZMQ_PORT}'
+            self.zmq_socket.connect(zmq_address)
 
-            # Start camera
-            if not self.picam2.is_open:
-                raise RuntimeError('Could not start camera.')
+            # Subscribe to all messages (empty filter)
+            self.zmq_socket.setsockopt_string(zmq.SUBSCRIBE, '')
 
-            self.picam2.start()
+            # Set timeout
+            self.zmq_socket.setsockopt(zmq.RCVTIMEO, self.config.ZMQ_TIMEOUT)
 
-            self.get_logger().info(f'✓ Camera started: {self.config.WIDTH}x{self.config.HEIGHT} @ {self.config.TARGET_FPS} FPS')
+            self.get_logger().info(f'✓ Connected to ZMQ stream at {zmq_address}')
+            self.get_logger().info(f'   Waiting for frames from GUIServer...')
 
         except Exception as e:
-            self.get_logger().error(f'Failed to initialize camera: {e}')
-            self.get_logger().error('Please check camera connection and disable "legacy camera driver"')
+            self.get_logger().error(f'Failed to initialize ZMQ connection: {e}')
+            self.get_logger().error('Make sure GUIServer is running with camera enabled')
             raise
 
     def pause(self):
@@ -206,9 +196,9 @@ class CameraPublisher(Node):
     def capture_loop(self):
         """
         Main capture loop (runs in separate thread).
-        Captures frames and publishes to ROS 2 topics.
+        Receives frames from ZMQ and publishes to ROS 2 topics.
         """
-        self.get_logger().info('Starting capture loop...')
+        self.get_logger().info('Starting ZMQ capture loop...')
 
         frame_delay = 1.0 / self.config.TARGET_FPS
 
@@ -216,8 +206,35 @@ class CameraPublisher(Node):
             try:
                 loop_start = time.time()
 
-                # Capture frame
-                frame = self.picam2.capture_array()
+                # Receive frame from ZMQ
+                try:
+                    message = self.zmq_socket.recv()
+
+                    # Decode JPEG image
+                    frame = cv2.imdecode(
+                        np.frombuffer(message, dtype=np.uint8),
+                        cv2.IMREAD_COLOR
+                    )
+
+                    if frame is None:
+                        self.get_logger().warn('Failed to decode frame from ZMQ')
+                        continue
+
+                    # Convert BGR to RGB (OpenCV uses BGR, ROS uses RGB)
+                    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+                    # Mark as connected on first successful frame
+                    if not self.zmq_connected:
+                        self.zmq_connected = True
+                        self.get_logger().info('✓ Receiving frames from GUIServer')
+
+                except zmq.Again:
+                    # Timeout - no frame received
+                    if self.zmq_connected:
+                        self.get_logger().warn('ZMQ timeout - no frames from GUIServer')
+                        self.zmq_connected = False
+                    time.sleep(0.5)
+                    continue
 
                 # Skip publishing if paused
                 if self.camera_paused:
@@ -329,11 +346,13 @@ class CameraPublisher(Node):
         """Cleanup on shutdown"""
         self.get_logger().info('Shutting down camera publisher...')
         try:
-            if hasattr(self, 'picam2'):
-                self.picam2.stop()
-                self.get_logger().info('✓ Camera stopped')
+            if hasattr(self, 'zmq_socket'):
+                self.zmq_socket.close()
+            if hasattr(self, 'zmq_context'):
+                self.zmq_context.term()
+            self.get_logger().info('✓ ZMQ connection closed')
         except Exception as e:
-            self.get_logger().error(f'Error during camera shutdown: {e}')
+            self.get_logger().error(f'Error during ZMQ shutdown: {e}')
 
 
 # ==================== Main Entry Point ====================

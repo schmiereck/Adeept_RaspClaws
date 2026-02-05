@@ -44,6 +44,7 @@ import threading
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from protocol import (
     CMD_FORWARD, CMD_BACKWARD, CMD_LEFT, CMD_RIGHT,
+    CMD_FORWARD_LEFT_ARC, CMD_FORWARD_RIGHT_ARC,
     CMD_FAST, CMD_SLOW, MOVE_STAND,
     CMD_SMOOTH_CAM, CMD_SMOOTH_CAM_OFF
 )
