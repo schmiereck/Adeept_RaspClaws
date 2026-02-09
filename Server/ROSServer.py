@@ -143,6 +143,19 @@ class RaspClawsNode(Node):
         # Create timers for periodic tasks
         self.create_timers()
 
+        # DECOUPLED INITIALIZATION: Initialize camera publisher at startup
+        # This allows camera topics to be available immediately without waiting for a movement command.
+        try:
+            if CameraPublisher is not None:
+                self.get_logger().info('🎥 Initializing camera publisher at startup...')
+                self.camera_publisher = CameraPublisher()
+                self.get_logger().info('✓ Camera publisher initialized')
+            else:
+                self.get_logger().warn('Camera publisher not available')
+        except Exception as e:
+            self.get_logger().warn(f'Camera publisher initialization failed: {e}')
+            self.camera_publisher = None
+
         self.get_logger().info('RaspClaws ROS 2 Node initialized successfully!')
 
     def init_robot_hardware(self):
@@ -177,18 +190,6 @@ class RaspClawsNode(Node):
             except:
                 self.ws2812 = None
                 self.get_logger().warn('WS2812 LEDs not available')
-
-            # Initialize camera publisher (optional)
-            try:
-                if CameraPublisher is not None:
-                    self.get_logger().info('🎥 Initializing camera publisher...')
-                    self.camera_publisher = CameraPublisher()
-                    self.get_logger().info('✓ Camera publisher initialized')
-                else:
-                    self.get_logger().warn('Camera publisher not available')
-            except Exception as e:
-                self.get_logger().warn(f'Camera publisher initialization failed: {e}')
-                self.camera_publisher = None
 
             self.hardware_initialized = True
             self.get_logger().info('✓ Robot hardware initialized successfully')
