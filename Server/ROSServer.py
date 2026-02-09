@@ -39,6 +39,7 @@ import sys
 import os
 import time
 import threading
+import socket
 
 # Add parent directory to path for protocol.py import
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -46,7 +47,8 @@ from protocol import (
     CMD_FORWARD, CMD_BACKWARD, CMD_LEFT, CMD_RIGHT,
     CMD_FORWARD_LEFT_ARC, CMD_FORWARD_RIGHT_ARC,
     CMD_FAST, CMD_SLOW, MOVE_STAND,
-    CMD_SMOOTH_CAM, CMD_SMOOTH_CAM_OFF
+    CMD_SMOOTH_CAM, CMD_SMOOTH_CAM_OFF,
+    CMD_CAMERA_PAUSE, CMD_CAMERA_RESUME
 )
 
 # ROS 2 imports
@@ -99,6 +101,58 @@ except ImportError as e:
     CameraPublisher = None
 
 
+# ==================== GUI Server Command Client ====================
+
+class GUICommandClient:
+    """A client to send commands to the GUIServer TCP socket."""
+    def __init__(self, host='127.0.0.1', port=10223, logger=None):
+        self.host = host
+        self.port = port
+        self.logger = logger
+        self.sock = None
+        self.lock = threading.Lock()
+        self.connect()
+
+    def log(self, level, msg):
+        if self.logger:
+            if level == 'info': self.logger.info(msg)
+            elif level == 'warn': self.logger.warn(msg)
+            elif level == 'error': self.logger.error(msg)
+        else:
+            print(f"[{level.upper()}] [GUICommandClient] {msg}")
+
+    def connect(self):
+        with self.lock:
+            if self.sock:
+                self.sock.close()
+            try:
+                self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self.sock.connect((self.host, self.port))
+                self.log('info', f'Successfully connected to GUIServer at {self.host}:{self.port}')
+                return True
+            except socket.error as e:
+                self.log('warn', f'Failed to connect to GUIServer: {e}')
+                self.sock = None
+                return False
+
+    def send_command(self, command):
+        with self.lock:
+            if not self.sock:
+                self.log('warn', 'No connection to GUIServer. Attempting to reconnect...')
+                if not self.connect():
+                    self.log('error', 'Reconnect failed. Command not sent.')
+                    return False
+            
+            try:
+                self.sock.sendall(f"{command}".encode())
+                self.log('info', f'Sent command to GUIServer: {command}')
+                return True
+            except socket.error as e:
+                self.log('error', f'Failed to send command to GUIServer: {e}. Connection lost.')
+                self.sock = None
+                return False
+
+
 # ==================== ROS 2 Node ====================
 
 class RaspClawsNode(Node):
@@ -127,6 +181,9 @@ class RaspClawsNode(Node):
         self.hardware_initialized = False
         self.ws2812 = None
         self.camera_publisher = None  # Camera publisher (separate node)
+
+        # Create a client to send commands to the GUIServer
+        self.gui_command_client = GUICommandClient(logger=self.get_logger())
 
         self.get_logger().info('💤 Lazy initialization enabled - hardware will be initialized on first command')
         self.get_logger().info('   (Servos stay soft until first movement/head command)')
@@ -588,30 +645,40 @@ class RaspClawsNode(Node):
         return response
 
     def set_camera_pause_callback(self, request, response):
-        """Service callback to pause/resume camera stream"""
+        """Service callback to pause/resume camera stream via GUIServer."""
         try:
             pause_requested = request.data  # True = Pause, False = Resume
 
-            if not ROBOT_MODULES_AVAILABLE or self.camera_publisher is None:
-                self.get_logger().info(f'MOCK: Camera pause set to {pause_requested}')
-                response.success = True
-                response.message = f'MOCK: Camera pause set to {pause_requested}'
-                return response
-
             if pause_requested:
-                # PAUSE: Stop camera streaming (save CPU/power)
-                self.get_logger().info('📷 CAMERA PAUSE - Stopping video stream')
-                self.camera_publisher.pause()
-                response.success = True
-                response.message = 'Camera stream PAUSED - saving CPU/power'
+                command = CMD_CAMERA_PAUSE
+                log_message = 'Pausing camera stream via GUIServer'
+                response_message = 'Camera stream PAUSED'
             else:
-                # RESUME: Restart camera streaming
-                self.get_logger().info('📷 CAMERA RESUME - Restarting video stream')
-                self.camera_publisher.resume()
-                response.success = True
-                response.message = 'Camera stream RESUMED'
+                command = CMD_CAMERA_RESUME
+                log_message = 'Resuming camera stream via GUIServer'
+                response_message = 'Camera stream RESUMED'
 
-            self.get_logger().info(f'Camera pause mode: {pause_requested}')
+            self.get_logger().info(f'📷 {log_message}')
+            
+            # Send the command to the GUIServer
+            success = self.gui_command_client.send_command(command)
+
+            if success:
+                # The local camera_publisher pause/resume is still useful 
+                # to stop processing frames if the stream source stops.
+                if self.camera_publisher:
+                    if pause_requested:
+                        self.camera_publisher.pause()
+                    else:
+                        self.camera_publisher.resume()
+
+                response.success = True
+                response.message = response_message
+                self.get_logger().info(f'Camera pause mode set to: {pause_requested}')
+            else:
+                response.success = False
+                response.message = 'Failed to send command to GUIServer'
+                self.get_logger().error('Failed to set camera pause mode.')
 
         except Exception as e:
             self.get_logger().error(f'Error setting camera pause mode: {e}')
@@ -770,6 +837,10 @@ class RaspClawsNode(Node):
 
         if ROBOT_MODULES_AVAILABLE:
             try:
+                # Cleanup GUI command client connection
+                if self.gui_command_client and self.gui_command_client.sock:
+                    self.gui_command_client.sock.close()
+                
                 # Cleanup camera
                 if self.camera_publisher is not None:
                     self.camera_publisher.shutdown()
