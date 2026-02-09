@@ -936,6 +936,7 @@ def video_ready_timeout_watchdog():
 	if not video_thread_started:
 		print("⚠️ WARNING: Video server did not respond within 15s")
 		print("   This is usually caused by:")
+		print("   0. SSH tunnel started: ssh -L 10223:localhost:10223 -L 5555:localhost:5555 pi@raspclaws-1")
 		print("   1. SSH tunnel not forwarding video port (check for 'connection refused')")
 		print("   2. Video server failed to start on Raspberry Pi")
 		print("   3. Network issues between client and server")

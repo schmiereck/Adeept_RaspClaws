@@ -119,6 +119,23 @@ python3 ROSServer.py
 ```
 
 ---
+## 🚀 Systemd Services (Auto-Start) - NEUER STANDARD
+
+Ab sofort werden die Server-Komponenten über `systemd` Services gesteuert. Dies ist die bevorzugte Methode.
+
+- **`gui_server.service`**:
+  - **Beschreibung**: Startet den GUI-Server (`GUIServer.py`), der für die Kamera- und Servo-Aktivierung über die Client-GUI benötigt wird.
+  - **Starten**: `sudo systemctl start gui_server.service`
+  - **Stoppen**: `sudo systemctl stop gui_server.service`
+  - **Status prüfen**: `sudo systemctl status gui_server.service`
+
+- **`ros_server.service`**:
+  - **Beschreibung**: Startet den Haupt-ROS2-Server (`ROSServer.py`), der Sensordaten und Roboter-Funktionen als ROS2-Topics bereitstellt.
+  - **Starten**: `sudo systemctl start ros_server.service`
+  - **Stoppen**: `sudo systemctl stop ros_server.service`
+  - **Status prüfen**: `sudo systemctl status ros_server.service`
+
+---
 
 ## 🖥️ System-Konfiguration
 

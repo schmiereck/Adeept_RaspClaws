@@ -5,7 +5,18 @@
       "Bash(python -c:*)",
       "Bash(ls:*)",
       "Bash(ssh raspberrypi:*)",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "Skill(raspberry-pi-ros2-ssh-login)",
+      "Bash(taskkill /F /FI \"IMAGENAME eq ssh.exe\")",
+      "Bash(where:*)",
+      "Bash(where pscp.exe)",
+      "Bash(ssh:*)",
+      "Skill(raspberry-pi-adeept-raspclaws-ssh-login)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push)",
+      "Bash(scp:*)",
+      "Bash"
     ]
   }
 }
