@@ -1,6 +1,0 @@
-# Legacy requirements (für alte Docker-Umgebung)
-# Für natives Setup nutze stattdessen: requirements_native.txt
-
-numpy==1.21.6
-opencv-python==4.12.0.88
-pyzmq==26.2.1
