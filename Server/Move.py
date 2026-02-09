@@ -1507,6 +1507,7 @@ def wakeup():
     # This is better than restoring old positions because servos may have been
     # moved manually during standby
     stand()  # Execute stand position immediately
+    #look_home() # Also reset head servos to center position
 
     # Reset to 'no' after stand is complete
     direction_command = MOVE_NO
