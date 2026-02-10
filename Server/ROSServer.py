@@ -220,6 +220,11 @@ class GUICommandClient:
             self.sock = None
             return False
 
+    def is_connected(self):
+        """Checks if connected to server."""
+        with self.lock:
+            return self.sock is not None
+
 
 # ==================== ROS 2 Node ====================
 
