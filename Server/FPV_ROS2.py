@@ -222,31 +222,39 @@ class CameraPublisher(Node):
                 try:
                     message = self.zmq_socket.recv()
 
-                    # Decode base64 (GUIServer sends base64-encoded JPEG)
+                    # Decode base64 to get the original JPEG bytes
                     try:
                         jpg_buffer = base64.b64decode(message)
                     except Exception as e:
                         self.get_logger().warn(f'Failed to decode base64: {e}')
                         continue
 
-                    # Decode JPEG image
-                    frame = cv2.imdecode(
-                        np.frombuffer(jpg_buffer, dtype=np.uint8),
-                        cv2.IMREAD_COLOR
-                    )
+                    # OPTIMIZATION: Check if we need to decode the image at all
+                    # If we only publish compressed, we could skip full decoding
 
-                    if frame is None:
-                        self.get_logger().warn('Failed to decode JPEG from buffer')
-                        continue
+                    frame = None
+                    needs_resize = False
 
-                    # Convert BGR to RGB (OpenCV uses BGR, ROS uses RGB)
-                    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                    # If we publish RAW or if we need to check dimensions for resizing
+                    if self.config.PUBLISH_RAW:
+                        # Decode JPEG image to Raw BGR
+                        frame = cv2.imdecode(
+                            np.frombuffer(jpg_buffer, dtype=np.uint8),
+                            cv2.IMREAD_COLOR
+                        )
 
-                    # RESIZE if needed to match configuration (WIDTH/HEIGHT)
-                    # This reduces bandwidth and processing load for subscribers
-                    h, w = frame.shape[:2]
-                    if w != self.config.WIDTH or h != self.config.HEIGHT:
-                        frame = cv2.resize(frame, (self.config.WIDTH, self.config.HEIGHT), interpolation=cv2.INTER_AREA)
+                        if frame is None:
+                            self.get_logger().warn('Failed to decode JPEG from buffer')
+                            continue
+
+                        # Convert BGR to RGB
+                        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+                        # Check for resize
+                        h, w = frame.shape[:2]
+                        if w != self.config.WIDTH or h != self.config.HEIGHT:
+                            needs_resize = True
+                            frame = cv2.resize(frame, (self.config.WIDTH, self.config.HEIGHT), interpolation=cv2.INTER_AREA)
 
                     # Mark as connected on first successful frame
                     if not self.zmq_connected:
@@ -270,12 +278,21 @@ class CameraPublisher(Node):
                 timestamp = self.get_clock().now().to_msg()
 
                 # Publish raw image
-                if self.config.PUBLISH_RAW:
+                if self.config.PUBLISH_RAW and frame is not None:
                     self.publish_raw_image(frame, timestamp)
 
                 # Publish compressed image
                 if self.config.PUBLISH_COMPRESSED:
-                    self.publish_compressed_image(frame, timestamp)
+                    # OPTIMIZATION: Passthrough JPEG if no resize occurred!
+                    if not needs_resize and frame is not None:
+                         # Source matches target -> Use original buffer (No re-compression!)
+                         self.publish_compressed_passthrough(jpg_buffer, timestamp)
+                    elif not needs_resize and frame is None:
+                         # We didn't decode (RAW disabled), so use original buffer
+                         self.publish_compressed_passthrough(jpg_buffer, timestamp)
+                    elif needs_resize and frame is not None:
+                         # We resized, so we MUST re-compress
+                         self.publish_compressed_image(frame, timestamp)
 
                 # Publish camera info
                 if self.config.PUBLISH_CAMERA_INFO:
@@ -292,6 +309,19 @@ class CameraPublisher(Node):
             except Exception as e:
                 self.get_logger().error(f'Error in capture loop: {e}')
                 time.sleep(1.0)  # Avoid tight error loop
+
+    def publish_compressed_passthrough(self, jpg_buffer, timestamp):
+        """Publish original JPEG buffer directly (Zero-Copy/No Re-compression)"""
+        try:
+            msg = CompressedImage()
+            msg.header.stamp = timestamp
+            msg.header.frame_id = self.config.FRAME_ID
+            msg.format = 'jpeg'
+            msg.data = jpg_buffer
+
+            self.image_compressed_pub.publish(msg)
+        except Exception as e:
+            self.get_logger().warn(f'Failed to publish passthrough image: {e}')
 
     def publish_raw_image(self, frame, timestamp):
         """Publish uncompressed image"""

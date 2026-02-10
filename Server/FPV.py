@@ -205,8 +205,10 @@ class FPV:
 			print("[FPV.capture_thread]   Creating Picamera2 object...", flush=True)
 			picam2 = Picamera2()
 			print("[FPV.capture_thread]   Configuring camera...", flush=True)
+			# OPTIMIZATION: Set resolution to 320x240 directly at source
+			# This avoids resizing downstream and saves massive CPU/Bandwidth
 			preview_config = picam2.create_preview_configuration(
-				main={"size": (640, 480), "format": "RGB888"},
+				main={"size": (320, 240), "format": "RGB888"},
 				transform=libcamera.Transform(hflip=hflip, vflip=vflip),
 				buffer_count=4,
 				queue=True
