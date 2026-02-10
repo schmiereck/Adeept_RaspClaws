@@ -180,6 +180,10 @@ class CameraPublisher(Node):
             # Subscribe to all messages (empty filter)
             self.zmq_socket.setsockopt_string(zmq.SUBSCRIBE, '')
 
+            # Set High Water Mark to 1 to avoid buffering old frames
+            # This is important for 'Lazy' mode so we don't process stale frames when waking up
+            self.zmq_socket.setsockopt(zmq.RCVHWM, 1)
+
             # Set timeout
             self.zmq_socket.setsockopt(zmq.RCVTIMEO, self.config.ZMQ_TIMEOUT)
 
@@ -222,6 +226,18 @@ class CameraPublisher(Node):
                 try:
                     message = self.zmq_socket.recv()
 
+                    # LAZY EXECUTION: Check subscriber counts
+                    # Only process frames if someone is listening
+                    raw_subs = self.image_raw_pub.get_subscription_count() if self.config.PUBLISH_RAW else 0
+                    comp_subs = self.image_compressed_pub.get_subscription_count() if self.config.PUBLISH_COMPRESSED else 0
+
+                    if raw_subs == 0 and comp_subs == 0:
+                        # Sleep and skip to save CPU
+                        elapsed = time.time() - loop_start
+                        sleep_time = max(0.0, frame_delay - elapsed)
+                        time.sleep(sleep_time)
+                        continue
+
                     # Decode base64 to get the original JPEG bytes
                     try:
                         jpg_buffer = base64.b64decode(message)
@@ -235,8 +251,8 @@ class CameraPublisher(Node):
                     frame = None
                     needs_resize = False
 
-                    # If we publish RAW or if we need to check dimensions for resizing
-                    if self.config.PUBLISH_RAW:
+                    # Only decode RAW if subscribers exist
+                    if self.config.PUBLISH_RAW and raw_subs > 0:
                         # Decode JPEG image to Raw BGR
                         frame = cv2.imdecode(
                             np.frombuffer(jpg_buffer, dtype=np.uint8),
@@ -278,11 +294,11 @@ class CameraPublisher(Node):
                 timestamp = self.get_clock().now().to_msg()
 
                 # Publish raw image
-                if self.config.PUBLISH_RAW and frame is not None:
+                if self.config.PUBLISH_RAW and raw_subs > 0 and frame is not None:
                     self.publish_raw_image(frame, timestamp)
 
                 # Publish compressed image
-                if self.config.PUBLISH_COMPRESSED:
+                if self.config.PUBLISH_COMPRESSED and comp_subs > 0:
                     # OPTIMIZATION: Passthrough JPEG if no resize occurred!
                     if not needs_resize and frame is not None:
                          # Source matches target -> Use original buffer (No re-compression!)
