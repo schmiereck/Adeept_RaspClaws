@@ -27,6 +27,7 @@ class Adeept_SPI_LedPixel(threading.Thread):
         self.colorBreathG = 0
         self.colorBreathB = 0
         self.breathSteps = 10
+        self.breath_status_set = 1  # Fix for missing attribute error
         self.set_all_led_color(0,0,0)
         super(Adeept_SPI_LedPixel, self).__init__(*args, **kwargs)
         self.__flag = threading.Event()
