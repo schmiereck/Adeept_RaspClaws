@@ -40,6 +40,7 @@ import os
 import time
 import threading
 import socket
+import errno
 
 # Add parent directory to path for protocol.py import
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -111,7 +112,10 @@ class GUICommandClient:
         self.logger = logger
         self.sock = None
         self.lock = threading.Lock()
-        self.connect()
+
+        # Try initial connection, but don't fail if server is down
+        if not self.connect(silent=True):
+            self.log('warn', f'Initial connection to GUIServer at {host}:{port} failed (Server might be down). Will retry on first command.')
 
     def log(self, level, msg):
         if self.logger:
@@ -121,36 +125,100 @@ class GUICommandClient:
         else:
             print(f"[{level.upper()}] [GUICommandClient] {msg}")
 
-    def connect(self):
+    def connect(self, silent=False):
+        """Attempts to connect to the GUIServer."""
         with self.lock:
+            # If we think we have a socket, verify it's actually healthy
             if self.sock:
-                self.sock.close()
+                try:
+                    # Linux-specific: check if socket is still connected using MSG_PEEK
+                    # This reads 0 bytes without removing from queue
+                    self.sock.setblocking(False)
+                    data = self.sock.recv(1, socket.MSG_PEEK)
+                    self.sock.setblocking(True)
+                    if len(data) == 0:
+                        # Empty read usually means the other side closed connection
+                        raise socket.error("Socket closed remotely")
+                except (socket.error, BlockingIOError) as e:
+                    # BlockingIOError is expected if socket is open but empty (good)
+                    # ConnectionResetError/EPIPE means closed (bad)
+                    is_ok = False
+                    if hasattr(e, 'errno'):
+                        # EWOULDBLOCK/EAGAIN means socket works but is empty -> OK
+                        if e.errno in (errno.EWOULDBLOCK, errno.EAGAIN):
+                            self.sock.setblocking(True)
+                            is_ok = True
+
+                    if not is_ok:
+                        if not silent: self.log('warn', f'Existing socket check failed: {e}. closing...')
+                        try: self.sock.close()
+                        except: pass
+                        self.sock = None
+
+            if self.sock:
+                return True
+
+            # Create new connection
             try:
                 self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self.sock.settimeout(2.0) # 2 seconds timeout for connection attempt
                 self.sock.connect((self.host, self.port))
-                self.log('info', f'Successfully connected to GUIServer at {self.host}:{self.port}')
+                self.sock.settimeout(None) # Reset to blocking mode
+                if not silent: self.log('info', f'Successfully connected to GUIServer at {self.host}:{self.port}')
                 return True
             except socket.error as e:
-                self.log('warn', f'Failed to connect to GUIServer: {e}')
+                if not silent: self.log('warn', f'Failed to connect to GUIServer: {e}')
+                if self.sock:
+                    try: self.sock.close()
+                    except: pass
                 self.sock = None
                 return False
 
     def send_command(self, command):
+        """Sends a command string to the server. Reconnects if necessary."""
+        # Use a separate lock for the whole send operation to prevent race conditions
+        # on reconnect + send
         with self.lock:
             if not self.sock:
-                self.log('warn', 'No connection to GUIServer. Attempting to reconnect...')
-                if not self.connect():
-                    self.log('error', 'Reconnect failed. Command not sent.')
+                # Try to reconnect
+                if not self.connect_unsafe(silent=False): # connect_unsafe assumes lock is already held
                     return False
-            
+
             try:
                 self.sock.sendall(f"{command}".encode())
                 self.log('info', f'Sent command to GUIServer: {command}')
                 return True
-            except socket.error as e:
-                self.log('error', f'Failed to send command to GUIServer: {e}. Connection lost.')
+            except (socket.error, BrokenPipeError) as e:
+                self.log('warn', f'Failed to send command: {e}. Retrying once...')
+                # Force close and retry once
+                try:
+                    self.sock.close()
+                except: pass
                 self.sock = None
+
+                if self.connect_unsafe(silent=False):
+                    try:
+                        self.sock.sendall(f"{command}".encode())
+                        self.log('info', f'Sent command to GUIServer (after reconnect): {command}')
+                        return True
+                    except Exception as e2:
+                        self.log('error', f'Retry failed: {e2}')
+
                 return False
+
+    def connect_unsafe(self, silent=False):
+        """Internal connect method that assumes self.lock is ALREADY held"""
+        try:
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.sock.settimeout(2.0)
+            self.sock.connect((self.host, self.port))
+            self.sock.settimeout(None)
+            if not silent: self.log('info', f'Successfully connected to GUIServer at {self.host}:{self.port}')
+            return True
+        except socket.error as e:
+            if not silent: self.log('warn', f'Connection attempt failed: {e}')
+            self.sock = None
+            return False
 
 
 # ==================== ROS 2 Node ====================
