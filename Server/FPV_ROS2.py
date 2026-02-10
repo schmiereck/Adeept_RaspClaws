@@ -56,12 +56,14 @@ class CameraConfig:
     ZMQ_TIMEOUT = 5000      # 5 seconds timeout
 
     # Expected resolution from GUIServer
-    WIDTH = 640
-    HEIGHT = 480
+    # Note: If incoming frame is larger, it will be resized to fit these dimensions
+    WIDTH = 320   # Reduced from 640
+    HEIGHT = 240  # Reduced from 480
 
     # Frame rate (FPS) - target for publishing
     # Note: Actual FPS depends on GUIServer's camera feed
-    TARGET_FPS = 30
+    # Reduced from 30 to save CPU cycles
+    TARGET_FPS = 10
 
     # JPEG Compression quality (0-100)
     # Higher = better quality, larger files
@@ -75,7 +77,16 @@ class CameraConfig:
 
     # Topic names
     TOPIC_RAW = '/raspclaws/camera/image_raw'
-    TOPIC_COMPRESSED = '/raspclaws/camera/image_compressed'
+
+    # CHANGED: Use standard ROS naming "base_topic/compressed" so RViz/rqt recognize it
+    # Why manual compression?
+    # 1. 'rclpy' (Python) does not support 'image_transport' C++ plugins natively.
+    # 2. In RoboStack/Micromamba environments, installing C++ image_transport plugins
+    #    can be unstable or cause dependency conflicts.
+    # 3. Doing JPEG compression via OpenCV (cv2.imencode) in Python is highly efficient
+    #    (C-optimized) and avoids overhead of external "republish" nodes.
+    TOPIC_COMPRESSED = '/raspclaws/camera/image_raw/compressed'
+
     TOPIC_CAMERA_INFO = '/raspclaws/camera/camera_info'
 
     # Frame ID (for TF transformations)
@@ -230,6 +241,12 @@ class CameraPublisher(Node):
 
                     # Convert BGR to RGB (OpenCV uses BGR, ROS uses RGB)
                     frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+                    # RESIZE if needed to match configuration (WIDTH/HEIGHT)
+                    # This reduces bandwidth and processing load for subscribers
+                    h, w = frame.shape[:2]
+                    if w != self.config.WIDTH or h != self.config.HEIGHT:
+                        frame = cv2.resize(frame, (self.config.WIDTH, self.config.HEIGHT), interpolation=cv2.INTER_AREA)
 
                     # Mark as connected on first successful frame
                     if not self.zmq_connected:
