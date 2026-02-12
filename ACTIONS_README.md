@@ -47,6 +47,17 @@ colcon build --packages-select raspclaws_interfaces
 source install/setup.bash
 ```
 
+### Schritt 3.5: Typesupport-Fix anwenden (WICHTIG für robostack/micromamba!)
+
+**Nur bei robostack/micromamba:** Die generierten Typesupport-Module fehlt die `.so` Extension.
+
+```bash
+cd /home/pi/Adeept_RaspClaws
+./fix_typesupport_extensions.sh
+```
+
+**Details:** Siehe `TYPESUPPORT_FIX.md`
+
 ### Schritt 4: Verifizierung
 
 ```bash
