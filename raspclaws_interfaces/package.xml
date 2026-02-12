@@ -12,7 +12,13 @@
 
   <depend>action_msgs</depend>
 
+  <!-- Explicit typesupport dependencies for robostack/micromamba -->
+  <build_depend>rosidl_typesupport_c</build_depend>
+  <build_depend>rosidl_typesupport_cpp</build_depend>
+
   <exec_depend>rosidl_default_runtime</exec_depend>
+  <exec_depend>rosidl_typesupport_c</exec_depend>
+  <exec_depend>rosidl_typesupport_cpp</exec_depend>
 
   <member_of_group>rosidl_interface_packages</member_of_group>
 
