@@ -286,9 +286,9 @@ class ActionServerManager:
                 current_pan_pwm = int(current_pan_pwm + (target_pan_pwm - current_pan_pwm) * t)
                 current_tilt_pwm = int(current_tilt_pwm + (target_tilt_pwm - current_tilt_pwm) * t)
 
-                # Set servo positions
-                self.move.pwm.set_pwm(12, 0, current_pan_pwm)  # Pan servo
-                self.move.pwm.set_pwm(13, 0, current_tilt_pwm)  # Tilt servo
+                # Set servo positions (convert 12-bit PWM to 16-bit duty cycle)
+                self.move.pwm.channels[12].duty_cycle = (current_pan_pwm * 65535) // 4095  # Pan servo
+                self.move.pwm.channels[13].duty_cycle = (current_tilt_pwm * 65535) // 4095  # Tilt servo
 
                 # Update internal state
                 self.move.Left_Right_input = current_pan_pwm
@@ -305,9 +305,9 @@ class ActionServerManager:
                     time.sleep(step_delay)
 
         else:
-            # Direct jump to target
-            self.move.pwm.set_pwm(12, 0, target_pan_pwm)  # Pan servo
-            self.move.pwm.set_pwm(13, 0, target_tilt_pwm)  # Tilt servo
+            # Direct jump to target (convert 12-bit PWM to 16-bit duty cycle)
+            self.move.pwm.channels[12].duty_cycle = (target_pan_pwm * 65535) // 4095  # Pan servo
+            self.move.pwm.channels[13].duty_cycle = (target_tilt_pwm * 65535) // 4095  # Tilt servo
 
             # Update internal state
             self.move.Left_Right_input = target_pan_pwm
