@@ -1,0 +1,15 @@
+# Goal: Move camera head to target position (relative to center 0°, 0°)
+float32 pan_degrees    # -100.0 to +100.0 (left to right)
+float32 tilt_degrees   # -67.0 to +67.0 (down to up)
+bool smooth            # Use smooth interpolation (20 steps over 1 second)
+---
+# Result: Final position reached
+float32 final_pan      # Final pan position in degrees
+float32 final_tilt     # Final tilt position in degrees
+bool success           # True if goal reached successfully
+string message         # Status message or error description
+---
+# Feedback: Current position during movement
+float32 current_pan    # Current pan position in degrees
+float32 current_tilt   # Current tilt position in degrees
+float32 progress       # Progress from 0.0 to 1.0

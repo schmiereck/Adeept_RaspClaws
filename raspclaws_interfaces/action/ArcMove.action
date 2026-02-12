@@ -1,0 +1,17 @@
+# Goal: Move in an arc trajectory
+float32 distance_cm    # Distance to travel in centimeters
+float32 arc_factor     # Arc curvature (0.0-1.0: 0.0=straight, 1.0=rotate in place)
+float32 speed          # Speed (10.0 - 80.0)
+float32 step_size_cm   # Feedback interval in centimeters
+---
+# Result: Final arc movement result
+float32 distance_traveled   # Actual distance traveled in cm
+float32 arc_factor_used     # Arc factor that was used
+bool success                # True if goal reached successfully
+string message              # Status message or error description
+int32 steps_taken           # Number of gait cycles completed
+---
+# Feedback: Progress during arc movement
+float32 distance_traveled   # Distance traveled so far in cm
+float32 progress            # Progress from 0.0 to 1.0
+int32 steps_completed       # Number of gait cycles completed

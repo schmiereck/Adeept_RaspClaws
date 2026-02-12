@@ -7,7 +7,7 @@
 """
 ROS 2 Server for Adeept RaspClaws Robot
 
-This server provides ROS 2 topics and services for controlling the robot.
+This server provides ROS 2 topics, services, and actions for controlling the robot.
 Designed to run in a Docker container with ros-humble-ros-base on Raspberry Pi.
 
 Topics Published:
@@ -33,6 +33,12 @@ Services:
 - /raspclaws/set_smooth_cam (std_srvs/SetBool): Enable/disable smooth camera mode
 - /raspclaws/set_servo_standby (std_srvs/SetBool): Set servo standby mode (True=Standby, False=Wakeup)
 - /raspclaws/set_camera_pause (std_srvs/SetBool): Pause/resume camera stream (True=Pause, False=Resume)
+
+Actions:
+- /raspclaws/head_position (raspclaws_interfaces/HeadPosition): Move camera to target pan/tilt angles with feedback
+- /raspclaws/linear_move (raspclaws_interfaces/LinearMove): Move forward/backward for specified distance with feedback
+- /raspclaws/rotate (raspclaws_interfaces/Rotate): Rotate in place for specified angle with IMU support
+- /raspclaws/arc_move (raspclaws_interfaces/ArcMove): Move in arc trajectory with configurable curvature
 """
 
 import sys
@@ -90,6 +96,15 @@ except ImportError as e:
     switch = None
     robotLight = None
     Info = None
+
+# Import action servers (optional, requires raspclaws_interfaces package)
+try:
+    from action_servers import ActionServerManager
+    ACTION_SERVERS_AVAILABLE = True
+except ImportError as e:
+    print(f"WARNING: Action servers not available: {e}")
+    print("  (Build raspclaws_interfaces package to enable action servers)")
+    ACTION_SERVERS_AVAILABLE = False
 
 # Import camera module separately (optional, may fail if libcamera not available)
 CameraPublisher = None
@@ -272,6 +287,20 @@ class RaspClawsNode(Node):
 
         # Create timers for periodic tasks
         self.create_timers()
+
+        # Create action servers (if available)
+        if ACTION_SERVERS_AVAILABLE and ROBOT_MODULES_AVAILABLE:
+            try:
+                self.get_logger().info('🎯 Initializing action servers...')
+                self.action_server_manager = ActionServerManager(self)
+                self.get_logger().info('✓ Action servers initialized successfully')
+            except Exception as e:
+                self.get_logger().error(f'Failed to initialize action servers: {e}')
+                self.action_server_manager = None
+        else:
+            self.action_server_manager = None
+            if not ACTION_SERVERS_AVAILABLE:
+                self.get_logger().warn('Action servers not available (build raspclaws_interfaces package)')
 
         # DECOUPLED INITIALIZATION: Initialize camera publisher at startup
         # This allows camera topics to be available immediately without waiting for a movement command.
