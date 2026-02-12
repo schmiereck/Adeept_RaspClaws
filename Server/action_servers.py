@@ -32,6 +32,15 @@ except ImportError as e:
 
 from calibration import RobotCalibration
 
+# Import Move module for hardware control
+try:
+    import Move as move_module
+    MOVE_MODULE_AVAILABLE = True
+except ImportError:
+    print("WARNING: Move module not available")
+    MOVE_MODULE_AVAILABLE = False
+    move_module = None
+
 
 class ActionServerManager:
     """
@@ -55,8 +64,18 @@ class ActionServerManager:
             raise ImportError("Action interfaces not available. Build raspclaws_interfaces first!")
 
         self.node = node
-        self.move = node.move  # Reference to Move instance from ROSServer
         self.logger = node.get_logger()
+
+        # Use Move module directly (it's a module, not a node attribute)
+        if not MOVE_MODULE_AVAILABLE or move_module is None:
+            raise RuntimeError("Move module not available - cannot initialize action servers")
+
+        self.move = move_module  # Reference to Move module
+
+        # Ensure robot hardware is initialized (for action servers)
+        if hasattr(node, 'init_robot_hardware') and not node.hardware_initialized:
+            self.logger.info('Action servers require hardware - initializing now...')
+            node.init_robot_hardware()
 
         # Load calibration data
         try:
