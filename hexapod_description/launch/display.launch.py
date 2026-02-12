@@ -9,6 +9,7 @@ def generate_launch_description():
 
     pkg_path = get_package_share_directory('hexapod_description')
     xacro_file = os.path.join(pkg_path, 'urdf', 'raspclaws_hexapod.urdf.xacro')
+    default_rviz_config_path = os.path.join(pkg_path, 'rviz', 'hexapod.rviz')
 
     robot_description = Command([
         'xacro ', xacro_file
@@ -38,6 +39,7 @@ def generate_launch_description():
             package='rviz2',
             executable='rviz2',
             name='rviz2',
-            output='screen'
+            output='screen',
+            arguments=['-d', default_rviz_config_path]
         )
     ])
