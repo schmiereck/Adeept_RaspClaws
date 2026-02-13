@@ -74,6 +74,14 @@ Roboter-Steuerung über ROS2 Humble (RoboStack) mit Kamera-Topics
 - [x] 5. Alle ROS2-Topics verifizieren
 - [ ] 6. Systemd Services für Auto-Start (optional, zukünftig)
 
+### Phase 1: Robot Control Node (Start: 13.02.2026)
+- [x] Basis-Implementation `Server/RobotControlNode.py`
+- [ ] Test der Actions auf dem Roboter
+
+### Phase 2: Neural Network Integration (Geplant)
+- [ ] NN Architecture Definition
+- [ ] Training/Inference Loop
+
 ### ✅ Test-Ergebnisse (5. Februar 2026)
 
 **ROSServer erfolgreich getestet in RoboStack ros_env:**
@@ -232,8 +240,9 @@ python3 GUIServer.py  # System-Python 3.13!
                │ 192.168.2.0/24 Network
 ┌──────────────▼─────────────────────────┐
 │  ubuntu1 (192.168.2.133)               │
+│  - Raspberry Pi 5 8GB (Ubuntu + ROS2)  │
 │  - ROS2 Humble (native /opt/ros)      │
-│  - Subscriber für /raspclaws/* Topics │
+│  - "Brain" Node (YOLO, Navigation, etc)│
 │  - ROS_DOMAIN_ID=1                     │
 │  - Visualisierung: rviz2, rqt, etc.   │
 └────────────────────────────────────────┘
