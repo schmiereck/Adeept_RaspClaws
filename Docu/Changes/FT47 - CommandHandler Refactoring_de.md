@@ -216,24 +216,25 @@ python -m py_compile CommandHandler.py GUIServer.py ROSServer.py
 
 1. **GUIServer allein:**
    ```bash
-   sudo systemctl restart robot_server.service
+   sudo systemctl restart gui_server.service
    # Test GUI-Client: Bewegung, Kamera, Speed, Arc-Factor
    ```
 
 2. **ROSServer allein:**
    ```bash
-   ros2 run raspclaws_server ros_server
+   sudo systemctl restart ros_server.service
+   # Oder: ros2 run raspclaws_server ros_server
    # Test ROS2 Topics: /cmd_vel, /head_cmd
    # Test Services: /set_smooth_cam, /set_servo_standby
    ```
 
 3. **Beide parallel:**
    ```bash
-   # Terminal 1:
-   sudo systemctl start robot_server.service
+   # GUIServer läuft bereits als Service:
+   sudo systemctl status gui_server.service
    
-   # Terminal 2:
-   ros2 run raspclaws_server ros_server
+   # ROSServer läuft bereits als Service:
+   sudo systemctl status ros_server.service
    
    # Test: Gleichzeitige Befehle von GUI und ROS2
    # → Kein Crash, keine Race Conditions
