@@ -1,0 +1,16 @@
+[Unit]
+Description=ROS2 Adeept RaspClaws GUI Server
+After=network.target
+
+[Service]
+User=pi
+WorkingDirectory=/home/pi/Adeept_RaspClaws/
+ExecStart=/usr/bin/python3 ./Server/GUIServer.py
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=gui_server
+
+[Install]
+WantedBy=multi-user.target

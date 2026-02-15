@@ -1,0 +1,17 @@
+[Unit]
+Description=ROS2 Adeept RaspClaws Server with Actions
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/Adeept_RaspClaws
+ExecStart=/bin/bash /home/pi/Adeept_RaspClaws/run_rosserver_systemd.sh
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ros_server
+
+[Install]
+WantedBy=multi-user.target
