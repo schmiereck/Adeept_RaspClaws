@@ -11,6 +11,7 @@ import psutil
 import Move as move
 import Switch as switch
 import RobotLight as robotLight
+import CommandHandler
 import ast
 
 
@@ -127,6 +128,12 @@ rm = move.RobotM()
 
 
 rm.start()
+
+# ==================== Initialize CommandHandler ====================
+# Central command handler for thread-safe hardware control
+# Shared between GUIServer and ROSServer (if both run in parallel)
+cmd_handler = CommandHandler.CommandHandler()
+print("[GUIServer] CommandHandler initialized")
 
 
 
@@ -410,8 +417,8 @@ def handle_movement_command(data):
 
         if move_command:
                 print(f"[GUIServer] Movement command: '{data}' -> '{move_command}'")
-                # Use Move.py's handle_movement_command which properly resumes the robot thread
-                result = move.handle_movement_command(move_command)
+                # Use CommandHandler for thread-safe hardware control
+                result = cmd_handler.handle_movement_command(move_command)
                 if result:
                         # Update local state variables for GUI sync
                         if move_command in [CMD_FORWARD, CMD_BACKWARD, MOVE_STAND]:
@@ -424,41 +431,19 @@ def handle_movement_command(data):
 
 def handle_camera_command(data):
         """Handle camera movement commands (lookUp, lookDown, lookLeft, lookRight, home)"""
-        if data == CMD_LOOK_UP:
-                print(f"[GUIServer] Camera command: lookUp")
-                move.look_up()
-        elif data == CMD_LOOK_DOWN:
-                print(f"[GUIServer] Camera command: lookDown")
-                move.look_down()
-        elif data == CMD_LOOK_HOME:
-                print(f"[GUIServer] Camera command: lookHome - calling move.look_home()")
-                move.look_home()
-                print(f"[GUIServer] move.look_home() completed")
-        elif data == CMD_LOOK_LEFT:
-                print(f"[GUIServer] Camera command: lookLeft")
-                move.look_left()
-        elif data == CMD_LOOK_RIGHT:
-                print(f"[GUIServer] Camera command: lookRight")
-                move.look_right()
-        elif data == CMD_LR_STOP:
-                pass  # Camera servos don't need explicit stop (they move to position and stay)
-        elif data == CMD_UD_STOP:
-                pass  # Camera servos don't need explicit stop (they move to position and stay)
-        elif data == CMD_STEADY_CAMERA:
-                move.commandInput(data)
-                tcpCliSock.send(CMD_STEADY_CAMERA.encode())
-        elif data == CMD_STEADY_CAMERA_OFF:
-                move.commandInput(data)
-                tcpCliSock.send(CMD_STEADY_CAMERA_OFF.encode())
-        elif data == CMD_SMOOTH_CAM:
-                move.commandInput(data)
-                tcpCliSock.send(CMD_SMOOTH_CAM.encode())
-        elif data == CMD_SMOOTH_CAM_OFF:
-                move.commandInput(data)
-                tcpCliSock.send(CMD_SMOOTH_CAM_OFF.encode())
-        else:
-                return False  # Command not handled
-        return True  # Command was handled
+        # Use CommandHandler for thread-safe hardware control
+        if data in [CMD_LOOK_UP, CMD_LOOK_DOWN, CMD_LOOK_LEFT, CMD_LOOK_RIGHT, CMD_LOOK_HOME,
+                    CMD_STEADY_CAMERA, CMD_STEADY_CAMERA_OFF, CMD_SMOOTH_CAM, CMD_SMOOTH_CAM_OFF]:
+                result = cmd_handler.handle_camera_command(data)
+                if result:
+                        # GUI-specific: Send acknowledgment to client for mode changes
+                        if data in [CMD_STEADY_CAMERA, CMD_STEADY_CAMERA_OFF, CMD_SMOOTH_CAM, CMD_SMOOTH_CAM_OFF]:
+                                tcpCliSock.send(data.encode())
+                return result
+        elif data in [CMD_LR_STOP, CMD_UD_STOP]:
+                # Camera servos don't need explicit stop (they move to position and stay)
+                return True
+        return False  # Command not handled
 
 
 # Note: handle_computer_vision_command removed - CV features (FindColor, WatchDog, LineFollow) not needed
@@ -477,9 +462,9 @@ def handle_speed_command(data):
                 try:
                         speed_str = data[len(CMD_SET_SPEED):]
                         speed = int(speed_str)
-                        # Clamping to valid range is handled in Move.py
+                        # Clamping to valid range is handled in CommandHandler/Move.py
                         print(f"[GUIServer] Setting movement speed to {speed}")
-                        move.set_movement_speed(speed)
+                        cmd_handler.set_movement_speed(speed)
                         return True
                 except ValueError:
                         print(f"[GUIServer] Invalid speed value: {data}")
@@ -498,7 +483,7 @@ def handle_arc_factor_command(data):
                         arc_factor_str = arc_factor_str.split()[0]
                         arc_factor = float(arc_factor_str)
                         print(f"[GUIServer] Setting arc factor to {arc_factor}")
-                        move.set_arc_factor(arc_factor)
+                        cmd_handler.set_arc_factor(arc_factor)
                         return True
                 except (ValueError, IndexError):  # IndexError if split is empty
                         print(f"[GUIServer] Invalid arc factor value: {data}")
@@ -583,7 +568,7 @@ def handle_power_management_command(data):
 
         if data == CMD_SERVO_STANDBY:
                 print("🔋 SERVO STANDBY - Stopping PWM signals")
-                move.standby()  # Call standby in Move module
+                cmd_handler.set_servo_standby(True)  # Use CommandHandler
                 servo_standby_active = True
                 # Send status update to client
                 tcpCliSock.send(f'{STATUS_SERVO_STANDBY}\n'.encode())
@@ -591,7 +576,7 @@ def handle_power_management_command(data):
 
         elif data == CMD_SERVO_WAKEUP:
                 print("⚡ SERVO WAKEUP - Restoring servo positions")
-                move.wakeup()  # Call wakeup in Move module
+                cmd_handler.set_servo_standby(False)  # Use CommandHandler
                 servo_standby_active = False
                 # Send status update to client
                 tcpCliSock.send(f'{STATUS_SERVO_WAKEUP}\n'.encode())

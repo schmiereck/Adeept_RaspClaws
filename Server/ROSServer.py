@@ -86,6 +86,7 @@ try:
     import Switch as switch
     import RobotLight as robotLight
     import Info
+    import CommandHandler
     ROBOT_MODULES_AVAILABLE = True
 except ImportError as e:
     print(f"WARNING: Robot modules not available: {e}")
@@ -96,6 +97,7 @@ except ImportError as e:
     switch = None
     robotLight = None
     Info = None
+    CommandHandler = None
 
 # Import action servers (optional, requires raspclaws_interfaces package)
 try:
@@ -269,6 +271,16 @@ class RaspClawsNode(Node):
         self.hardware_initialized = False
         self.ws2812 = None
         self.camera_publisher = None  # Camera publisher (separate node)
+
+        # ==================== Initialize CommandHandler ====================
+        # Central command handler for thread-safe hardware control
+        # Shared with GUIServer (if both run in parallel)
+        if ROBOT_MODULES_AVAILABLE and CommandHandler is not None:
+            self.cmd_handler = CommandHandler.CommandHandler()
+            self.get_logger().info('✓ CommandHandler initialized (thread-safe mode)')
+        else:
+            self.cmd_handler = None
+            self.get_logger().warn('CommandHandler not available (mock mode)')
 
         # Create a client to send commands to the GUIServer
         self.gui_command_client = GUICommandClient(logger=self.get_logger())
@@ -542,68 +554,91 @@ class RaspClawsNode(Node):
                 # Map linear.z to movement speed (0-100 scale)
                 speed = int(abs(linear_z) * 100)
                 speed = max(10, min(100, speed))  # Clamp to 10-100
-                move.set_movement_speed(speed)
-
-                if linear_z > 0:
-                    move.commandInput(CMD_FORWARD)
-                    self.get_logger().debug(f'Straight forward: speed={speed}')
+                
+                # Use CommandHandler for thread-safe control
+                if self.cmd_handler:
+                    if linear_z > 0:
+                        self.cmd_handler.handle_movement_command(CMD_FORWARD, speed=speed)
+                        self.get_logger().debug(f'Straight forward: speed={speed}')
+                    else:
+                        self.cmd_handler.handle_movement_command(CMD_BACKWARD, speed=speed)
+                        self.get_logger().debug(f'Straight backward: speed={speed}')
                 else:
-                    move.commandInput(CMD_BACKWARD)
-                    self.get_logger().debug(f'Straight backward: speed={speed}')
+                    # Fallback to direct Move.py calls (mock mode or old behavior)
+                    move.set_movement_speed(speed)
+                    if linear_z > 0:
+                        move.commandInput(CMD_FORWARD)
+                    else:
+                        move.commandInput(CMD_BACKWARD)
 
             elif has_linear and has_angular:
                 # Case 2: Arc movement (curved forward/backward)
                 # Map linear.z to speed
                 speed = int(abs(linear_z) * 100)
                 speed = max(10, min(100, speed))
-                move.set_movement_speed(speed)
-
+                
                 # Map angular.y to arc factor (0.0 to 1.0)
-                # Higher angular.y = tighter turn
                 arc_factor = abs(angular_y)
                 arc_factor = max(0.0, min(1.0, arc_factor))
-                move.set_arc_factor(arc_factor)
-
-                # Determine direction
-                if linear_z > 0:
-                    # Forward arc
-                    if angular_y > 0:
-                        move.commandInput(CMD_FORWARD_RIGHT_ARC)
-                        self.get_logger().debug(f'Forward-right arc: speed={speed}, arc={arc_factor:.2f}')
+                
+                # Use CommandHandler for thread-safe control
+                if self.cmd_handler:
+                    self.cmd_handler.set_movement_speed(speed)
+                    self.cmd_handler.set_arc_factor(arc_factor)
+                    
+                    # Determine direction
+                    if linear_z > 0:
+                        if angular_y > 0:
+                            self.cmd_handler.handle_movement_command(CMD_FORWARD_RIGHT_ARC)
+                            self.get_logger().debug(f'Forward-right arc: speed={speed}, arc={arc_factor:.2f}')
+                        else:
+                            self.cmd_handler.handle_movement_command(CMD_FORWARD_LEFT_ARC)
+                            self.get_logger().debug(f'Forward-left arc: speed={speed}, arc={arc_factor:.2f}')
                     else:
-                        move.commandInput(CMD_FORWARD_LEFT_ARC)
-                        self.get_logger().debug(f'Forward-left arc: speed={speed}, arc={arc_factor:.2f}')
+                        # Backward arc not fully supported
+                        self.cmd_handler.handle_movement_command(CMD_BACKWARD)
+                        self.get_logger().warning('Backward arc not fully supported, using straight backward')
                 else:
-                    # Backward arc (if supported)
-                    # Note: Check if Move.py supports backward arcs, otherwise use straight backward
-                    if angular_y > 0:
-                        # Backward-right would need CMD_BACKWARD_RIGHT_ARC
-                        # Fallback to backward for now
-                        move.commandInput(CMD_BACKWARD)
-                        self.get_logger().warning('Backward arc not fully supported, using straight backward')
+                    # Fallback to direct Move.py calls
+                    move.set_movement_speed(speed)
+                    move.set_arc_factor(arc_factor)
+                    if linear_z > 0:
+                        if angular_y > 0:
+                            move.commandInput(CMD_FORWARD_RIGHT_ARC)
+                        else:
+                            move.commandInput(CMD_FORWARD_LEFT_ARC)
                     else:
-                        # Backward-left would need CMD_BACKWARD_LEFT_ARC
                         move.commandInput(CMD_BACKWARD)
-                        self.get_logger().warning('Backward arc not fully supported, using straight backward')
 
             elif not has_linear and has_angular:
                 # Case 3: Turn in place (pivot)
                 # Map angular.y to turn speed
                 speed = int(abs(angular_y) * 100)
                 speed = max(10, min(100, speed))
-                move.set_movement_speed(speed)
-
-                if angular_y > 0:
-                    move.commandInput(CMD_RIGHT)
-                    self.get_logger().debug(f'Turn right in place: speed={speed}')
+                
+                # Use CommandHandler for thread-safe control
+                if self.cmd_handler:
+                    if angular_y > 0:
+                        self.cmd_handler.handle_movement_command(CMD_RIGHT, speed=speed)
+                        self.get_logger().debug(f'Turn right in place: speed={speed}')
+                    else:
+                        self.cmd_handler.handle_movement_command(CMD_LEFT, speed=speed)
+                        self.get_logger().debug(f'Turn left in place: speed={speed}')
                 else:
-                    move.commandInput(CMD_LEFT)
-                    self.get_logger().debug(f'Turn left in place: speed={speed}')
+                    # Fallback to direct Move.py calls
+                    move.set_movement_speed(speed)
+                    if angular_y > 0:
+                        move.commandInput(CMD_RIGHT)
+                    else:
+                        move.commandInput(CMD_LEFT)
 
             else:
                 # Case 4: Stop (no linear, no angular)
-                move.commandInput(MOVE_STAND)
-                self.get_logger().debug('Stop/Stand')
+                if self.cmd_handler:
+                    self.cmd_handler.handle_movement_command(MOVE_STAND)
+                    self.get_logger().debug('Stop/Stand')
+                else:
+                    move.commandInput(MOVE_STAND)
 
         except Exception as e:
             self.get_logger().error(f'Error executing movement command: {e}')
@@ -626,15 +661,28 @@ class RaspClawsNode(Node):
             # msg.x: left/right (-1.0 to 1.0)
             # msg.y: up/down (-1.0 to 1.0)
 
-            if msg.x > 0.1:
-                move.look_right()
-            elif msg.x < -0.1:
-                move.look_left()
+            # Use CommandHandler for thread-safe control
+            if self.cmd_handler:
+                if msg.x > 0.1:
+                    self.cmd_handler.handle_camera_command(CMD_LOOK_RIGHT)
+                elif msg.x < -0.1:
+                    self.cmd_handler.handle_camera_command(CMD_LOOK_LEFT)
 
-            if msg.y > 0.1:
-                move.look_up()
-            elif msg.y < -0.1:
-                move.look_down()
+                if msg.y > 0.1:
+                    self.cmd_handler.handle_camera_command(CMD_LOOK_UP)
+                elif msg.y < -0.1:
+                    self.cmd_handler.handle_camera_command(CMD_LOOK_DOWN)
+            else:
+                # Fallback to direct Move.py calls
+                if msg.x > 0.1:
+                    move.look_right()
+                elif msg.x < -0.1:
+                    move.look_left()
+
+                if msg.y > 0.1:
+                    move.look_up()
+                elif msg.y < -0.1:
+                    move.look_down()
 
             self.get_logger().debug(f'Head command executed: x={msg.x:.2f}, y={msg.y:.2f}')
 
@@ -649,10 +697,17 @@ class RaspClawsNode(Node):
                 if not self.hardware_initialized:
                     self.init_robot_hardware()
 
-                move.look_home()
-                self.get_logger().info('Servos reset to home position')
-                response.success = True
-                response.message = 'Servos reset successfully'
+                # Use CommandHandler for thread-safe control
+                if self.cmd_handler:
+                    self.cmd_handler.handle_camera_command(CMD_LOOK_HOME)
+                    self.get_logger().info('Servos reset to home position')
+                    response.success = True
+                    response.message = 'Servos reset successfully'
+                else:
+                    # Fallback
+                    move.look_home()
+                    response.success = True
+                    response.message = 'Servos reset'
             else:
                 self.get_logger().info('MOCK: Servos reset')
                 response.success = True
@@ -670,6 +725,7 @@ class RaspClawsNode(Node):
             self.smooth_mode = request.data
 
             if ROBOT_MODULES_AVAILABLE:
+                # Legacy smooth mode (now always on in Move.py, but keep for compatibility)
                 if self.smooth_mode:
                     move.commandInput(CMD_SLOW)
                 else:
@@ -691,10 +747,18 @@ class RaspClawsNode(Node):
             self.smooth_cam_mode = request.data
 
             if ROBOT_MODULES_AVAILABLE:
-                if self.smooth_cam_mode:
-                    move.commandInput(CMD_SMOOTH_CAM)
+                # Use CommandHandler for thread-safe control
+                if self.cmd_handler:
+                    if self.smooth_cam_mode:
+                        self.cmd_handler.handle_camera_command(CMD_SMOOTH_CAM)
+                    else:
+                        self.cmd_handler.handle_camera_command(CMD_SMOOTH_CAM_OFF)
                 else:
-                    move.commandInput(CMD_SMOOTH_CAM_OFF)
+                    # Fallback
+                    if self.smooth_cam_mode:
+                        move.commandInput(CMD_SMOOTH_CAM)
+                    else:
+                        move.commandInput(CMD_SMOOTH_CAM_OFF)
 
             self.get_logger().info(f'Smooth camera mode: {self.smooth_cam_mode}')
             response.success = True
@@ -722,20 +786,31 @@ class RaspClawsNode(Node):
             if not self.hardware_initialized:
                 self.init_robot_hardware()
 
-            if standby_requested:
-                # STANDBY: Put servos to sleep (soft, low power)
-                self.get_logger().info('🔋 SERVO STANDBY - Stopping PWM signals')
-                move.standby()
-                self.servo_standby_active = True
+            # Use CommandHandler for thread-safe control
+            if self.cmd_handler:
+                self.cmd_handler.set_servo_standby(standby_requested)
+                self.servo_standby_active = standby_requested
+                if standby_requested:
+                    self.get_logger().info('🔋 SERVO STANDBY - Stopping PWM signals')
+                    response.message = 'Servos in STANDBY mode - legs are soft, low power'
+                else:
+                    self.get_logger().info('⚡ SERVO WAKEUP - Restoring servo positions')
+                    response.message = 'Servos WAKEUP - robot ready in stand position'
                 response.success = True
-                response.message = 'Servos in STANDBY mode - legs are soft, low power'
             else:
-                # WAKEUP: Restore servos to stand position
-                self.get_logger().info('⚡ SERVO WAKEUP - Restoring servo positions')
-                move.wakeup()
-                self.servo_standby_active = False
-                response.success = True
-                response.message = 'Servos WAKEUP - robot ready in stand position'
+                # Fallback
+                if standby_requested:
+                    self.get_logger().info('🔋 SERVO STANDBY - Stopping PWM signals')
+                    move.standby()
+                    self.servo_standby_active = True
+                    response.success = True
+                    response.message = 'Servos in STANDBY mode - legs are soft, low power'
+                else:
+                    self.get_logger().info('⚡ SERVO WAKEUP - Restoring servo positions')
+                    move.wakeup()
+                    self.servo_standby_active = False
+                    response.success = True
+                    response.message = 'Servos WAKEUP - robot ready in stand position'
 
             self.get_logger().info(f'Servo standby mode: {self.servo_standby_active}')
 
