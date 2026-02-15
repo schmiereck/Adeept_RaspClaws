@@ -317,10 +317,14 @@ rqt_image_view    # Kamera-Bild ansehen
 
 ---
 
-**Letzte Aktualisierung**: 5. Februar 2026, 09:50 Uhr
-**Status**: Multi-Machine ROS2-Setup vollständig funktionsfähig ✅
+**Letzte Aktualisierung**: 15. Februar 2026, 22:45 Uhr
+**Status**: CommandHandler Refactoring abgeschlossen ✅
 - GUIServer produktionsreif (system-Python 3.13 auf raspclaws-1)
 - ROSServer produktionsreif (RoboStack Python 3.11 auf raspclaws-1)
 - ZMQ-Bridge erfolgreich implementiert und getestet
 - ROS2-Kommunikation zu ubuntu1 erfolgreich getestet
 - X-Windows-Visualisierung vorbereitet
+- **NEU**: CommandHandler - Zentrale thread-sichere Befehlsverarbeitung
+  - Keine Code-Duplizierung mehr zwischen GUIServer und ROSServer
+  - Beide Server können parallel laufen (thread-safe)
+  - Dokumentation: `Docu/Changes/FT47 - CommandHandler Refactoring_*.md`
