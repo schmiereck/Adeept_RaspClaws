@@ -96,7 +96,7 @@ else:
     Up_Down_direction = 0
     Left_Right_direction = 0
 Left_Right_input = 300
-Up_Down_input = 300
+Up_Down_input = 360  # Head Up/Down default position (matches pwm13)
 Left_Right_Max = 500
 Left_Right_Min = 100
 Up_Down_Max = 500
