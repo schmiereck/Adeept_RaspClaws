@@ -43,7 +43,7 @@ pwm10 = 300
 pwm11 = 300
 
 pwm12 = 300
-pwm13 = 240 # Head Up/Down default position
+pwm13 = 180 # Head Up/Down default position
 pwm14 = 300
 pwm15 = 300
 
