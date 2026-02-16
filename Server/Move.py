@@ -43,7 +43,7 @@ pwm10 = 300
 pwm11 = 300
 
 pwm12 = 300
-pwm13 = 300
+pwm13 = 240 # Head Up/Down default position
 pwm14 = 300
 pwm15 = 300
 
@@ -100,7 +100,7 @@ Up_Down_input = 300
 Left_Right_Max = 500
 Left_Right_Min = 100
 Up_Down_Max = 500
-Up_Down_Min = 230
+Up_Down_Min = 180
 look_wiggle = 15
 move_stu = 1
 abort_current_movement = False  # Flag to immediately abort ongoing movement cycle
