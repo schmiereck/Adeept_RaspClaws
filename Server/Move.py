@@ -882,10 +882,17 @@ def look_right(wiggle=look_wiggle):
 def look_home():
     """Reset camera to home position (center)"""
     global Left_Right_input, Up_Down_input
+    # Set all servos to their defined default positions
+    default_positions = [
+        pwm0, pwm1, pwm2, pwm3,
+        pwm4, pwm5, pwm6, pwm7,
+        pwm8, pwm9, pwm10, pwm11,
+        pwm12, pwm13, pwm14, pwm15
+    ]
     for i in range(16):
-        pwm.channels[i].duty_cycle = _pulse_to_duty_cycle(300)
-    Left_Right_input = 300
-    Up_Down_input = 300
+        pwm.channels[i].duty_cycle = _pulse_to_duty_cycle(default_positions[i])
+    Left_Right_input = pwm12  # Left/Right servo (usually 300)
+    Up_Down_input = pwm13     # Up/Down servo (can be customized, e.g., 360)
 
 
 def relesae():
