@@ -399,8 +399,12 @@ def init_all():
     pwm.channels[15].duty_cycle = _pulse_to_duty_cycle(pwm15)
     
     print(f"🎯 [Move.init_all] Camera servos initialized:")
-    print(f"   Servo 12 (L/R): {pwm12} (from CAMERA_LEFT_RIGHT_DEFAULT={CAMERA_LEFT_RIGHT_DEFAULT})")
-    print(f"   Servo 13 (U/D): {pwm13} (from CAMERA_UP_DOWN_DEFAULT={CAMERA_UP_DOWN_DEFAULT})")
+    print(f"   CAMERA_LEFT_RIGHT_DEFAULT = {CAMERA_LEFT_RIGHT_DEFAULT}")
+    print(f"   CAMERA_UP_DOWN_DEFAULT = {CAMERA_UP_DOWN_DEFAULT}")
+    print(f"   pwm12 = {pwm12}")
+    print(f"   pwm13 = {pwm13}")
+    print(f"   Servo 12 duty_cycle will be set to: {_pulse_to_duty_cycle(pwm12)}")
+    print(f"   Servo 13 duty_cycle will be set to: {_pulse_to_duty_cycle(pwm13)}")
     
     # Update position tracking
     servo_current_pos = [
