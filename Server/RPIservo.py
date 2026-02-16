@@ -104,7 +104,7 @@ init_pwm10 = 300
 init_pwm11 = 300
 
 init_pwm12 = 300  # Camera Left/Right (Pan)
-init_pwm13 = 160  # Camera Up/Down (Tilt) - lowered head position
+init_pwm13 = 240  # Camera Up/Down (Tilt) - neutral head position
 init_pwm14 = 300
 init_pwm15 = 300
 
