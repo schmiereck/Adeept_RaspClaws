@@ -5,6 +5,9 @@ After=network.target
 [Service]
 User=pi
 WorkingDirectory=/home/pi/Adeept_RaspClaws/
+# Wait 3 seconds before starting to give camera hardware time to initialize
+# This prevents Debian Trixie camera timeout issues after reboot
+ExecStartPre=/bin/sleep 3
 ExecStart=/usr/bin/python3 ./Server/GUIServer.py
 Restart=always
 RestartSec=5

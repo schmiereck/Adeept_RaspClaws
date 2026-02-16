@@ -194,55 +194,81 @@ class FPV:
 		except Exception as e:
 			print(f"[FPV.capture_thread] ⚠ Could not write video ready marker: {e}", flush=True)
 
-		# Initialize camera with timeout workaround for Debian Trixie bug
+		# Initialize camera with timeout workaround + retry logic for Debian Trixie bug
 		global picam2, CAMERA_AVAILABLE
 		if not CAMERA_AVAILABLE:
 			print("[FPV.capture_thread] ❌ Camera module not available - cannot start", flush=True)
 			return
 
-		print("[FPV.capture_thread] Initializing camera...", flush=True)
-		try:
-			print("[FPV.capture_thread]   Creating Picamera2 object...", flush=True)
-			picam2 = Picamera2()
-			print("[FPV.capture_thread]   Configuring camera...", flush=True)
-			# OPTIMIZATION: Set resolution to 320x240 directly at source
-			# This avoids resizing downstream and saves massive CPU/Bandwidth
-			preview_config = picam2.create_preview_configuration(
-				main={"size": (320, 240), "format": "RGB888"},
-				transform=libcamera.Transform(hflip=hflip, vflip=vflip),
-				buffer_count=4,
-				queue=True
-			)
-			picam2.configure(preview_config)
-			print("[FPV.capture_thread]   Starting camera with 5-second timeout...", flush=True)
-			sys.stdout.flush()  # Force flush before potentially blocking call
+		# Retry configuration
+		MAX_RETRIES = 3
+		RETRY_DELAY = 10  # seconds between retries
+		camera_initialized = False
 
-			# Timeout workaround for Debian Trixie bug
-			start_success = [False]
-			start_error = [None]
+		print("[FPV.capture_thread] Initializing camera with retry logic...", flush=True)
+		
+		for retry in range(MAX_RETRIES):
+			try:
+				print(f"[FPV.capture_thread] Camera init attempt {retry+1}/{MAX_RETRIES}", flush=True)
+				print("[FPV.capture_thread]   Creating Picamera2 object...", flush=True)
+				picam2 = Picamera2()
+				print("[FPV.capture_thread]   Configuring camera...", flush=True)
+				# OPTIMIZATION: Set resolution to 320x240 directly at source
+				# This avoids resizing downstream and saves massive CPU/Bandwidth
+				preview_config = picam2.create_preview_configuration(
+					main={"size": (320, 240), "format": "RGB888"},
+					transform=libcamera.Transform(hflip=hflip, vflip=vflip),
+					buffer_count=4,
+					queue=True
+				)
+				picam2.configure(preview_config)
+				print("[FPV.capture_thread]   Starting camera with 5-second timeout...", flush=True)
+				sys.stdout.flush()  # Force flush before potentially blocking call
 
-			def start_camera():
-				try:
-					picam2.start()
-					start_success[0] = True
-				except Exception as e:
-					start_error[0] = e
+				# Timeout workaround for Debian Trixie bug
+				start_success = [False]
+				start_error = [None]
 
-			start_thread = threading.Thread(target=start_camera, daemon=True)
-			start_thread.start()
-			start_thread.join(timeout=5.0)
+				def start_camera():
+					try:
+						picam2.start()
+						start_success[0] = True
+					except Exception as e:
+						start_error[0] = e
 
-			if start_thread.is_alive():
-				print("[FPV.capture_thread] ❌ TIMEOUT: Camera start hung (Debian Trixie bug)", flush=True)
-				print("[FPV.capture_thread]    picam2.start() blocked for >5 seconds", flush=True)
-				print("[FPV.capture_thread]    This is a known Debian Trixie issue after reboot", flush=True)
-				return
-			elif start_error[0]:
-				raise start_error[0]
-			elif start_success[0]:
-				print("[FPV.capture_thread] ✓ Camera started successfully", flush=True)
-		except Exception as e:
-			print(f"[FPV.capture_thread] ❌ Camera init error: {e}", flush=True)
+				start_thread = threading.Thread(target=start_camera, daemon=True)
+				start_thread.start()
+				start_thread.join(timeout=5.0)
+
+				if start_thread.is_alive():
+					print(f"[FPV.capture_thread] ⚠️  TIMEOUT: Camera start hung (attempt {retry+1}/{MAX_RETRIES})", flush=True)
+					print("[FPV.capture_thread]    picam2.start() blocked for >5 seconds", flush=True)
+					print("[FPV.capture_thread]    This is a known Debian Trixie issue after reboot", flush=True)
+					if retry < MAX_RETRIES - 1:
+						print(f"[FPV.capture_thread]    Retrying in {RETRY_DELAY} seconds...", flush=True)
+						time.sleep(RETRY_DELAY)
+						continue
+					else:
+						print("[FPV.capture_thread] ❌ Camera init failed after all retries", flush=True)
+						return
+				elif start_error[0]:
+					raise start_error[0]
+				elif start_success[0]:
+					print("[FPV.capture_thread] ✓ Camera started successfully", flush=True)
+					camera_initialized = True
+					break
+					
+			except Exception as e:
+				print(f"[FPV.capture_thread] ⚠️  Camera init error: {e}", flush=True)
+				if retry < MAX_RETRIES - 1:
+					print(f"[FPV.capture_thread]    Retrying in {RETRY_DELAY} seconds...", flush=True)
+					time.sleep(RETRY_DELAY)
+				else:
+					print("[FPV.capture_thread] ❌ Camera init failed after all retries", flush=True)
+					return
+
+		if not camera_initialized:
+			print("[FPV.capture_thread] ❌ Camera not available - FPV thread terminating", flush=True)
 			return
 
 		print("[FPV.capture_thread] Starting video capture loop...")
