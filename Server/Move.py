@@ -797,6 +797,7 @@ def steady():
 
 def look_up(wiggle=look_wiggle):
     global Up_Down_input
+    print(f"⬆️  [look_up] Current U/D position: {Up_Down_input}, moving by {wiggle}")
     if SmoothCamMode:
         # Smooth camera movement with interpolation
         old_position = Up_Down_input
@@ -821,6 +822,7 @@ def look_up(wiggle=look_wiggle):
 
 def look_down(wiggle=look_wiggle):
     global Up_Down_input
+    print(f"⬇️  [look_down] Current U/D position: {Up_Down_input}, moving by {wiggle}")
     if SmoothCamMode:
         # Smooth camera movement with interpolation
         old_position = Up_Down_input
@@ -846,6 +848,7 @@ def look_down(wiggle=look_wiggle):
 
 def look_left(wiggle=look_wiggle):
     global Left_Right_input
+    print(f"👈 [look_left] Current L/R position: {Left_Right_input}, moving by {wiggle}")
     if SmoothCamMode:
         # Smooth camera movement with interpolation
         old_position = Left_Right_input
@@ -871,6 +874,7 @@ def look_left(wiggle=look_wiggle):
 
 def look_right(wiggle=look_wiggle):
     global Left_Right_input
+    print(f"👉 [look_right] Current L/R position: {Left_Right_input}, moving by {wiggle}")
     if SmoothCamMode:
         # Smooth camera movement with interpolation
         old_position = Left_Right_input
