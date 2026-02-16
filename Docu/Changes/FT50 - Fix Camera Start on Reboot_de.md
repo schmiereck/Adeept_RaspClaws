@@ -334,6 +334,64 @@ git checkout HEAD~1 Server/FPV.py
 sudo systemctl restart gui_server.service
 ```
 
+## Test-Ergebnisse (2026-02-16)
+
+### Erster Reboot-Test
+
+**Status:** ✅ **ERFOLGREICH** - Kamera wurde beim ersten Versuch initialisiert!
+
+**Timing-Analyse:**
+```
+t=0s      systemd startet Service
+t=3s      ExecStartPre sleep beendet
+t=4-34s   Python imports + Hardware-Init (PCA9685, LEDs, etc.)
+t=34s     FPV Thread startet
+t=34s     Kamera init attempt 1/3
+t=34s     ✓ Camera started successfully (erster Versuch!)
+t=36s     Client verbindet
+t=38s     VIDEO_READY Signale beginnen
+```
+
+**Log-Beweis:**
+```
+15:42:17  systemd[1]: Started gui_server.service
+15:42:51  [FPV.capture_thread] Camera init attempt 1/3
+15:42:51  [FPV.capture_thread] ✓ Camera started successfully
+15:42:53  ...connected from : ('127.0.0.1', 43988)
+15:42:55  ✅ VIDEO_READY 1/10
+```
+
+**Schlussfolgerung:** Die Server-seitige Lösung (3s delay + Retry-Logik) funktioniert perfekt!
+
+### Client-seitiges Timing-Problem entdeckt
+
+**Problem:** Client-Timeout war zu kurz (15s), Server braucht aber ~34-38s nach systemd-Start.
+
+**Lösung:** Client-Timeout von 15s auf 45s erhöht (Commit 483adad).
+
+**Begründung:**
+- Server-Start bis VIDEO_READY: ~34-38s
+- 45s Timeout gibt ausreichend Puffer
+- Verhindert falsche Warnungen bei normalem Betrieb
+
+**Geänderte Datei:** Client/GUI.py (Zeile 933-934)
+
+## Rollback-Plan
+
+Falls Probleme auftreten:
+
+```bash
+# Service-File auf alte Version zurücksetzen
+sudo cp /etc/systemd/system/gui_server.service.backup /etc/systemd/system/gui_server.service
+sudo systemctl daemon-reload
+sudo systemctl restart gui_server.service
+
+# FPV.py zurücksetzen
+cd /home/pi/Adeept_RaspClaws
+git checkout HEAD~1 Server/FPV.py
+sudo systemctl restart gui_server.service
+```
+
 ## Geänderte Dateien
 
 ### 1. systemd/gui_server.service
@@ -347,15 +405,25 @@ sudo systemctl restart gui_server.service
 - **Neu:** `camera_initialized` Flag
 - **Verbessert:** Log-Meldungen zeigen Versuch x/y
 
+### 3. Client/GUI.py
+- **Zeile 933-934:** Client-Timeout von 15s auf 45s erhöht
+- **Begründung:** Server braucht ~34-38s nach systemd-Start
+- **Commit:** 483adad (FT50 Client-Timeout Fix)
+- **Zusätzlich:** Fehlermeldung um journalctl-Hinweis erweitert
+
 ## Metriken
 
 | Metrik | Vorher | Nachher | Verbesserung |
 |--------|--------|---------|--------------|
-| Erfolgsrate nach Reboot | ~40-60% | ~100% | **Deutlich höher** |
+| Erfolgsrate nach Reboot | ~40-60% | **100%** (1/1 Tests) | **Deutlich höher** |
 | Manuelle Restarts nötig | Ja (häufig) | Nein | **Eliminiert** |
 | Boot-Verzögerung | 0s | 3s | **Minimal** |
+| Server-Startzeit bis VIDEO_READY | Unzuverlässig | ~34-38s | **Vorhersagbar** |
+| Client-Timeout | 15s (zu kurz) | 45s | **Ausreichend** |
 | Max. Video-Startzeit | ∞ (hängt) | 33s (3 Retries) | **Garantiert** |
 | Benutzer-Intervention | Nötig | Automatisch | **Keine** |
+
+**Test-Status:** ✅ Erfolgreich getestet (1 Reboot), weitere Tests empfohlen (5x)
 
 ## Verwandte Features
 
