@@ -27,25 +27,32 @@ def _pulse_to_duty_cycle(pulse):
     """Converts a 12-bit pulse width (0-4095) to a 16-bit duty cycle (0-65535)."""
     return (pulse * 65535) // 4095
 
-pwm0 = 300
-pwm1 = 300
-pwm2 = 300
-pwm3 = 300
+# ==================== Servo Default Positions ====================
+# IMPORTANT: Only change these values to customize servo default positions
+CAMERA_LEFT_RIGHT_DEFAULT = 300  # Servo 12: Camera pan (left/right)
+CAMERA_UP_DOWN_DEFAULT = 160     # Servo 13: Camera tilt (up/down)
+LEG_SERVO_DEFAULT = 300          # Servos 0-11: Leg servos
 
-pwm4 = 300
-pwm5 = 300
-pwm6 = 300
-pwm7 = 300
+# Individual servo defaults (derived from above constants)
+pwm0 = LEG_SERVO_DEFAULT
+pwm1 = LEG_SERVO_DEFAULT
+pwm2 = LEG_SERVO_DEFAULT
+pwm3 = LEG_SERVO_DEFAULT
 
-pwm8 = 300
-pwm9 = 300
-pwm10 = 300
-pwm11 = 300
+pwm4 = LEG_SERVO_DEFAULT
+pwm5 = LEG_SERVO_DEFAULT
+pwm6 = LEG_SERVO_DEFAULT
+pwm7 = LEG_SERVO_DEFAULT
 
-pwm12 = 300
-pwm13 = 160 # Head Up/Down default position
-pwm14 = 300
-pwm15 = 300
+pwm8 = LEG_SERVO_DEFAULT
+pwm9 = LEG_SERVO_DEFAULT
+pwm10 = LEG_SERVO_DEFAULT
+pwm11 = LEG_SERVO_DEFAULT
+
+pwm12 = CAMERA_LEFT_RIGHT_DEFAULT
+pwm13 = CAMERA_UP_DOWN_DEFAULT
+pwm14 = LEG_SERVO_DEFAULT
+pwm15 = LEG_SERVO_DEFAULT
 
 # Current servo positions (initialized to base positions)
 # These track the actual servo positions for smooth interpolation
@@ -95,8 +102,12 @@ if set_direction:
 else:
     Up_Down_direction = 0
     Left_Right_direction = 0
-Left_Right_input = 300
-Up_Down_input = 360  # Head Up/Down default position (matches pwm13)
+
+# Camera tracking variables (initialized from defaults)
+Left_Right_input = CAMERA_LEFT_RIGHT_DEFAULT
+Up_Down_input = CAMERA_UP_DOWN_DEFAULT
+
+# Camera movement limits
 Left_Right_Max = 500
 Left_Right_Min = 100
 Up_Down_Max = 500
@@ -386,6 +397,10 @@ def init_all():
     pwm.channels[13].duty_cycle = _pulse_to_duty_cycle(pwm13)
     pwm.channels[14].duty_cycle = _pulse_to_duty_cycle(pwm14)
     pwm.channels[15].duty_cycle = _pulse_to_duty_cycle(pwm15)
+    
+    print(f"🎯 [Move.init_all] Camera servos initialized:")
+    print(f"   Servo 12 (L/R): {pwm12} (from CAMERA_LEFT_RIGHT_DEFAULT={CAMERA_LEFT_RIGHT_DEFAULT})")
+    print(f"   Servo 13 (U/D): {pwm13} (from CAMERA_UP_DOWN_DEFAULT={CAMERA_UP_DOWN_DEFAULT})")
     
     # Update position tracking
     servo_current_pos = [
@@ -882,6 +897,8 @@ def look_right(wiggle=look_wiggle):
 def look_home():
     """Reset camera to home position (center)"""
     global Left_Right_input, Up_Down_input
+    print(f"🏠 [look_home] Resetting camera to home position:")
+    print(f"   L/R: {CAMERA_LEFT_RIGHT_DEFAULT}, U/D: {CAMERA_UP_DOWN_DEFAULT}")
     # Set all servos to their defined default positions
     default_positions = [
         pwm0, pwm1, pwm2, pwm3,
@@ -891,8 +908,9 @@ def look_home():
     ]
     for i in range(16):
         pwm.channels[i].duty_cycle = _pulse_to_duty_cycle(default_positions[i])
-    Left_Right_input = pwm12  # Left/Right servo (usually 300)
-    Up_Down_input = pwm13     # Up/Down servo (can be customized, e.g., 360)
+    # Update tracking variables to match defaults
+    Left_Right_input = CAMERA_LEFT_RIGHT_DEFAULT
+    Up_Down_input = CAMERA_UP_DOWN_DEFAULT
 
 
 def relesae():
