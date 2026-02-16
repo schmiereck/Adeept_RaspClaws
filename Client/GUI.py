@@ -930,15 +930,16 @@ def video_ready_timeout_watchdog():
 	"""Watchdog that warns if VIDEO_READY signal is not received within timeout"""
 	global video_thread_started
 
-	timeout_seconds = 15  # Should receive VIDEO_READY within 15 seconds
+	timeout_seconds = 45  # Should receive VIDEO_READY within 45 seconds
+	                       # (Server needs ~34s after reboot: 3s sleep + 31s Python imports + camera init)
 	time.sleep(timeout_seconds)
 
 	if not video_thread_started:
-		print("⚠️ WARNING: Video server did not respond within 15s")
+		print("⚠️ WARNING: Video server did not respond within 45s")
 		print("   This is usually caused by:")
 		print("   0. SSH tunnel started: ssh -L 10223:localhost:10223 -L 5555:localhost:5555 pi@raspclaws-1")
 		print("   1. SSH tunnel not forwarding video port (check for 'connection refused')")
-		print("   2. Video server failed to start on Raspberry Pi")
+		print("   2. Video server failed to start on Raspberry Pi (check: sudo journalctl -u gui_server.service)")
 		print("   3. Network issues between client and server")
 		print("   → GUI will continue to work, but video stream is unavailable")
 		print("   → Try reconnecting or check server logs")
