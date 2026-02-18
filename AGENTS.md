@@ -13,6 +13,7 @@ GitHub Repository: https://github.com/schmiereck/Adeept_RaspClaws.git
 ## 1. Development Environments
 
 ### 1.1 Windows Development Machine
+You have full access to sthe sourcecode on this lokal machine.
 
 **Operating System**: Windows (PowerShell v5.1)
 
@@ -49,7 +50,8 @@ pip install -r requirements.txt
 ```
 
 ### 1.2 Raspberry Pi Server
-
+The local sourcecode is deployed on the Raspberry Pi, which runs the server and controls the robot.
+Ja. mache das
 **Operating System**: Debian GNU/Linux (Raspberry Pi OS)
 - Kernel: 6.12.47+rpt-rpi-v8 #1 SMP PREEMPT Debian 1:6.12.47-1+rpt1
 

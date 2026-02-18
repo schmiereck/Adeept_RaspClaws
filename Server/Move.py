@@ -801,10 +801,11 @@ def steady():
 
 def look_up(wiggle=look_wiggle):
     global Up_Down_input
-    print(f"⬆️  [look_up] Current U/D position: {Up_Down_input}, moving by {wiggle}")
+    old_position = Up_Down_input
+    old_left_right = Left_Right_input
+    print(f"⬆️  [look_up] U/D={old_position}, L/R={old_left_right}, step={wiggle}")
     if SmoothCamMode:
         # Smooth camera movement with interpolation
-        old_position = Up_Down_input
         if Up_Down_direction:
             Up_Down_input += wiggle
         else:
@@ -823,13 +824,16 @@ def look_up(wiggle=look_wiggle):
             Up_Down_input -= wiggle
         Up_Down_input = ctrl_range(Up_Down_input, Up_Down_Max, Up_Down_Min)
         pwm.channels[13].duty_cycle = _pulse_to_duty_cycle(Up_Down_input)
+    clamped = " (CLAMPED)" if Up_Down_input in (Up_Down_Min, Up_Down_Max) else ""
+    print(f"⬆️  [look_up] U/D: {old_position} -> {Up_Down_input}{clamped}, L/R unchanged={Left_Right_input}")
 
 def look_down(wiggle=look_wiggle):
     global Up_Down_input
-    print(f"⬇️  [look_down] Current U/D position: {Up_Down_input}, moving by {wiggle}")
+    old_position = Up_Down_input
+    old_left_right = Left_Right_input
+    print(f"⬇️  [look_down] U/D={old_position}, L/R={old_left_right}, step={wiggle}")
     if SmoothCamMode:
         # Smooth camera movement with interpolation
-        old_position = Up_Down_input
         if Up_Down_direction:
             Up_Down_input -= wiggle
         else:
@@ -848,14 +852,17 @@ def look_down(wiggle=look_wiggle):
             Up_Down_input += wiggle
         Up_Down_input = ctrl_range(Up_Down_input, Up_Down_Max, Up_Down_Min)
         pwm.channels[13].duty_cycle = _pulse_to_duty_cycle(Up_Down_input)
+    clamped = " (CLAMPED)" if Up_Down_input in (Up_Down_Min, Up_Down_Max) else ""
+    print(f"⬇️  [look_down] U/D: {old_position} -> {Up_Down_input}{clamped}, L/R unchanged={Left_Right_input}")
 
 
 def look_left(wiggle=look_wiggle):
     global Left_Right_input
-    print(f"👈 [look_left] Current L/R position: {Left_Right_input}, moving by {wiggle}")
+    old_position = Left_Right_input
+    old_up_down = Up_Down_input
+    print(f"👈 [look_left] L/R={old_position}, U/D={old_up_down}, step={wiggle}")
     if SmoothCamMode:
         # Smooth camera movement with interpolation
-        old_position = Left_Right_input
         if Left_Right_direction:
             Left_Right_input += wiggle
         else:
@@ -874,14 +881,17 @@ def look_left(wiggle=look_wiggle):
             Left_Right_input -= wiggle
         Left_Right_input = ctrl_range(Left_Right_input, Left_Right_Max, Left_Right_Min)
         pwm.channels[12].duty_cycle = _pulse_to_duty_cycle(Left_Right_input)
+    clamped = " (CLAMPED)" if Left_Right_input in (Left_Right_Min, Left_Right_Max) else ""
+    print(f"👈 [look_left] L/R: {old_position} -> {Left_Right_input}{clamped}, U/D unchanged={Up_Down_input}")
 
 
 def look_right(wiggle=look_wiggle):
     global Left_Right_input
-    print(f"👉 [look_right] Current L/R position: {Left_Right_input}, moving by {wiggle}")
+    old_position = Left_Right_input
+    old_up_down = Up_Down_input
+    print(f"👉 [look_right] L/R={old_position}, U/D={old_up_down}, step={wiggle}")
     if SmoothCamMode:
         # Smooth camera movement with interpolation
-        old_position = Left_Right_input
         if Left_Right_direction:
             Left_Right_input -= wiggle
         else:
@@ -900,13 +910,18 @@ def look_right(wiggle=look_wiggle):
             Left_Right_input += wiggle
         Left_Right_input = ctrl_range(Left_Right_input, Left_Right_Max, Left_Right_Min)
         pwm.channels[12].duty_cycle = _pulse_to_duty_cycle(Left_Right_input)
+    clamped = " (CLAMPED)" if Left_Right_input in (Left_Right_Min, Left_Right_Max) else ""
+    print(f"👉 [look_right] L/R: {old_position} -> {Left_Right_input}{clamped}, U/D unchanged={Up_Down_input}")
 
 
 def look_home():
     """Reset camera to home position (center)"""
     global Left_Right_input, Up_Down_input
+    old_left_right = Left_Right_input
+    old_up_down = Up_Down_input
     print(f"🏠 [look_home] Resetting camera to home position:")
-    print(f"   L/R: {CAMERA_LEFT_RIGHT_DEFAULT}, U/D: {CAMERA_UP_DOWN_DEFAULT}")
+    print(f"   from L/R={old_left_right}, U/D={old_up_down}")
+    print(f"   to   L/R={CAMERA_LEFT_RIGHT_DEFAULT}, U/D={CAMERA_UP_DOWN_DEFAULT}")
     # Set all servos to their defined default positions
     default_positions = [
         pwm0, pwm1, pwm2, pwm3,

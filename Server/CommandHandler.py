@@ -124,6 +124,9 @@ class CommandHandler:
         
         with self._lock:
             try:
+                pre_lr = getattr(move, 'Left_Right_input', None)
+                pre_ud = getattr(move, 'Up_Down_input', None)
+                print(f"[CommandHandler] Camera cmd='{command}' pre: L/R={pre_lr}, U/D={pre_ud}")
                 if command == CMD_LOOK_UP:
                     move.look_up()
                 elif command == CMD_LOOK_DOWN:
@@ -146,7 +149,9 @@ class CommandHandler:
                     return False  # Unknown camera command
                 
                 self._last_camera_command = command
-                print(f"[CommandHandler] Camera: '{command}'")
+                post_lr = getattr(move, 'Left_Right_input', None)
+                post_ud = getattr(move, 'Up_Down_input', None)
+                print(f"[CommandHandler] Camera: '{command}' post: L/R={post_lr}, U/D={post_ud}")
                 return True
                 
             except Exception as e:
