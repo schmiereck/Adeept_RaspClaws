@@ -53,7 +53,7 @@ def _pulse_to_duty_cycle(pulse):
 # ==================== Servo Default Positions ====================
 # IMPORTANT: Only change these values to customize servo default positions
 CAMERA_LEFT_RIGHT_DEFAULT = 300  # Servo 12: Camera pan (left/right)
-CAMERA_UP_DOWN_DEFAULT = 240     # Servo 13: Camera tilt (up/down)
+CAMERA_UP_DOWN_DEFAULT = 220     # Servo 13: Camera tilt (up/down)
 LEG_SERVO_DEFAULT = 300          # Servos 0-11: Leg servos
 
 # Individual servo defaults (derived from above constants)
