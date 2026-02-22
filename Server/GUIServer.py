@@ -412,6 +412,12 @@ def handle_movement_command(data):
         """Handle movement commands (forward, backward, left, right, etc.)"""
         global direction_command, turn_command
 
+        # === CHECK IF ACTION IS RUNNING ===
+        # Ignore GUI movement commands if a ROS2 Action is currently executing
+        if move.is_action_in_progress():
+                # Silently ignore to avoid log spam
+                return True  # Pretend we handled it
+
         # EXACT match only - no partial matching to avoid conflicts with lookleft/lookright
         move_command = GUI_TO_MOVE_COMMAND_MAP.get(data)
 

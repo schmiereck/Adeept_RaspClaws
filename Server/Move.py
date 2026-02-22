@@ -1480,11 +1480,6 @@ def set_turn_and_pause():
 
 def handle_movement_command(command):
     """Handle movement commands (forward, backward, stand, left, right, no)"""
-    
-    # Ignore GUI movement commands if a ROS2 Action is currently executing
-    if is_action_in_progress():
-        # Silently ignore (no spam in logs)
-        return True  # Pretend we handled it
 
     movement_commands = {
         'forward': lambda: set_direction_and_resume('forward', 'no'),

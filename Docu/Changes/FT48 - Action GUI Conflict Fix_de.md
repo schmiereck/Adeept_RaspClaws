@@ -2,7 +2,7 @@
 
 **Feature**: Verhindert "Zappeln" des Roboters wenn Actions und GUI parallel laufen  
 **Datum**: 2026-02-22  
-**Status**: ✅ Implementiert
+**Status**: ✅ Implementiert (Rev. 2 - Critical Bugfix)
 
 ## Problem
 
@@ -16,7 +16,19 @@ kommt es zu Servo-Konflikten, die dazu führen, dass der Roboter "zappelt".
 - Beide konkurrieren um die Kontrolle der Servos
 - Keine Synchronisation zwischen GUI und Actions
 
-## Lösung
+## Lösung (Rev. 2 - Fixed!)
+
+**WICHTIG**: Revision 2 behebt einen kritischen Fehler in Rev. 1!
+
+### Problem in Rev. 1
+Der Check wurde in `Move.handle_movement_command()` durchgeführt.
+Dies blockierte **alle** Bewegungsbefehle, auch die von Actions selbst!
+→ Actions konnten sich nicht mehr bewegen! ❌
+
+### Lösung in Rev. 2
+Der Check wurde in den **GUIServer** verschoben, wo GUI-Befehle ankommen.
+Actions rufen `move.commandInput()` direkt auf, umgehen also den GUI-Check.
+→ Actions funktionieren, GUI wird blockiert! ✅
 
 ### 1. Action Lock Mechanismus in Move.py
 
@@ -43,21 +55,25 @@ def is_action_in_progress() -> bool:
         return action_in_progress
 ```
 
-### 2. GUI-Kommandos ignorieren während Actions
+### 2. GUI-Kommandos ignorieren während Actions (im GUIServer!)
 
-In `handle_movement_command()`:
+In `GUIServer.handle_movement_command()` (NICHT in Move.py!):
 
 ```python
-def handle_movement_command(command):
-    """Handle movement commands (forward, backward, stand, left, right, no)"""
+def handle_movement_command(data):
+    """Handle movement commands from GUI"""
     
+    # === CHECK IF ACTION IS RUNNING ===
     # Ignore GUI movement commands if a ROS2 Action is currently executing
-    if is_action_in_progress():
-        # Silently ignore (no spam in logs)
+    if move.is_action_in_progress():
+        # Silently ignore to avoid log spam
         return True  # Pretend we handled it
     
-    # ... rest of the function
+    # ... rest of function processes GUI command
 ```
+
+**Wichtig**: Der Check ist im **GUIServer**, nicht in Move.py!
+Actions rufen `move.commandInput()` direkt auf und umgehen diesen Check.
 
 ### 3. Actions setzen/freigeben den Lock
 
@@ -74,6 +90,8 @@ async def execute_XXX_action(self, goal_handle):
     
     try:
         # ... action execution ...
+        # Actions call self.move.commandInput() directly
+        # This bypasses the GUI check in GUIServer
         return result
     finally:
         # === ALWAYS RELEASE LOCK ===
@@ -88,9 +106,12 @@ auch bei Fehlern oder Cancel-Requests.
 1. **Server/Move.py**
    - Neue Funktionen: `set_action_in_progress()`, `is_action_in_progress()`
    - Globale Variablen: `action_in_progress`, `action_lock`
-   - `handle_movement_command()`: Check für Action-Sperre
+   - ~~`handle_movement_command()`: Check für Action-Sperre~~ (Rev. 1 - ENTFERNT in Rev. 2)
 
-2. **Server/action_servers.py**
+2. **Server/GUIServer.py** (NEU in Rev. 2)
+   - `handle_movement_command()`: Check für Action-Sperre **VOR** Weiterleitung an Move
+
+3. **Server/action_servers.py**
    - `execute_linear_move()`: try/finally mit Lock
    - `execute_rotate()`: try/finally mit Lock
    - `execute_arc_move()`: try/finally mit Lock
@@ -100,16 +121,16 @@ auch bei Fehlern oder Cancel-Requests.
 
 ### Ohne Action (Normal)
 ```
-GUI sendet "forward" → Move-Thread reagiert → Robot bewegt sich ✓
+GUI sendet "forward" → GUIServer → Move-Thread reagiert → Robot bewegt sich ✓
 ```
 
 ### Mit aktiver Action
 ```
 Action startet → Lock gesetzt
-GUI sendet "forward" → IGNORIERT (silently) 
-Action läuft → Roboter bewegt sich sauber
+GUI sendet "forward" → GUIServer prüft Lock → IGNORIERT (silently)
+Action ruft move.commandInput() direkt → Move-Thread reagiert → Robot bewegt sich ✓
 Action endet → Lock freigegeben
-GUI sendet "forward" → Move-Thread reagiert ✓
+GUI sendet "forward" → GUIServer → Move-Thread reagiert ✓
 ```
 
 ### Bei Action-Cancel oder Fehler
@@ -119,6 +140,16 @@ Action startet → Lock gesetzt
 finally-Block → Lock freigegeben (garantiert!)
 GUI-Kontrolle wiederhergestellt ✓
 ```
+
+## Wichtige Änderung in Rev. 2
+
+**Fehler in Rev. 1**: Check in `Move.handle_movement_command()`
+- Blockierte **alle** Befehle (GUI + Actions)
+- Actions konnten sich nicht bewegen ❌
+
+**Fix in Rev. 2**: Check in `GUIServer.handle_movement_command()`
+- Blockiert nur **GUI-Befehle**
+- Actions funktionieren normal ✅
 
 ## Log-Ausgaben
 
@@ -139,13 +170,14 @@ GUI-Kontrolle wiederhergestellt ✓
 1. GUIServer starten (auf raspclaws-1)
 2. ROSServer starten (ebenfalls auf raspclaws-1)
 3. Von ubuntu1: Action ausführen
-4. Gleichzeitig GUI-Befehle senden
+4. Gleichzeitig GUI-Befehle senden (oder GUI parallel laufen lassen)
 
 **Erwartetes Ergebnis**: 
-- Robot führt Action sauber aus
-- Kein "Zappeln" mehr
-- GUI-Befehle werden während Action ignoriert
-- Nach Action-Ende: GUI-Kontrolle wieder voll funktionsfähig
+- Robot führt Action sauber aus ✓
+- Kein "Zappeln" mehr ✓
+- GUI-Befehle werden während Action ignoriert ✓
+- Actions können sich bewegen! ✓
+- Nach Action-Ende: GUI-Kontrolle wieder voll funktionsfähig ✓
 
 ## Hinweise
 
@@ -153,14 +185,11 @@ GUI-Kontrolle wiederhergestellt ✓
 - **Robust**: `finally` Block garantiert Lock-Freigabe
 - **Silent**: Keine Log-Spam bei ignorierten GUI-Befehlen
 - **Transparent**: Klare Log-Meldungen bei Action-Start/-Ende
+- **Korrekt**: Check im GUIServer, nicht in Move.py!
 
-## Weitere Verbesserungen (Optional)
+## Revision History
 
-Mögliche zukünftige Erweiterungen:
+- **Rev. 1** (2026-02-22 09:03): Initial implementation - Check in Move.py (FEHLERHAFT)
+- **Rev. 2** (2026-02-22 09:25): Bugfix - Check verschoben nach GUIServer.py (KORREKT)
 
-1. **Queue-System**: GUI-Befehle in Queue speichern statt ignorieren
-2. **Prioritäten**: Verschiedene Lock-Level für verschiedene Action-Typen
-3. **Timeout**: Auto-Unlock nach X Sekunden falls Action hängt
-4. **Status-API**: Abfrage-Funktion für GUI ob Action läuft
-
-Stand jetzt ist die Lösung simpel und effektiv! ✅
+Stand Rev. 2 ist die Lösung simpel, effektiv und funktioniert! ✅
