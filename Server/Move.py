@@ -394,7 +394,7 @@ def mpu6050Test():
 
         
 def init_all():
-    global servo_current_pos, pwm
+    global servo_current_pos, pwm, Left_Right_input, Up_Down_input
 
     # Initialize PWM if not done yet (lazy initialization)
     if pwm is None:
@@ -416,27 +416,32 @@ def init_all():
     pwm.channels[10].duty_cycle = _pulse_to_duty_cycle(pwm10)
     pwm.channels[11].duty_cycle = _pulse_to_duty_cycle(pwm11)
 
-    pwm.channels[12].duty_cycle = _pulse_to_duty_cycle(pwm12)
-    pwm.channels[13].duty_cycle = _pulse_to_duty_cycle(pwm13)
+    # IMPORTANT: Use CAMERA_*_DEFAULT constants directly for camera servos
+    # This ensures we always use the current/updated default values
+    pwm.channels[12].duty_cycle = _pulse_to_duty_cycle(CAMERA_LEFT_RIGHT_DEFAULT)
+    pwm.channels[13].duty_cycle = _pulse_to_duty_cycle(CAMERA_UP_DOWN_DEFAULT)
     pwm.channels[14].duty_cycle = _pulse_to_duty_cycle(pwm14)
     pwm.channels[15].duty_cycle = _pulse_to_duty_cycle(pwm15)
+    
+    # Update camera tracking variables to match current defaults
+    Left_Right_input = CAMERA_LEFT_RIGHT_DEFAULT
+    Up_Down_input = CAMERA_UP_DOWN_DEFAULT
     
     print(f"🎯 [Move.init_all] Camera servos initialized:")
     print(f"   CAMERA_LEFT_RIGHT_DEFAULT = {CAMERA_LEFT_RIGHT_DEFAULT}")
     print(f"   CAMERA_UP_DOWN_DEFAULT = {CAMERA_UP_DOWN_DEFAULT}")
-    print(f"   pwm12 = {pwm12}")
-    print(f"   pwm13 = {pwm13}")
-    print(f"   Servo 12 duty_cycle will be set to: {_pulse_to_duty_cycle(pwm12)}")
-    print(f"   Servo 13 duty_cycle will be set to: {_pulse_to_duty_cycle(pwm13)}")
+    print(f"   Servo 12 (pan) duty_cycle set to: {_pulse_to_duty_cycle(CAMERA_LEFT_RIGHT_DEFAULT)}")
+    print(f"   Servo 13 (tilt) duty_cycle set to: {_pulse_to_duty_cycle(CAMERA_UP_DOWN_DEFAULT)}")
     
-    # Update position tracking
+    # Update position tracking - use constants for camera servos
     servo_current_pos = [
         pwm0, pwm1, pwm2, pwm3,
         pwm4, pwm5, pwm6, pwm7,
         pwm8, pwm9, pwm10, pwm11,
-        pwm12, pwm13, pwm14, pwm15
+        CAMERA_LEFT_RIGHT_DEFAULT,  # Use constant instead of pwm12
+        CAMERA_UP_DOWN_DEFAULT,     # Use constant instead of pwm13
+        pwm14, pwm15
     ]
-
 
 # KEIN automatisches init_all() beim Import!
 # Die Servos werden erst initialisiert, wenn init_all() explizit aufgerufen wird
@@ -945,12 +950,17 @@ def look_home():
     print(f"🏠 [look_home] Resetting camera to home position:")
     print(f"   from L/R={old_left_right}, U/D={old_up_down}")
     print(f"   to   L/R={CAMERA_LEFT_RIGHT_DEFAULT}, U/D={CAMERA_UP_DOWN_DEFAULT}")
-    # Set all servos to their defined default positions
+    
+    # IMPORTANT: Use CAMERA_*_DEFAULT constants directly instead of pwm12/pwm13
+    # This ensures we always use the current/updated default values
+    # (not the values that were set at module import time)
     default_positions = [
         pwm0, pwm1, pwm2, pwm3,
         pwm4, pwm5, pwm6, pwm7,
         pwm8, pwm9, pwm10, pwm11,
-        pwm12, pwm13, pwm14, pwm15
+        CAMERA_LEFT_RIGHT_DEFAULT,  # Use constant instead of pwm12
+        CAMERA_UP_DOWN_DEFAULT,     # Use constant instead of pwm13
+        pwm14, pwm15
     ]
     for i in range(16):
         pwm.channels[i].duty_cycle = _pulse_to_duty_cycle(default_positions[i])
