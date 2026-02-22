@@ -365,7 +365,7 @@ ros2 action send_goal /raspclaws/head_position \
 
 ### HeadPosition
 - **pan_degrees**: -100.0 bis +100.0 (links bis rechts)
-- **tilt_degrees**: -67.0 bis +67.0 (unten bis oben)
+- **tilt_degrees**: -77.0 bis +77.0 (unten bis oben)
 - **smooth**: true = 1s interpoliert, false = direkter Sprung
 
 ### LinearMove

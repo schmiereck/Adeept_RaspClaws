@@ -166,8 +166,8 @@ class ActionServerManager:
             self.logger.warn("Pan angle out of range (-100 to +100)")
             return GoalResponse.REJECT
 
-        if goal_request.tilt_degrees < -67.0 or goal_request.tilt_degrees > 67.0:
-            self.logger.warn("Tilt angle out of range (-67 to +67)")
+        if goal_request.tilt_degrees < -77.0 or goal_request.tilt_degrees > 77.0:
+            self.logger.warn("Tilt angle out of range (-77 to +77)")
             return GoalResponse.REJECT
 
         return GoalResponse.ACCEPT

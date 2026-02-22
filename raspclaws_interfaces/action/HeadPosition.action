@@ -1,6 +1,6 @@
 # Goal: Move camera head to target position (relative to center 0°, 0°)
 float32 pan_degrees    # -100.0 to +100.0 (left to right)
-float32 tilt_degrees   # -67.0 to +67.0 (down to up)
+float32 tilt_degrees   # -77.0 to +77.0 (down to up)
 bool smooth            # Use smooth interpolation (20 steps over 1 second)
 ---
 # Result: Final position reached
