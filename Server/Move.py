@@ -22,6 +22,29 @@ import busio
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from protocol import *
 
+# ==================== Action Control Lock ====================
+# Flag to prevent GUI movement commands when Actions are executing
+action_in_progress = False
+action_lock = threading.Lock()
+
+def set_action_in_progress(in_progress: bool):
+    """
+    Set the action in progress flag.
+    When True, GUI movement commands should be ignored to prevent servo conflicts.
+    """
+    global action_in_progress
+    with action_lock:
+        action_in_progress = in_progress
+        if in_progress:
+            print("[Move] ⚠️  ROS2 Action active - GUI movement commands suspended")
+        else:
+            print("[Move] ✓ ROS2 Action completed - GUI movement commands restored")
+
+def is_action_in_progress() -> bool:
+    """Check if an action is currently executing."""
+    with action_lock:
+        return action_in_progress
+
 
 def _pulse_to_duty_cycle(pulse):
     """Converts a 12-bit pulse width (0-4095) to a 16-bit duty cycle (0-65535)."""
@@ -1447,6 +1470,11 @@ def set_turn_and_pause():
 
 def handle_movement_command(command):
     """Handle movement commands (forward, backward, stand, left, right, no)"""
+    
+    # Ignore GUI movement commands if a ROS2 Action is currently executing
+    if is_action_in_progress():
+        # Silently ignore (no spam in logs)
+        return True  # Pretend we handled it
 
     movement_commands = {
         'forward': lambda: set_direction_and_resume('forward', 'no'),

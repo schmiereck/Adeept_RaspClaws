@@ -249,89 +249,98 @@ class ActionServerManager:
             result.message = "Calibration not available"
             return result
 
-        # Get current position
-        current_pan_pwm = self.move.Left_Right_input
-        current_tilt_pwm = self.move.Up_Down_input
+        # === SET ACTION LOCK TO PREVENT GUI INTERFERENCE ===
+        # (Protects camera servos from GUI camera control commands)
+        self.move.set_action_in_progress(True)
+        
+        try:
+            # Get current position
+            current_pan_pwm = self.move.Left_Right_input
+            current_tilt_pwm = self.move.Up_Down_input
 
-        current_pan_deg = self.calibration.pwm_to_pan_degrees(current_pan_pwm)
-        current_tilt_deg = self.calibration.pwm_to_tilt_degrees(current_tilt_pwm)
+            current_pan_deg = self.calibration.pwm_to_pan_degrees(current_pan_pwm)
+            current_tilt_deg = self.calibration.pwm_to_tilt_degrees(current_tilt_pwm)
 
-        # Get target position
-        target_pan_deg = goal.pan_degrees
-        target_tilt_deg = goal.tilt_degrees
+            # Get target position
+            target_pan_deg = goal.pan_degrees
+            target_tilt_deg = goal.tilt_degrees
 
-        target_pan_pwm = self.calibration.pan_degrees_to_pwm(target_pan_deg)
-        target_tilt_pwm = self.calibration.tilt_degrees_to_pwm(target_tilt_deg)
+            target_pan_pwm = self.calibration.pan_degrees_to_pwm(target_pan_deg)
+            target_tilt_pwm = self.calibration.tilt_degrees_to_pwm(target_tilt_deg)
 
-        self.logger.info(f"Moving from ({current_pan_deg:.1f}°, {current_tilt_deg:.1f}°) "
-                         f"to ({target_pan_deg:.1f}°, {target_tilt_deg:.1f}°)")
+            self.logger.info(f"Moving from ({current_pan_deg:.1f}°, {current_tilt_deg:.1f}°) "
+                             f"to ({target_pan_deg:.1f}°, {target_tilt_deg:.1f}°)")
 
-        # Smooth movement or direct jump
-        if goal.smooth:
-            # Smooth interpolation: 20 steps over 1 second (50ms per step)
-            num_steps = 20
-            step_delay = 0.05  # 50ms
+            # Smooth movement or direct jump
+            if goal.smooth:
+                # Smooth interpolation: 20 steps over 1 second (50ms per step)
+                num_steps = 20
+                step_delay = 0.05  # 50ms
 
-            for step in range(num_steps + 1):
-                # Check for cancellation
-                if goal_handle.is_cancel_requested:
-                    self.logger.info("HeadPosition action cancelled")
-                    result.success = False
-                    result.message = "Cancelled by user"
-                    goal_handle.canceled()
-                    return result
+                for step in range(num_steps + 1):
+                    # Check for cancellation
+                    if goal_handle.is_cancel_requested:
+                        self.logger.info("HeadPosition action cancelled")
+                        result.success = False
+                        result.message = "Cancelled by user"
+                        goal_handle.canceled()
+                        return result
 
-                # Interpolate position
-                t = step / num_steps
-                current_pan_pwm = int(current_pan_pwm + (target_pan_pwm - current_pan_pwm) * t)
-                current_tilt_pwm = int(current_tilt_pwm + (target_tilt_pwm - current_tilt_pwm) * t)
+                    # Interpolate position
+                    t = step / num_steps
+                    current_pan_pwm = int(current_pan_pwm + (target_pan_pwm - current_pan_pwm) * t)
+                    current_tilt_pwm = int(current_tilt_pwm + (target_tilt_pwm - current_tilt_pwm) * t)
 
-                # Set servo positions (convert 12-bit PWM to 16-bit duty cycle)
-                self.move.pwm.channels[12].duty_cycle = (current_pan_pwm * 65535) // 4095  # Pan servo
-                self.move.pwm.channels[13].duty_cycle = (current_tilt_pwm * 65535) // 4095  # Tilt servo
+                    # Set servo positions (convert 12-bit PWM to 16-bit duty cycle)
+                    self.move.pwm.channels[12].duty_cycle = (current_pan_pwm * 65535) // 4095  # Pan servo
+                    self.move.pwm.channels[13].duty_cycle = (current_tilt_pwm * 65535) // 4095  # Tilt servo
+
+                    # Update internal state
+                    self.move.Left_Right_input = current_pan_pwm
+                    self.move.Up_Down_input = current_tilt_pwm
+
+                    # Send feedback
+                    feedback.current_pan = self.calibration.pwm_to_pan_degrees(current_pan_pwm)
+                    feedback.current_tilt = self.calibration.pwm_to_tilt_degrees(current_tilt_pwm)
+                    feedback.progress = t
+                    goal_handle.publish_feedback(feedback)
+
+                    # Wait before next step
+                    if step < num_steps:
+                        time.sleep(step_delay)
+
+            else:
+                # Direct jump to target (convert 12-bit PWM to 16-bit duty cycle)
+                self.move.pwm.channels[12].duty_cycle = (target_pan_pwm * 65535) // 4095  # Pan servo
+                self.move.pwm.channels[13].duty_cycle = (target_tilt_pwm * 65535) // 4095  # Tilt servo
 
                 # Update internal state
-                self.move.Left_Right_input = current_pan_pwm
-                self.move.Up_Down_input = current_tilt_pwm
+                self.move.Left_Right_input = target_pan_pwm
+                self.move.Up_Down_input = target_tilt_pwm
 
                 # Send feedback
-                feedback.current_pan = self.calibration.pwm_to_pan_degrees(current_pan_pwm)
-                feedback.current_tilt = self.calibration.pwm_to_tilt_degrees(current_tilt_pwm)
-                feedback.progress = t
+                feedback.current_pan = target_pan_deg
+                feedback.current_tilt = target_tilt_deg
+                feedback.progress = 1.0
                 goal_handle.publish_feedback(feedback)
 
-                # Wait before next step
-                if step < num_steps:
-                    time.sleep(step_delay)
+            # Verify final position
+            final_pan_deg = self.calibration.pwm_to_pan_degrees(self.move.Left_Right_input)
+            final_tilt_deg = self.calibration.pwm_to_tilt_degrees(self.move.Up_Down_input)
 
-        else:
-            # Direct jump to target (convert 12-bit PWM to 16-bit duty cycle)
-            self.move.pwm.channels[12].duty_cycle = (target_pan_pwm * 65535) // 4095  # Pan servo
-            self.move.pwm.channels[13].duty_cycle = (target_tilt_pwm * 65535) // 4095  # Tilt servo
+            # Success
+            result.final_pan = final_pan_deg
+            result.final_tilt = final_tilt_deg
+            result.success = True
+            result.message = "Head position reached"
+            goal_handle.succeed()
 
-            # Update internal state
-            self.move.Left_Right_input = target_pan_pwm
-            self.move.Up_Down_input = target_tilt_pwm
-
-            # Send feedback
-            feedback.current_pan = target_pan_deg
-            feedback.current_tilt = target_tilt_deg
-            feedback.progress = 1.0
-            goal_handle.publish_feedback(feedback)
-
-        # Verify final position
-        final_pan_deg = self.calibration.pwm_to_pan_degrees(self.move.Left_Right_input)
-        final_tilt_deg = self.calibration.pwm_to_tilt_degrees(self.move.Up_Down_input)
-
-        # Success
-        result.final_pan = final_pan_deg
-        result.final_tilt = final_tilt_deg
-        result.success = True
-        result.message = "Head position reached"
-        goal_handle.succeed()
-
-        self.logger.info(f"HeadPosition completed: ({final_pan_deg:.1f}°, {final_tilt_deg:.1f}°)")
-        return result
+            self.logger.info(f"HeadPosition completed: ({final_pan_deg:.1f}°, {final_tilt_deg:.1f}°)")
+            return result
+            
+        finally:
+            # === ALWAYS RELEASE ACTION LOCK ===
+            self.move.set_action_in_progress(False)
 
     # === LinearMove Action Implementation ===
 
@@ -353,85 +362,93 @@ class ActionServerManager:
             result.message = "Calibration not available"
             return result
 
-        # Get parameters
-        target_distance = goal.distance_cm
-        speed = goal.speed
-        step_size_cm = goal.step_size_cm
+        # === SET ACTION LOCK TO PREVENT GUI INTERFERENCE ===
+        self.move.set_action_in_progress(True)
+        
+        try:
+            # Get parameters
+            target_distance = goal.distance_cm
+            speed = goal.speed
+            step_size_cm = goal.step_size_cm
 
-        # Calculate steps needed
-        cm_per_step = self.calibration.get_cm_per_step(speed)
-        total_steps = max(1, int(abs(target_distance) / cm_per_step))
+            # Calculate steps needed
+            cm_per_step = self.calibration.get_cm_per_step(speed)
+            total_steps = max(1, int(abs(target_distance) / cm_per_step))
 
-        self.logger.info(f"Moving {target_distance:.1f}cm at speed {speed:.1f} "
-                         f"({total_steps} steps, {cm_per_step:.2f}cm/step)")
+            self.logger.info(f"Moving {target_distance:.1f}cm at speed {speed:.1f} "
+                             f"({total_steps} steps, {cm_per_step:.2f}cm/step)")
 
-        # Determine direction
-        if target_distance > 0:
-            direction = 'forward'
-        else:
-            direction = 'backward'
+            # Determine direction
+            if target_distance > 0:
+                direction = 'forward'
+            else:
+                direction = 'backward'
 
-        # Set movement speed
-        self.move.set_movement_speed(int(speed))
+            # Set movement speed
+            self.move.set_movement_speed(int(speed))
 
-        # Start movement
-        self.move.commandInput(direction)
+            # Start movement
+            self.move.commandInput(direction)
 
-        # Track progress
-        steps_completed = 0
-        last_phase = self.move.gait_phase
-        distance_traveled = 0.0
-        last_feedback_distance = 0.0
+            # Track progress
+            steps_completed = 0
+            last_phase = self.move.gait_phase
+            distance_traveled = 0.0
+            last_feedback_distance = 0.0
 
-        # Movement loop
-        while steps_completed < total_steps:
-            # Check for cancellation
-            if goal_handle.is_cancel_requested:
-                self.move.commandInput('stand')
-                self.logger.info("LinearMove action cancelled")
-                result.distance_traveled = distance_traveled
-                result.steps_taken = steps_completed
-                result.success = False
-                result.message = "Cancelled by user"
-                goal_handle.canceled()
-                return result
+            # Movement loop
+            while steps_completed < total_steps:
+                # Check for cancellation
+                if goal_handle.is_cancel_requested:
+                    self.move.commandInput('stand')
+                    self.logger.info("LinearMove action cancelled")
+                    result.distance_traveled = distance_traveled
+                    result.steps_taken = steps_completed
+                    result.success = False
+                    result.message = "Cancelled by user"
+                    goal_handle.canceled()
+                    return result
 
-            # Poll gait phase (10ms interval)
-            time.sleep(0.01)
-            current_phase = self.move.gait_phase
+                # Poll gait phase (10ms interval)
+                time.sleep(0.01)
+                current_phase = self.move.gait_phase
 
-            # Detect cycle wrap (1.0 -> 0.0 = one complete gait cycle)
-            if last_phase > 0.8 and current_phase < 0.2:
-                steps_completed += 1
-                distance_traveled = steps_completed * cm_per_step
+                # Detect cycle wrap (1.0 -> 0.0 = one complete gait cycle)
+                if last_phase > 0.8 and current_phase < 0.2:
+                    steps_completed += 1
+                    distance_traveled = steps_completed * cm_per_step
 
-                # Send feedback at step_size_cm intervals
-                if distance_traveled - last_feedback_distance >= step_size_cm:
-                    feedback.distance_traveled = distance_traveled
-                    feedback.progress = steps_completed / total_steps
-                    feedback.steps_completed = steps_completed
-                    goal_handle.publish_feedback(feedback)
-                    last_feedback_distance = distance_traveled
+                    # Send feedback at step_size_cm intervals
+                    if distance_traveled - last_feedback_distance >= step_size_cm:
+                        feedback.distance_traveled = distance_traveled
+                        feedback.progress = steps_completed / total_steps
+                        feedback.steps_completed = steps_completed
+                        goal_handle.publish_feedback(feedback)
+                        last_feedback_distance = distance_traveled
 
-                self.logger.debug(f"Step {steps_completed}/{total_steps}, "
-                                  f"distance: {distance_traveled:.1f}cm")
+                    self.logger.debug(f"Step {steps_completed}/{total_steps}, "
+                                      f"distance: {distance_traveled:.1f}cm")
 
-            last_phase = current_phase
+                last_phase = current_phase
 
-        # Stop movement
-        self.move.commandInput('stand')
-        self.logger.info("LinearMove completed, stopping...")
+            # Stop movement
+            self.move.commandInput('stand')
+            self.logger.info("LinearMove completed, stopping...")
 
-        # Final result
-        result.distance_traveled = distance_traveled
-        result.final_speed = speed
-        result.steps_taken = steps_completed
-        result.success = True
-        result.message = f"Moved {distance_traveled:.1f}cm in {steps_completed} steps"
-        goal_handle.succeed()
+            # Final result
+            result.distance_traveled = distance_traveled
+            result.final_speed = speed
+            result.steps_taken = steps_completed
+            result.success = True
+            result.message = f"Moved {distance_traveled:.1f}cm in {steps_completed} steps"
+            goal_handle.succeed()
 
-        self.logger.info(f"LinearMove completed: {distance_traveled:.1f}cm")
-        return result
+            self.logger.info(f"LinearMove completed: {distance_traveled:.1f}cm")
+            return result
+            
+        finally:
+            # === ALWAYS RELEASE ACTION LOCK ===
+            self.move.set_action_in_progress(False)
 
     # === Rotate Action Implementation ===
 
@@ -454,119 +471,127 @@ class ActionServerManager:
             result.message = "Calibration not available"
             return result
 
-        # Get parameters
-        target_angle = goal.angle_degrees
-        speed = goal.speed
-        step_size_deg = goal.step_size_deg
-        use_imu = goal.use_imu
+        # === SET ACTION LOCK TO PREVENT GUI INTERFERENCE ===
+        self.move.set_action_in_progress(True)
+        
+        try:
+            # Get parameters
+            target_angle = goal.angle_degrees
+            speed = goal.speed
+            step_size_deg = goal.step_size_deg
+            use_imu = goal.use_imu
 
-        # Calculate steps needed
-        deg_per_step = self.calibration.get_degrees_per_step(speed)
-        total_steps = max(1, int(abs(target_angle) / deg_per_step))
+            # Calculate steps needed
+            deg_per_step = self.calibration.get_degrees_per_step(speed)
+            total_steps = max(1, int(abs(target_angle) / deg_per_step))
 
-        self.logger.info(f"Rotating {target_angle:.1f}° at speed {speed:.1f} "
-                         f"({total_steps} steps, {deg_per_step:.2f}°/step)")
+            self.logger.info(f"Rotating {target_angle:.1f}° at speed {speed:.1f} "
+                             f"({total_steps} steps, {deg_per_step:.2f}°/step)")
 
-        # Determine direction
-        if target_angle > 0:
-            direction = 'right'
-        else:
-            direction = 'left'
+            # Determine direction
+            if target_angle > 0:
+                direction = 'right'
+            else:
+                direction = 'left'
 
-        # IMU setup (if requested and available)
-        imu_angle = 0.0
-        imu_available = use_imu and self.move.mpu6050_connection
-        if use_imu and not imu_available:
-            self.logger.warn("IMU requested but not available")
+            # IMU setup (if requested and available)
+            imu_angle = 0.0
+            imu_available = use_imu and self.move.mpu6050_connection
+            if use_imu and not imu_available:
+                self.logger.warn("IMU requested but not available")
 
-        # Set movement speed
-        self.move.set_movement_speed(int(speed))
+            # Set movement speed
+            self.move.set_movement_speed(int(speed))
 
-        # Start rotation
-        self.move.commandInput(direction)
+            # Start rotation
+            self.move.commandInput(direction)
 
-        # Track progress
-        steps_completed = 0
-        last_phase = self.move.gait_phase
-        angle_rotated = 0.0
-        last_feedback_angle = 0.0
-        last_imu_time = time.time()
+            # Track progress
+            steps_completed = 0
+            last_phase = self.move.gait_phase
+            angle_rotated = 0.0
+            last_feedback_angle = 0.0
+            last_imu_time = time.time()
 
-        # Movement loop
-        while steps_completed < total_steps:
-            # Check for cancellation
-            if goal_handle.is_cancel_requested:
-                self.move.commandInput('no')
-                self.logger.info("Rotate action cancelled")
-                result.angle_rotated = angle_rotated
-                result.imu_angle = imu_angle
-                result.angle_error = abs(target_angle - angle_rotated)
-                result.steps_taken = steps_completed
-                result.success = False
-                result.message = "Cancelled by user"
-                goal_handle.canceled()
-                return result
+            # Movement loop
+            while steps_completed < total_steps:
+                # Check for cancellation
+                if goal_handle.is_cancel_requested:
+                    self.move.commandInput('no')
+                    self.logger.info("Rotate action cancelled")
+                    result.angle_rotated = angle_rotated
+                    result.imu_angle = imu_angle
+                    result.angle_error = abs(target_angle - angle_rotated)
+                    result.steps_taken = steps_completed
+                    result.success = False
+                    result.message = "Cancelled by user"
+                    goal_handle.canceled()
+                    return result
 
-            # Poll gait phase (10ms interval)
-            time.sleep(0.01)
-            current_phase = self.move.gait_phase
+                # Poll gait phase (10ms interval)
+                time.sleep(0.01)
+                current_phase = self.move.gait_phase
 
-            # Update IMU if available
+                # Update IMU if available
+                if imu_available:
+                    current_time = time.time()
+                    dt = current_time - last_imu_time
+                    last_imu_time = current_time
+
+                    # Read gyro data and integrate
+                    try:
+                        mpu_data = self.move.get_mpu6050_data()
+                        if mpu_data and 'gyro' in mpu_data:
+                            gyro_z = mpu_data['gyro'].get('z', 0.0)
+                            # Integrate angular velocity
+                            imu_angle += gyro_z * dt
+                    except Exception as e:
+                        self.logger.warn(f"IMU read error: {e}")
+
+                # Detect cycle wrap (1.0 -> 0.0 = one complete gait cycle)
+                if last_phase > 0.8 and current_phase < 0.2:
+                    steps_completed += 1
+                    angle_rotated = steps_completed * deg_per_step
+
+                    # Send feedback at step_size_deg intervals
+                    if abs(angle_rotated - last_feedback_angle) >= step_size_deg:
+                        feedback.angle_rotated = angle_rotated
+                        feedback.imu_angle = imu_angle if imu_available else 0.0
+                        feedback.progress = steps_completed / total_steps
+                        feedback.steps_completed = steps_completed
+                        goal_handle.publish_feedback(feedback)
+                        last_feedback_angle = angle_rotated
+
+                    self.logger.debug(f"Step {steps_completed}/{total_steps}, "
+                                      f"angle: {angle_rotated:.1f}° (IMU: {imu_angle:.1f}°)")
+
+                last_phase = current_phase
+
+            # Stop rotation
+            self.move.commandInput('no')
+            self.logger.info("Rotate completed, stopping...")
+
+            # Calculate error
+            angle_error = abs(target_angle - angle_rotated)
             if imu_available:
-                current_time = time.time()
-                dt = current_time - last_imu_time
-                last_imu_time = current_time
+                imu_error = abs(target_angle - imu_angle)
+                self.logger.info(f"Step counting error: {angle_error:.1f}°, IMU error: {imu_error:.1f}°")
 
-                # Read gyro data and integrate
-                try:
-                    mpu_data = self.move.get_mpu6050_data()
-                    if mpu_data and 'gyro' in mpu_data:
-                        gyro_z = mpu_data['gyro'].get('z', 0.0)
-                        # Integrate angular velocity
-                        imu_angle += gyro_z * dt
-                except Exception as e:
-                    self.logger.warn(f"IMU read error: {e}")
+            # Final result
+            result.angle_rotated = angle_rotated
+            result.imu_angle = imu_angle if imu_available else 0.0
+            result.angle_error = angle_error
+            result.steps_taken = steps_completed
+            result.success = True
+            result.message = f"Rotated {angle_rotated:.1f}° in {steps_completed} steps"
+            goal_handle.succeed()
 
-            # Detect cycle wrap (1.0 -> 0.0 = one complete gait cycle)
-            if last_phase > 0.8 and current_phase < 0.2:
-                steps_completed += 1
-                angle_rotated = steps_completed * deg_per_step
-
-                # Send feedback at step_size_deg intervals
-                if abs(angle_rotated - last_feedback_angle) >= step_size_deg:
-                    feedback.angle_rotated = angle_rotated
-                    feedback.imu_angle = imu_angle if imu_available else 0.0
-                    feedback.progress = steps_completed / total_steps
-                    feedback.steps_completed = steps_completed
-                    goal_handle.publish_feedback(feedback)
-                    last_feedback_angle = angle_rotated
-
-                self.logger.debug(f"Step {steps_completed}/{total_steps}, "
-                                  f"angle: {angle_rotated:.1f}° (IMU: {imu_angle:.1f}°)")
-
-            last_phase = current_phase
-
-        # Stop rotation
-        self.move.commandInput('no')
-        self.logger.info("Rotate completed, stopping...")
-
-        # Calculate error
-        angle_error = abs(target_angle - angle_rotated)
-        if imu_available:
-            imu_error = abs(target_angle - imu_angle)
-            self.logger.info(f"Step counting error: {angle_error:.1f}°, IMU error: {imu_error:.1f}°")
-
-        # Final result
-        result.angle_rotated = angle_rotated
-        result.imu_angle = imu_angle if imu_available else 0.0
-        result.angle_error = angle_error
-        result.steps_taken = steps_completed
-        result.success = True
-        result.message = f"Rotated {angle_rotated:.1f}° in {steps_completed} steps"
-        goal_handle.succeed()
-
-        self.logger.info(f"Rotate completed: {angle_rotated:.1f}° (error: {angle_error:.1f}°)")
-        return result
+            self.logger.info(f"Rotate completed: {angle_rotated:.1f}° (error: {angle_error:.1f}°)")
+            return result
+            
+        finally:
+            # === ALWAYS RELEASE ACTION LOCK ===
+            self.move.set_action_in_progress(False)
 
     # === ArcMove Action Implementation ===
 
@@ -588,98 +613,106 @@ class ActionServerManager:
             result.message = "Calibration not available"
             return result
 
-        # Get parameters
-        target_distance = goal.distance_cm
-        arc_factor = goal.arc_factor
-        speed = goal.speed
-        step_size_cm = goal.step_size_cm
+        # === SET ACTION LOCK TO PREVENT GUI INTERFERENCE ===
+        self.move.set_action_in_progress(True)
+        
+        try:
+            # Get parameters
+            target_distance = goal.distance_cm
+            arc_factor = goal.arc_factor
+            speed = goal.speed
+            step_size_cm = goal.step_size_cm
 
-        # Calculate steps needed (use linear calibration for arc distance)
-        cm_per_step = self.calibration.get_cm_per_step(speed)
-        total_steps = max(1, int(abs(target_distance) / cm_per_step))
+            # Calculate steps needed (use linear calibration for arc distance)
+            cm_per_step = self.calibration.get_cm_per_step(speed)
+            total_steps = max(1, int(abs(target_distance) / cm_per_step))
 
-        self.logger.info(f"Moving {target_distance:.1f}cm in arc (factor={arc_factor:.2f}) "
-                         f"at speed {speed:.1f} ({total_steps} steps)")
+            self.logger.info(f"Moving {target_distance:.1f}cm in arc (factor={arc_factor:.2f}) "
+                             f"at speed {speed:.1f} ({total_steps} steps)")
 
-        # Determine direction based on arc_factor sign
-        if target_distance > 0:
-            if arc_factor >= 0:
-                direction = 'forward_right_arc'
+            # Determine direction based on arc_factor sign
+            if target_distance > 0:
+                if arc_factor >= 0:
+                    direction = 'forward_right_arc'
+                else:
+                    direction = 'forward_left_arc'
             else:
-                direction = 'forward_left_arc'
-        else:
-            if arc_factor >= 0:
-                direction = 'backward_right_arc'
-            else:
-                direction = 'backward_left_arc'
+                if arc_factor >= 0:
+                    direction = 'backward_right_arc'
+                else:
+                    direction = 'backward_left_arc'
 
-        # Set arc factor (use absolute value)
-        self.move.set_arc_factor(abs(arc_factor))
+            # Set arc factor (use absolute value)
+            self.move.set_arc_factor(abs(arc_factor))
 
-        # Set movement speed
-        self.move.set_movement_speed(int(speed))
+            # Set movement speed
+            self.move.set_movement_speed(int(speed))
 
-        # Start movement
-        self.move.commandInput(direction)
+            # Start movement
+            self.move.commandInput(direction)
 
-        # Track progress
-        steps_completed = 0
-        last_phase = self.move.gait_phase
-        distance_traveled = 0.0
-        last_feedback_distance = 0.0
+            # Track progress
+            steps_completed = 0
+            last_phase = self.move.gait_phase
+            distance_traveled = 0.0
+            last_feedback_distance = 0.0
 
-        # Movement loop (identical to LinearMove)
-        while steps_completed < total_steps:
-            # Check for cancellation
-            if goal_handle.is_cancel_requested:
-                self.move.commandInput('stand')
-                self.move.set_arc_factor(0.7)  # Reset to default
-                self.logger.info("ArcMove action cancelled")
-                result.distance_traveled = distance_traveled
-                result.arc_factor_used = arc_factor
-                result.steps_taken = steps_completed
-                result.success = False
-                result.message = "Cancelled by user"
-                goal_handle.canceled()
-                return result
+            # Movement loop (identical to LinearMove)
+            while steps_completed < total_steps:
+                # Check for cancellation
+                if goal_handle.is_cancel_requested:
+                    self.move.commandInput('stand')
+                    self.move.set_arc_factor(0.7)  # Reset to default
+                    self.logger.info("ArcMove action cancelled")
+                    result.distance_traveled = distance_traveled
+                    result.arc_factor_used = arc_factor
+                    result.steps_taken = steps_completed
+                    result.success = False
+                    result.message = "Cancelled by user"
+                    goal_handle.canceled()
+                    return result
 
-            # Poll gait phase (10ms interval)
-            time.sleep(0.01)
-            current_phase = self.move.gait_phase
+                # Poll gait phase (10ms interval)
+                time.sleep(0.01)
+                current_phase = self.move.gait_phase
 
-            # Detect cycle wrap (1.0 -> 0.0 = one complete gait cycle)
-            if last_phase > 0.8 and current_phase < 0.2:
-                steps_completed += 1
-                distance_traveled = steps_completed * cm_per_step
+                # Detect cycle wrap (1.0 -> 0.0 = one complete gait cycle)
+                if last_phase > 0.8 and current_phase < 0.2:
+                    steps_completed += 1
+                    distance_traveled = steps_completed * cm_per_step
 
-                # Send feedback at step_size_cm intervals
-                if distance_traveled - last_feedback_distance >= step_size_cm:
-                    feedback.distance_traveled = distance_traveled
-                    feedback.progress = steps_completed / total_steps
-                    feedback.steps_completed = steps_completed
-                    goal_handle.publish_feedback(feedback)
-                    last_feedback_distance = distance_traveled
+                    # Send feedback at step_size_cm intervals
+                    if distance_traveled - last_feedback_distance >= step_size_cm:
+                        feedback.distance_traveled = distance_traveled
+                        feedback.progress = steps_completed / total_steps
+                        feedback.steps_completed = steps_completed
+                        goal_handle.publish_feedback(feedback)
+                        last_feedback_distance = distance_traveled
 
-                self.logger.debug(f"Step {steps_completed}/{total_steps}, "
-                                  f"distance: {distance_traveled:.1f}cm")
+                    self.logger.debug(f"Step {steps_completed}/{total_steps}, "
+                                      f"distance: {distance_traveled:.1f}cm")
 
-            last_phase = current_phase
+                last_phase = current_phase
 
-        # Stop movement and reset arc factor
-        self.move.commandInput('stand')
-        self.move.set_arc_factor(0.7)  # Reset to default
-        self.logger.info("ArcMove completed, stopping...")
+            # Stop movement and reset arc factor
+            self.move.commandInput('stand')
+            self.move.set_arc_factor(0.7)  # Reset to default
+            self.logger.info("ArcMove completed, stopping...")
 
-        # Final result
-        result.distance_traveled = distance_traveled
-        result.arc_factor_used = arc_factor
-        result.steps_taken = steps_completed
-        result.success = True
-        result.message = f"Moved {distance_traveled:.1f}cm in arc (factor={arc_factor:.2f})"
-        goal_handle.succeed()
+            # Final result
+            result.distance_traveled = distance_traveled
+            result.arc_factor_used = arc_factor
+            result.steps_taken = steps_completed
+            result.success = True
+            result.message = f"Moved {distance_traveled:.1f}cm in arc (factor={arc_factor:.2f})"
+            goal_handle.succeed()
 
-        self.logger.info(f"ArcMove completed: {distance_traveled:.1f}cm")
-        return result
+            self.logger.info(f"ArcMove completed: {distance_traveled:.1f}cm")
+            return result
+            
+        finally:
+            # === ALWAYS RELEASE ACTION LOCK ===
+            self.move.set_action_in_progress(False)
 
 
 # === Standalone Test ===
