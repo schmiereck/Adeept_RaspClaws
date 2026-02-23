@@ -123,16 +123,17 @@ except ImportError as e:
 
 class GUICommandClient:
     """A client to send commands to the GUIServer TCP socket."""
-    def __init__(self, host='127.0.0.1', port=10223, logger=None):
+    def __init__(self, host='127.0.0.1', port=10223, logger=None, keep_connection=False):
         self.host = host
         self.port = port
         self.logger = logger
         self.sock = None
         self.lock = threading.Lock()
+        self.keep_connection = keep_connection
 
-        # Try initial connection, but don't fail if server is down
-        if not self.connect(silent=True):
-            self.log('warn', f'Initial connection to GUIServer at {host}:{port} failed (Server might be down). Will retry on first command.')
+        # Lazy connection: do not connect in __init__.
+        # GUIServer accepts only one TCP client at a time, so holding an idle
+        # connection here can block the desktop GUI from connecting.
 
     def log(self, level, msg):
         if self.logger:
@@ -204,6 +205,12 @@ class GUICommandClient:
             try:
                 self.sock.sendall(f"{command}".encode())
                 self.log('info', f'Sent command to GUIServer: {command}')
+                if not self.keep_connection:
+                    try:
+                        self.sock.close()
+                    except Exception:
+                        pass
+                    self.sock = None
                 return True
             except (socket.error, BrokenPipeError) as e:
                 self.log('warn', f'Failed to send command: {e}. Retrying once...')
@@ -217,6 +224,12 @@ class GUICommandClient:
                     try:
                         self.sock.sendall(f"{command}".encode())
                         self.log('info', f'Sent command to GUIServer (after reconnect): {command}')
+                        if not self.keep_connection:
+                            try:
+                                self.sock.close()
+                            except Exception:
+                                pass
+                            self.sock = None
                         return True
                     except Exception as e2:
                         self.log('error', f'Retry failed: {e2}')
