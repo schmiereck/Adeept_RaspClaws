@@ -55,7 +55,8 @@ from protocol import (
     CMD_FORWARD_LEFT_ARC, CMD_FORWARD_RIGHT_ARC,
     CMD_FAST, CMD_SLOW, MOVE_STAND,
     CMD_SMOOTH_CAM, CMD_SMOOTH_CAM_OFF,
-    CMD_CAMERA_PAUSE, CMD_CAMERA_RESUME
+    CMD_CAMERA_PAUSE, CMD_CAMERA_RESUME,
+    CMD_SERVO_STANDBY, CMD_SERVO_WAKEUP
 )
 
 # ROS 2 imports
@@ -562,6 +563,19 @@ class RaspClawsNode(Node):
             has_linear = abs(linear_z) > threshold
             has_angular = abs(angular_y) > threshold
 
+            # Auto-wakeup: any non-zero movement command should wake servos
+            # and propagate status to GUI via GUIServer.
+            if (has_linear or has_angular) and self.servo_standby_active:
+                self.get_logger().info('Auto-wakeup: movement command received while servos in standby')
+                if self.cmd_handler:
+                    self.cmd_handler.set_servo_standby(False)
+                else:
+                    move.wakeup()
+                self.servo_standby_active = False
+                sync_ok = self.gui_command_client.send_command(CMD_SERVO_WAKEUP)
+                if not sync_ok:
+                    self.get_logger().warn('Auto-wakeup GUI sync skipped (GUIServer not reachable)')
+
             if has_linear and not has_angular:
                 # Case 1: Straight forward/backward (no turning)
                 # Map linear.z to movement speed (0-100 scale)
@@ -787,6 +801,7 @@ class RaspClawsNode(Node):
         """Service callback to set servo standby mode"""
         try:
             standby_requested = request.data  # True = Standby, False = Wakeup
+            sync_command = CMD_SERVO_STANDBY if standby_requested else CMD_SERVO_WAKEUP
 
             if not ROBOT_MODULES_AVAILABLE:
                 self.get_logger().info(f'MOCK: Servo standby set to {standby_requested}')
@@ -826,6 +841,18 @@ class RaspClawsNode(Node):
                     response.message = 'Servos WAKEUP - robot ready in stand position'
 
             self.get_logger().info(f'Servo standby mode: {self.servo_standby_active}')
+
+            # Keep GUI button in sync via GUIServer status messages (best effort).
+            # We do not fail the ROS service if GUIServer is currently unavailable.
+            sync_ok = self.gui_command_client.send_command(sync_command)
+            if sync_ok:
+                self.get_logger().info(
+                    f'GUI sync sent via GUIServer: {sync_command}'
+                )
+            else:
+                self.get_logger().warn(
+                    f'GUI sync skipped (GUIServer not reachable): {sync_command}'
+                )
 
         except Exception as e:
             self.get_logger().error(f'Error setting servo standby mode: {e}')

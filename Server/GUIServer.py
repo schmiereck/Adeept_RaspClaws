@@ -410,7 +410,7 @@ fps_threading = None
 
 def handle_movement_command(data):
         """Handle movement commands (forward, backward, left, right, etc.)"""
-        global direction_command, turn_command
+        global direction_command, turn_command, servo_standby_active
 
         # === CHECK IF ACTION IS RUNNING ===
         # Ignore GUI movement commands if a ROS2 Action is currently executing
@@ -422,6 +422,20 @@ def handle_movement_command(data):
         move_command = GUI_TO_MOVE_COMMAND_MAP.get(data)
 
         if move_command:
+                # Auto-wakeup: A real movement command should wake servos from standby
+                # and notify GUI so button state stays in sync.
+                if servo_standby_active and move_command in [
+                        CMD_FORWARD, CMD_BACKWARD, CMD_LEFT, CMD_RIGHT,
+                        CMD_FORWARD_LEFT_ARC, CMD_FORWARD_RIGHT_ARC
+                ]:
+                        print("[GUIServer] Auto-wakeup: movement command received while servos in standby")
+                        cmd_handler.set_servo_standby(False)
+                        servo_standby_active = False
+                        try:
+                                tcpCliSock.send(f'{STATUS_SERVO_WAKEUP}\n'.encode())
+                        except Exception as e:
+                                print(f"[GUIServer] Warning: failed to send servo wakeup status: {e}")
+
                 print(f"[GUIServer] Movement command: '{data}' -> '{move_command}'")
                 # Use CommandHandler for thread-safe hardware control
                 result = cmd_handler.handle_movement_command(move_command)
