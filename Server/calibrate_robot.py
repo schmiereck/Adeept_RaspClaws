@@ -60,19 +60,20 @@ class RobotCalibrator:
         }
 
         if HARDWARE_AVAILABLE:
-            self.move = Move()
-            # Initialize hardware (PWM and servos)
             try:
+                self.move = Move()
+                # Initialize hardware (PWM and servos)
                 self.move.init_all()
                 print("Hardware initialized successfully!")
+                self.hardware_ready = True
             except Exception as e:
                 print(f"WARNING: Hardware initialization failed: {e}")
                 print("Running in SIMULATION mode")
                 self.move = None
-                global HARDWARE_AVAILABLE
-                HARDWARE_AVAILABLE = False
+                self.hardware_ready = False
         else:
             self.move = None
+            self.hardware_ready = False
             print("Running in SIMULATION mode (no hardware)")
 
     def wait_for_user(self, message: str = "Press ENTER to continue..."):
@@ -114,7 +115,7 @@ class RobotCalibrator:
         for speed in speeds:
             print(f"\n--- Testing Speed {speed} ---")
 
-            if HARDWARE_AVAILABLE:
+            if self.hardware_ready:
                 print(f"Robot will move forward at speed {speed} for {cycles_per_test} cycles...")
                 print("Mark the starting position NOW!")
                 self.wait_for_user("Press ENTER when ready to start movement...")
@@ -181,7 +182,7 @@ class RobotCalibrator:
         for speed in speeds:
             print(f"\n--- Testing Speed {speed} ---")
 
-            if HARDWARE_AVAILABLE:
+            if self.hardware_ready:
                 print(f"Robot will rotate right at speed {speed} for {cycles_per_test} cycles...")
                 print("Note the starting angle NOW!")
                 self.wait_for_user("Press ENTER when ready to start rotation...")
@@ -321,7 +322,7 @@ class RobotCalibrator:
         print("QUICK TEST MODE")
         print("=" * 60)
 
-        if not HARDWARE_AVAILABLE:
+        if not self.hardware_ready:
             print("Hardware not available. Cannot run quick test.")
             return
 
