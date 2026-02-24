@@ -6,7 +6,14 @@ This script helps calibrate the RaspClaws robot by running controlled
 movements and recording the measured distances/angles.
 
 Usage:
-    python3 calibrate_robot.py
+    # From project root:
+    python3 Server/calibrate_robot.py
+    
+    # From Server directory:
+    cd Server && python3 calibrate_robot.py
+    
+    # Quick test mode:
+    python3 Server/calibrate_robot.py --test
 
 Requirements:
     - Robot hardware connected and functional
@@ -23,12 +30,18 @@ import time
 import yaml
 from datetime import datetime
 
+# Add Server directory to Python path to allow running from project root
+script_dir = os.path.dirname(os.path.abspath(__file__))
+server_dir = script_dir if os.path.basename(script_dir) == 'Server' else os.path.join(script_dir, 'Server')
+if server_dir not in sys.path:
+    sys.path.insert(0, server_dir)
+
 # Import robot hardware control
 try:
     from Move import Move
     HARDWARE_AVAILABLE = True
-except ImportError:
-    print("WARNING: Move.py not available. Running in simulation mode.")
+except ImportError as e:
+    print(f"WARNING: Move.py not available ({e}). Running in simulation mode.")
     HARDWARE_AVAILABLE = False
 
 
@@ -251,8 +264,14 @@ class RobotCalibrator:
 
     def save_calibration(self):
         """Save calibration data to YAML file."""
+        # Always save to Server directory, regardless of where script was started
         script_dir = os.path.dirname(os.path.abspath(__file__))
-        output_file = os.path.join(script_dir, 'calibration.yaml')
+        if os.path.basename(script_dir) == 'Server':
+            output_dir = script_dir
+        else:
+            output_dir = os.path.join(script_dir, 'Server')
+        
+        output_file = os.path.join(output_dir, 'calibration.yaml')
 
         print(f"\nSaving calibration to: {output_file}")
 
