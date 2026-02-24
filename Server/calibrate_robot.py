@@ -61,7 +61,16 @@ class RobotCalibrator:
 
         if HARDWARE_AVAILABLE:
             self.move = Move()
-            print("Hardware initialized successfully!")
+            # Initialize hardware (PWM and servos)
+            try:
+                self.move.init_all()
+                print("Hardware initialized successfully!")
+            except Exception as e:
+                print(f"WARNING: Hardware initialization failed: {e}")
+                print("Running in SIMULATION mode")
+                self.move = None
+                global HARDWARE_AVAILABLE
+                HARDWARE_AVAILABLE = False
         else:
             self.move = None
             print("Running in SIMULATION mode (no hardware)")
