@@ -38,11 +38,12 @@ if server_dir not in sys.path:
 
 # Import robot hardware control
 try:
-    from Move import Move
+    import Move as move
     HARDWARE_AVAILABLE = True
 except ImportError as e:
     print(f"WARNING: Move.py not available ({e}). Running in simulation mode.")
     HARDWARE_AVAILABLE = False
+    move = None
 
 
 class RobotCalibrator:
@@ -74,18 +75,15 @@ class RobotCalibrator:
 
         if HARDWARE_AVAILABLE:
             try:
-                self.move = Move()
                 # Initialize hardware (PWM and servos)
-                self.move.init_all()
+                move.init_all()
                 print("Hardware initialized successfully!")
                 self.hardware_ready = True
             except Exception as e:
                 print(f"WARNING: Hardware initialization failed: {e}")
                 print("Running in SIMULATION mode")
-                self.move = None
                 self.hardware_ready = False
         else:
-            self.move = None
             self.hardware_ready = False
             print("Running in SIMULATION mode (no hardware)")
 
@@ -134,16 +132,16 @@ class RobotCalibrator:
                 self.wait_for_user("Press ENTER when ready to start movement...")
 
                 # Set speed and move forward
-                self.move.set_movement_speed(speed)
-                self.move.commandInput('forward')
+                move.set_movement_speed(speed)
+                move.commandInput('forward')
 
                 # Count cycles
-                last_phase = self.move.gait_phase
+                last_phase = move.gait_phase
                 cycle_count = 0
 
                 while cycle_count < cycles_per_test:
                     time.sleep(0.01)  # 10ms polling
-                    current_phase = self.move.gait_phase
+                    current_phase = move.gait_phase
 
                     # Detect cycle wrap (1.0 -> 0.0)
                     if last_phase > 0.8 and current_phase < 0.2:
@@ -153,7 +151,7 @@ class RobotCalibrator:
                     last_phase = current_phase
 
                 # Stop
-                self.move.commandInput('stand')
+                move.commandInput('stand')
                 print("Movement complete!")
 
             else:
@@ -201,16 +199,16 @@ class RobotCalibrator:
                 self.wait_for_user("Press ENTER when ready to start rotation...")
 
                 # Set speed and rotate right
-                self.move.set_movement_speed(speed)
-                self.move.commandInput('right')
+                move.set_movement_speed(speed)
+                move.commandInput('right')
 
                 # Count cycles
-                last_phase = self.move.gait_phase
+                last_phase = move.gait_phase
                 cycle_count = 0
 
                 while cycle_count < cycles_per_test:
                     time.sleep(0.01)  # 10ms polling
-                    current_phase = self.move.gait_phase
+                    current_phase = move.gait_phase
 
                     # Detect cycle wrap (1.0 -> 0.0)
                     if last_phase > 0.8 and current_phase < 0.2:
@@ -220,7 +218,7 @@ class RobotCalibrator:
                     last_phase = current_phase
 
                 # Stop
-                self.move.commandInput('no')
+                move.commandInput('no')
                 print("Rotation complete!")
 
             else:
@@ -353,20 +351,20 @@ class RobotCalibrator:
 
         # Test linear movement
         print("\n1. Moving forward...")
-        self.move.set_movement_speed(35)
-        self.move.commandInput('forward')
+        move.set_movement_speed(35)
+        move.commandInput('forward')
         time.sleep(3)  # ~3 seconds
-        self.move.commandInput('stand')
+        move.commandInput('stand')
         print("   Measure distance traveled!")
 
         time.sleep(2)
 
         # Test rotation
         print("\n2. Rotating right...")
-        self.move.set_movement_speed(35)
-        self.move.commandInput('right')
+        move.set_movement_speed(35)
+        move.commandInput('right')
         time.sleep(2)  # ~2 seconds
-        self.move.commandInput('no')
+        move.commandInput('no')
         print("   Measure angle rotated!")
 
         print("\n✓ Quick test complete!")
