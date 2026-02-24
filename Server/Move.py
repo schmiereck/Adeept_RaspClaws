@@ -5,13 +5,20 @@
 # Date        : 2025/04/16
 import time
 import math
-import adafruit_mpu6050
-import Kalman_Filter as Kalman_filter
-import PID
 import threading
 import RPIservo
 import sys
 import os
+
+# Optional IMU import
+try:
+    import adafruit_mpu6050
+    import Kalman_Filter as Kalman_filter
+    import PID
+    MPU6050_AVAILABLE = True
+except ImportError:
+    MPU6050_AVAILABLE = False
+    print("⚠️  MPU6050 not available - IMU features disabled")
 
 # New imports for CircuitPython
 from adafruit_pca9685 import PCA9685
@@ -225,11 +232,15 @@ def initialize_pwm():
 kalman_filter_X =  Kalman_filter.Kalman_filter(0.001,0.1)
 kalman_filter_Y =  Kalman_filter.Kalman_filter(0.001,0.1)
 
-try:
-    i2c = busio.I2C(board.SCL, board.SDA)
-    sensor = adafruit_mpu6050.MPU6050(i2c)
-    mpu6050_connection = 1
-except (ValueError, RuntimeError):
+if MPU6050_AVAILABLE:
+    try:
+        i2c = busio.I2C(board.SCL, board.SDA)
+        sensor = adafruit_mpu6050.MPU6050(i2c)
+        mpu6050_connection = 1
+    except (ValueError, RuntimeError):
+        mpu6050_connection = 0
+        sensor = None
+else:
     mpu6050_connection = 0
     sensor = None
 
