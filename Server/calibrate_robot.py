@@ -6,7 +6,7 @@ This script helps calibrate the RaspClaws robot by running controlled
 movements and recording the measured distances/angles.
 
 Usage:
-    # From project root:
+    # From project root (recommended):
     python3 Server/calibrate_robot.py
     
     # From Server directory:
@@ -14,6 +14,11 @@ Usage:
     
     # Quick test mode:
     python3 Server/calibrate_robot.py --test
+
+Important:
+    - Run as user 'pi' (NOT with sudo!)
+    - Make sure gui_server.service is stopped: sudo systemctl stop gui_server.service
+    - The script uses the same Python packages as gui_server.service
 
 Requirements:
     - Robot hardware connected and functional
